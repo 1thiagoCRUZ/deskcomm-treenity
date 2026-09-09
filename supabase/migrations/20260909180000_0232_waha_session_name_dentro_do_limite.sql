@@ -1,4 +1,4 @@
--- 0231 — waha_session_name dentro do limite do WAHA (54 caracteres).
+-- 0232 — waha_session_name dentro do limite do WAHA (54 caracteres).
 --
 -- `fn_reserve_channel_connection` (0228/0230) gerava o nome da sessão como
 -- 'org_' || org_uuid_sem_hifen (32) || '_' || uuid_aleatorio_sem_hifen (32) —

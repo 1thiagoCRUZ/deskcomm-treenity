@@ -23205,7 +23205,7 @@ grant execute on function public.fn_reserve_channel_connection(uuid,uuid,text,te
 
 notify pgrst,'reload schema';
 
--- ---- waha_session_name dentro do limite do WAHA (migration 0231) ----
+-- ---- waha_session_name dentro do limite do WAHA (migration 0232) ----
 -- A 0228/0230 gerava 'org_'+org(32)+'_'+random(32) = 69 chars; o WAHA recusa
 -- (400) qualquer name >54. Toda instalação nova batia nisso no 1º WhatsApp.
 -- Fix: 'org_'+org(12)+'_'+random(16) = 33 chars. Só o INSERT muda.
