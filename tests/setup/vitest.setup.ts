@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 
 /**
  * Remove um par de aspas (simples ou duplas) que envolva o valor inteiro —
- * mesma convenção que `hostgator-setup-kit/install.sh` grava no `.env` de
+ * mesma convenção que `setup-kit/install.sh` grava no `.env` de
  * TODA instalação self-host (`NEXT_PUBLIC_APP_URL="https://${DOMAIN}"`).
  * Sem isto, um self-hoster que rode `pnpm test:unit` na própria VPS antes de
  * atualizar vê a suíte inteira falhar com "Variáveis de ambiente inválidas"

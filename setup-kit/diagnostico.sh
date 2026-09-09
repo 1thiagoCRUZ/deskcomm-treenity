@@ -19,7 +19,7 @@
 # depender dele seria diagnosticar o passado com a ferramenta do passado. E
 # precisa poder ser baixado avulso, sem clonar nada:
 #
-#   curl -fsSL https://raw.githubusercontent.com/melgarafael/DeskcommCRM/main/hostgator-setup-kit/diagnostico.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/melgarafael/DeskcommCRM/main/setup-kit/diagnostico.sh | bash
 #
 # ── O que ele pode assumir que existe ────────────────────────────────────────
 # Medido numa VPS real: bash 5.1, docker, docker compose, curl, sed/awk/grep.
@@ -184,7 +184,7 @@ if [ "$AFETADO" = "nao" ]; then
         item "  Ele está seguindo o canal '${tag_do_worker}', não uma versão fixa — então pode"
         item "  saltar sozinho para a próxima versão num reinício, enquanto o resto do"
         item "  servidor continua onde está."
-        item "  ${B}Rode 'bash hostgator-setup-kit/update.sh' mais uma vez${Z} para fixar tudo na"
+        item "  ${B}Rode 'bash setup-kit/update.sh' mais uma vez${Z} para fixar tudo na"
         item "  mesma versão. É rápido: não há o que baixar de novo."
         ;;
       *)
@@ -235,7 +235,7 @@ cat <<TEXTO
   O conserto é uma atualização normal, e ${B}quem decide quando é você${Z}:
 
       cd $PROJETO
-      bash hostgator-setup-kit/update.sh
+      bash setup-kit/update.sh
 
   Ele faz backup do banco antes, e o passo a passo — com como voltar atrás — está
   em docs/runbooks/remediar-worker-congelado.md.

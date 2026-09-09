@@ -31,7 +31,7 @@ Não consegui provisionar a chave localmente: o Supabase local recusa
 
 ## ⚠️ O achado, que é maior que o teste
 
-**`hostgator-setup-kit/install.sh` não provisiona `app.nuvemshop_oauth_key`** — nem o
+**`setup-kit/install.sh` não provisiona `app.nuvemshop_oauth_key`** — nem o
 `update.sh`. Medido por `grep`.
 
 Consequência em **toda instalação self-host de hoje**, não só no canal oficial:

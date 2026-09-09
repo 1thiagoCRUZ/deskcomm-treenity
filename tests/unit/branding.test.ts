@@ -512,7 +512,7 @@ describe("catraca de marca hardcoded", () => {
  *
  * Estes arquivos não são renderizados por nenhum TypeScript nosso: quem os
  * renderiza é o GoTrue, um processo de terceiro. Não há resolvedor a chamar —
- * o texto é empurrado por API pelo `hostgator-setup-kit/marca-emails.sh`, que
+ * o texto é empurrado por API pelo `setup-kit/marca-emails.sh`, que
  * substitui os `__PLACEHOLDER__`. Por isso a guarda aqui é diferente em
  * NATUREZA da de cima: lá ela cobra `branding()`; aqui ela cobra placeholder.
  *
@@ -601,7 +601,7 @@ describe("catraca de marca no que o GoTrue renderiza", () => {
     expect(
       novos,
       `Marca hardcoded em arquivo que o GoTrue renderiza.\n` +
-        `Use o placeholder __APP_NAME__ (quem substitui é hostgator-setup-kit/marca-emails.sh):\n` +
+        `Use o placeholder __APP_NAME__ (quem substitui é setup-kit/marca-emails.sh):\n` +
         novos.map((f) => `  ${f}  ${JSON.stringify(encontradoAqui.get(f))}`).join("\n"),
     ).toEqual([]);
   });

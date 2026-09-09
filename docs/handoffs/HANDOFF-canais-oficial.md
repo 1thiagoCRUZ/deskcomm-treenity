@@ -786,7 +786,7 @@ meta_cloud | 1103328999528818     | t         | EAASbhCM          | 203
 
 Este handoff (e o meu relatório ao Rafael) afirmou que **`install.sh` não provisiona a chave
 de cifra**, e classificou isso como o item de maior impacto — "afeta produção de todo
-self-hoster". **É falso.** `hostgator-setup-kit/install.sh:629` e `update.sh:124` chamam
+self-hoster". **É falso.** `setup-kit/install.sh:629` e `update.sh:124` chamam
 `ensure_encryption_key`, que gera a chave e a semeia em `private.app_secrets`.
 
 Como errei: procurei por `ALTER DATABASE ... SET app.nuvemshop_oauth_key`, que é o que a

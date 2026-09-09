@@ -10,7 +10,7 @@ O DeskcommCRM é um sistema fechado: leads só nascem por ação interna (atende
 2. **Reação**: mini motor de regras gatilho → condições → ações.
 3. **Descobribilidade**: item "Webhooks" no sidebar, UI leigo-friendly com snippets prontos, teste embutido e feedback visível de que funcionou.
 
-**Restrição de infra**: projeto open-source; público majoritário self-hosta em VPS HostGator. Sem dependência obrigatória de Upstash/Vercel; URLs a partir de `APP_URL`; schema via migration versionada + apêndice no `baseline.sql`.
+**Restrição de infra**: projeto open-source; público majoritário self-hosta em VPS Hostinger. Sem dependência obrigatória de Upstash/Vercel; URLs a partir de `APP_URL`; schema via migration versionada + apêndice no `baseline.sql`.
 
 ## 2. Decisões de produto (travadas)
 
@@ -115,7 +115,7 @@ Payload inválido (sem nenhum campo mapeável) → `400` `fail()` padrão. Dupli
 - Lote: `status='pending' and next_attempt_at <= now()` (limit ~50), marca `processing`, chama `dispatchEvent(row)` do dispatcher existente.
 - Sucesso → `done` (+`consumed_by`). Falha → `attempts+1`, backoff exponencial em `next_attempt_at`, `dead` após 5 tentativas com `last_error`.
 - Não colide com os crons específicos existentes (`agent-dispatcher` etc.): o drain só despacha event_types que têm handler registrado e ainda não consumido (`consumed_by`), comportamento já implementado no `dispatchEvent`.
-- **Self-host**: kit HostGator adiciona crontab `* * * * * curl -fsS -H "Authorization: Bearer $CRON_SECRET" $APP_URL/api/v1/cron/event-log-drain` (documentado no install/update do kit). Vercel: entrada em crons.
+- **Self-host**: kit Hostinger adiciona crontab `* * * * * curl -fsS -H "Authorization: Bearer $CRON_SECRET" $APP_URL/api/v1/cron/event-log-drain` (documentado no install/update do kit). Vercel: entrada em crons.
 
 ## 7. Motor de regras (handler `automation-rules`)
 
@@ -189,4 +189,4 @@ Formulário hospedado embedável; builder de condições com OU/grupos; round-ro
 
 ## 13. Entregáveis de schema (doutrina open-source)
 
-Migration `<timestamp-da-implementação>_0038_webhooks_automation.sql` (timestamp `YYYYMMDDHHMMSS` gerado no dia; idempotente, psql puro) + apêndice idempotente no fim de `supabase/baseline.sql` (blocos rotulados `-- ---- webhooks/automation (migration 0038) ----`, com grants no padrão do arquivo) + linha no `supabase/migrations/MANIFEST.md` + regenerar `lib/database.types.ts` + crontab do drain documentado no kit HostGator.
+Migration `<timestamp-da-implementação>_0038_webhooks_automation.sql` (timestamp `YYYYMMDDHHMMSS` gerado no dia; idempotente, psql puro) + apêndice idempotente no fim de `supabase/baseline.sql` (blocos rotulados `-- ---- webhooks/automation (migration 0038) ----`, com grants no padrão do arquivo) + linha no `supabase/migrations/MANIFEST.md` + regenerar `lib/database.types.ts` + crontab do drain documentado no kit Hostinger.

@@ -34,7 +34,7 @@ parte da primeira e mais nada):
 | **Empírica** | a experiência real é BOA? um leigo entende? está claro? |
 
 **Âncora de arquitetura:** o público-alvo principal instala o CRM numa **VPS da
-HostGator** pelo `hostgator-setup-kit/`, com **Supabase cloud**. Toda decisão se
+Hostinger** pelo `setup-kit/`, com **Supabase cloud**. Toda decisão se
 avalia contra isso primeiro — não contra a Vercel, não contra o laptop. E a pergunta
 que quase sempre é esquecida: **como isto chega a um clone que JÁ RODA e vai atualizar?**
 
@@ -114,7 +114,7 @@ de um agente que rodou o cálculo — e está marcado de propósito.
 
 ### Topologia real do público-alvo
 
-- **Supabase é cloud**, provisionado pela Management API (`hostgator-setup-kit/supabase-provision.sh`).
+- **Supabase é cloud**, provisionado pela Management API (`setup-kit/supabase-provision.sh`).
   Storage não consome disco da VPS, mas consome **cota do plano do cliente**,
   competindo com `whatsapp-media`. Plano grátis: 2 projetos por usuário.
 - **O scheduler da VPS já roda 16 crons** (`docker-compose.prod.yml:145-172`) — o
@@ -134,7 +134,7 @@ de um agente que rodou o cálculo — e está marcado de propósito.
 
 ### O defeito
 
-`hostgator-setup-kit/install.sh:436` grava o `.env` com aspas simples e escape `'\''`.
+`setup-kit/install.sh:436` grava o `.env` com aspas simples e escape `'\''`.
 Para `APP_NAME = Sant'Ana Odontologia` isso produz `APP_NAME='Sant'\''Ana Odontologia'`,
 e o **Docker Compose recusa ler o arquivo inteiro**:
 
@@ -168,7 +168,7 @@ coberto e o **caractere** não coberto.
 
 1. `load_env` (`_common.sh:252-276`) — parsing manual com `printf -v`, **não** `source`.
 2. `docker compose` via `env_file: .env` (`docker-compose.prod.yml:34,71`).
-3. `source .env && curl …` — receita real em `hostgator-setup-kit/README.md:143`.
+3. `source .env && curl …` — receita real em `setup-kit/README.md:143`.
 
 ### A solução, escolhida por medição
 
@@ -193,7 +193,7 @@ escape. O ramo de aspas simples **fica** — clone que atualiza não reescreve o
 
 | Achado | Evidência | O que muda |
 |---|---|---|
-| **O worker não tem `image:`, só `build:`** — único dos 7 serviços | `docker compose -f docker-compose.prod.yml config` resolvido pelo próprio Docker | `install.sh` roda `dc up -d` sem escopo → **a VPS compila**, contra o que `hostgator-setup-kit/README.md:91` promete. E `update.sh` (`dc pull` + `up -d` sem `--build`) → **o worker segue com código velho**. Consequência é inferência da semântica do Compose; falta observar numa VPS |
+| **O worker não tem `image:`, só `build:`** — único dos 7 serviços | `docker compose -f docker-compose.prod.yml config` resolvido pelo próprio Docker | `install.sh` roda `dc up -d` sem escopo → **a VPS compila**, contra o que `setup-kit/README.md:91` promete. E `update.sh` (`dc pull` + `up -d` sem `--build`) → **o worker segue com código velho**. Consequência é inferência da semântica do Compose; falta observar numa VPS |
 | **Regra para o épico** | — | Trabalho agendado da marca vai em `app/api/v1/cron/*` batido pelo `scheduler`, **nunca** no worker — é o único componente que não recebe código novo |
 | **Apêndice do baseline: bucket chega, mudança de policy some** | Reprodução em Postgres descartável: `ERROR: policy already exists` e o statement seguinte entra | Todo bloco de policy do apêndice nasce com `drop policy if exists`. Todo bucket com `on conflict (id) do …` |
 | **Cota do Supabase é do cliente e ninguém a mede** | `docs/SETUP.md:76` (1 GB, e é a única ocorrência no repo — está no guia de **dev**) | O bucket de marca disputa 1 GB com toda a mídia de WhatsApp, que **não tem poda por idade** (`media_retention_days` é campo morto). Teto de upload **512 KB**, não 2 MB, e apagar o objeto anterior na troca |
@@ -871,7 +871,7 @@ defeito real era **duplicação** dos dois hexes em três arquivos. Provado por 
 com `accent_hex='#f2c94c'`, o ícone virou **V sobre `#6e5c28`** (o accent derivado) e o
 `theme-color` **não** mudou.
 
-**E-mails de acesso.** `hostgator-setup-kit/marca-emails.sh` sobe assunto e corpo pela
+**E-mails de acesso.** `setup-kit/marca-emails.sh` sobe assunto e corpo pela
 Management API. A medição que destravou a decisão: o `PATCH /config/auth` com
 `mailer_templates_*` **é aceito e persiste sem SMTP customizado**. Achado do rig: **projeto
 pausado responde 400 "Project is paused."** — modo de falha que um script confiando em 2xx
@@ -907,8 +907,8 @@ Régua: `docs/doctrine/sistema-vivo.md`. Resposta que não nomeia artefato concr
 
 | # | Pergunta | Resposta, com o artefato |
 |---|---|---|
-| 1 | **Quem me alimenta?** | `hostgator-setup-kit/install.sh:1365-1379` grava a marca no `.env` → `sementeDoAmbiente()` (`lib/branding/instalacao.ts`) semeia `public.platform_branding` na primeira leitura. E a mão humana, por duas telas: `app/admin/(protected)/marca/_form.tsx` (instalação) e `app/app/settings/marca/_form.tsx` (organização) |
-| 2 | **Quem eu alimento?** | `app/layout.tsx` (`<EstiloDaMarca/>` + `generateMetadata`), `app/app/layout.tsx` (`<EstiloDaMarcaDaOrganizacao/>`), `app/icon.tsx`, e via `marcaDaSaida()`: `lib/email/templates/invite.ts`, `lib/lgpd/email-delivery.ts`, `lib/lgpd/sla-alarm.ts`, `app/actions/auth/enrollMfa.ts` (`issuer`), `lib/email/resend.ts` (nome do remetente). Fora do processo: `hostgator-setup-kit/marca-emails.sh` → GoTrue |
+| 1 | **Quem me alimenta?** | `setup-kit/install.sh:1365-1379` grava a marca no `.env` → `sementeDoAmbiente()` (`lib/branding/instalacao.ts`) semeia `public.platform_branding` na primeira leitura. E a mão humana, por duas telas: `app/admin/(protected)/marca/_form.tsx` (instalação) e `app/app/settings/marca/_form.tsx` (organização) |
+| 2 | **Quem eu alimento?** | `app/layout.tsx` (`<EstiloDaMarca/>` + `generateMetadata`), `app/app/layout.tsx` (`<EstiloDaMarcaDaOrganizacao/>`), `app/icon.tsx`, e via `marcaDaSaida()`: `lib/email/templates/invite.ts`, `lib/lgpd/email-delivery.ts`, `lib/lgpd/sla-alarm.ts`, `app/actions/auth/enrollMfa.ts` (`issuer`), `lib/email/resend.ts` (nome do remetente). Fora do processo: `setup-kit/marca-emails.sh` → GoTrue |
 | 3 | **Que atividade/log eu emito?** | `audit("platform_branding.updated")` em `app/actions/settings/updateBranding.ts:123` e `audit("org.branding_updated")` em `app/actions/settings/updateMarcaDaOrganizacao.ts:155` — as duas em `api_audit_log`, e **as duas presentes nas duas listas de código** (`lib/audit/actions.ts` e `components/admin/audit/action-codes.ts`). Mais `registrarEstadoDaMarca()`, que grava `fallback_at`/`fallback_reason` na própria tabela, e o `logger.warn` estruturado quando a cor é recusada. **Não há `event_log` de propósito:** nenhum handler consumiria o tipo (anti-pattern nº 3 — evento sem consumidor) |
 | 4 | **Onde apareço na tela?** | `/admin/marca` (valor gravado + `TiraDeTons` com os tons derivados + o estado do degrade em português), `/app/settings/marca`, `/admin/audit` (as duas ações), a aba do navegador (título + ícone), a barra lateral e o corpo de cada e-mail |
 | 5 | **Por qual porta se chega?** | `lib/navigation/registry.ts:453` — `/app/settings/marca`, grupo Configurações, `sidebar:false` (trocar a marca é tarefa de uma vez; o hub e o ⌘K garantem a descoberta). Vigiado por `tests/unit/navegacao-completude.test.ts`. `/admin/marca` é de platform admin e fica fora dessa varredura por construção |
@@ -971,7 +971,7 @@ ocupado é **0157**. Reconte antes de usar.
 Preço desproporcional — arquivo + apêndice + MANIFEST + `test:db` obrigatório (~6 min de
 Docker) + consumir um número disputado, em troca de uma string em `pg_description` que
 ninguém lê em campo. **O comentário do banco fica desalinhado de propósito.** A mesma
-frase falsa está num arquivo que humanos leem — `hostgator-setup-kit/marca-emails.sh:105-109`,
+frase falsa está num arquivo que humanos leem — `setup-kit/marca-emails.sh:105-109`,
 que o próximo mantenedor do kit lê antes de mexer em `ACCENT` —, e corrigir *essa* custa
 uma linha. Se alguém quiser alinhar o comentário do banco, que vá de carona numa migration
 que exista por outro motivo.

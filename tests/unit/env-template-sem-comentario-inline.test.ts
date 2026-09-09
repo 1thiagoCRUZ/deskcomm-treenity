@@ -3,7 +3,7 @@
  *
  * ─── O defeito que este teste tranca ────────────────────────────────────────
  *
- * `load_env` (`hostgator-setup-kit/_common.sh`) lê assim:
+ * `load_env` (`setup-kit/_common.sh`) lê assim:
  *
  *     key="${line%%=*}"; val="${line#*=}"
  *
@@ -38,7 +38,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-const TEMPLATE = ".env.hostgator.example";
+const TEMPLATE = ".env.vps.example";
 
 /** Uma linha `CHAVE=valor`, ignorando comentário solto e linha vazia. */
 const ATRIBUICAO = /^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/;
@@ -71,7 +71,7 @@ describe("template de produção × parser do kit", () => {
     expect(
       ofensoras,
       `Comentário na mesma linha do valor. O parser do kit entrega o comentário DENTRO ` +
-        `do valor (\`val="\${line#*=}"\` em hostgator-setup-kit/_common.sh), e quem segue a ` +
+        `do valor (\`val="\${line#*=}"\` em setup-kit/_common.sh), e quem segue a ` +
         `receita do README (copiar este arquivo + install.sh --yes) instala com o valor ` +
         `corrompido. Mova o comentário para a linha de cima:\n${ofensoras.join("\n")}`,
     ).toEqual([]);

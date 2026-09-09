@@ -22,7 +22,7 @@
 # labels que o teste manda.
 set -uo pipefail
 
-KIT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../hostgator-setup-kit" && pwd)"
+KIT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../setup-kit" && pwd)"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 

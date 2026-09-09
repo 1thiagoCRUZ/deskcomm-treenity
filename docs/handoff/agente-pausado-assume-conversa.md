@@ -435,10 +435,10 @@ workers/ai-response-worker.ts                    |  30 +-
 foram recommitados em `e1533012` com `git commit --only` de lista explícita.
 
 O sintoma que denunciou: `git diff --name-only origin/main...HEAD` devolveu
-arquivos que não eram meus (`.gitattributes`, `hostgator-setup-kit/install.sh`) e
+arquivos que não eram meus (`.gitattributes`, `setup-kit/install.sh`) e
 **não** devolveu os meus. Quem retomar isto: confira `git log --oneline -3` e
 `git worktree list` antes de confiar em qualquer diff, e nunca use `git add -A`
-neste worktree — `.gitattributes` e `hostgator-setup-kit/install.sh` seguem
+neste worktree — `.gitattributes` e `setup-kit/install.sh` seguem
 modificados por outra sessão e não devem entrar em commit deste trabalho.
 
 ---
@@ -451,7 +451,7 @@ modificados por outra sessão e não devem entrar em commit deste trabalho.
 
 A branch de trabalho original (`fix/agente-pausado-nao-atende`) **não** foi usada
 para o PR: ela carregava o commit `8238b8e7` de outra sessão, cujos arquivos
-(`.gitattributes`, `hostgator-setup-kit/install.sh`,
+(`.gitattributes`, `setup-kit/install.sh`,
 `.changes/o-fork-checa-...`) já têm PR próprio — o **#405**. Abrir o PR daquela
 branch misturaria dois assuntos e duplicaria o #405. O PR saiu de um worktree
 novo criado a partir de `origin/main`, com os 17 arquivos deste trabalho e nada
@@ -459,7 +459,7 @@ mais.
 
 ### O caminho até a VPS (não é o merge)
 
-A VPS **não** segue a `main`. Ela roda `hostgator-setup-kit/update.sh`, que puxa
+A VPS **não** segue a `main`. Ela roda `setup-kit/update.sh`, que puxa
 imagem **por número de versão**:
 
 ```
@@ -474,7 +474,7 @@ Então merge do #408 **não basta**. A sequência é:
    calcula **v1.9.2** e abre um PR de release;
 3. merge do PR de release → o CI cria a tag `v1.9.2` → `publish-image.yml`
    publica as três imagens;
-4. na VPS: `bash hostgator-setup-kit/update.sh`.
+4. na VPS: `bash setup-kit/update.sh`.
 
 A tag nasce no CI de propósito (`docs/doctrine/versionamento.md`): tag criada na
 máquina de alguém é o ponto onde o número deixa de ser revisável, e **a tag é o

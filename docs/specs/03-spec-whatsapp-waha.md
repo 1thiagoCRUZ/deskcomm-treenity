@@ -58,7 +58,7 @@ Componentes envolvidos:
 5. **Spinning de copy**: DSL inline `{a|b|c}` + variáveis `{{var}}` parseado server-side com gramática regex bem definida (vide §8.2).
 6. **Warm-up**: tabela auxiliar `channel_session_warmup` mantém contagens diárias (não calcula on-demand — performance sob carga).
 7. **Retenção `webhook_events_log`**: 30 dias hot + cold storage S3 lifecycle.
-8. **Hospedagem WAHA**: Railway no MVP; produção em **VPS Hostgator (plano Turing ou superior, mín. 2 vCPU / 4 GB RAM / 80 GB SSD, datacenter São Paulo, ~R$140/mês)** com Nginx + Let's Encrypt. Parceria comercial existente justifica preferência sobre alternativas mais baratas (ex.: Hetzner ~$5/mês).
+8. **Hospedagem WAHA**: Railway no MVP; produção em **VPS Hostinger (plano Turing ou superior, mín. 2 vCPU / 4 GB RAM / 80 GB SSD, datacenter São Paulo, ~R$140/mês)** com Nginx + Let's Encrypt. Parceria comercial existente justifica preferência sobre alternativas mais baratas (ex.: Hetzner ~$5/mês).
 
 ### 1.3 Dependências externas
 
@@ -1933,14 +1933,14 @@ UI sempre ordena por `sent_at desc` (não `created_at`). Re-render reativo via S
 - Domínio gerado pela Railway (`waha-deskcomm.up.railway.app`); usado em `WAHA_BASE_URL` (Vercel).
 - Custo: $5-10/mês.
 
-### 13.2 Produção — VPS Hostgator (Turing)
+### 13.2 Produção — VPS Hostinger (Turing)
 
-> Runbook operacional completo (passo-a-passo, troubleshooting, restore drill) em [`docs/runbooks/waha-hostgator.md`](../runbooks/waha-hostgator.md). Os parágrafos abaixo são referência rápida; o runbook é a fonte de verdade pra deploy/recuperação.
+> Runbook operacional completo (passo-a-passo, troubleshooting, restore drill) em [`docs/runbooks/waha-vps.md`](../runbooks/waha-vps.md). Os parágrafos abaixo são referência rápida; o runbook é a fonte de verdade pra deploy/recuperação.
 
 - Plano Turing (ou superior): Ubuntu 22.04/24.04 LTS, mín. 2 vCPU, 4GB RAM, 80GB SSD.
 - Custo: ~R$140/mês (~$28/mês). Datacenter São Paulo (latência baixa pro WhatsApp BR).
 - Acesso root via cPanel/WHM ou SSH direto (escolher SSH-only após setup).
-- Hostgator **não** oferece Volume Snapshots nativos (diferente de cloud providers): backup/restore é responsabilidade nossa via `restic` → Backblaze B2.
+- Hostinger **não** oferece Volume Snapshots nativos (diferente de cloud providers): backup/restore é responsabilidade nossa via `restic` → Backblaze B2.
 - Instalação:
   ```bash
   apt-get update && apt-get install -y docker.io docker-compose-plugin nginx certbot python3-certbot-nginx ufw fail2ban restic
@@ -1953,7 +1953,7 @@ UI sempre ordena por `sent_at desc` (não `created_at`). Re-render reativo via S
 - Monitoramento: UptimeRobot apontando pra `/api/server/version` (5 min ping); alerta em PagerDuty.
 - **Egress allowlist**: Nginx só aceita conexões do range de IPs do Vercel (atualizado por cron diário consultando `https://api.vercel.com/v1/edge-config/...` ou hardcode atualizada manualmente).
 
-### 13.3 Migração Railway → Hostgator
+### 13.3 Migração Railway → Hostinger
 
 1. Criar VPS, configurar Nginx + TLS.
 2. Subir docker-compose com volumes vazios.
@@ -2051,4 +2051,4 @@ select indexname from pg_indexes where schemaname = 'public'
 
 ## Confirmação
 
-Spec 03 escrita em `/Users/rafaelmelgaco/DeskcommCRM/docs/specs/03-spec-whatsapp-waha.md`. Contém: schema SQL completo das 5 tabelas (channel_sessions + warmup, conversations, messages, webhook_events_log) com RLS e indexes; wrapper TypeScript do WAHA com classes de erro; handlers completos de criação de sessão, webhook receiver com HMAC-SHA512 timing-safe, send pipeline com optimistic UI e pg_boss; rate limiter Redis (1msg/1.2s + jitter), spinning de copy DSL, daily limit, janela horária, detector STOP, warm-up; 3 crons; 7 edge cases tratados; hospedagem Railway → Hostgator; 14 testes de integração mapeados; 9 migrations ordenadas. Todas as regras W-01 a W-12, T-07 e AT-07 estão materializadas em código. Pronto pra crítica e Epics.
+Spec 03 escrita em `/Users/rafaelmelgaco/DeskcommCRM/docs/specs/03-spec-whatsapp-waha.md`. Contém: schema SQL completo das 5 tabelas (channel_sessions + warmup, conversations, messages, webhook_events_log) com RLS e indexes; wrapper TypeScript do WAHA com classes de erro; handlers completos de criação de sessão, webhook receiver com HMAC-SHA512 timing-safe, send pipeline com optimistic UI e pg_boss; rate limiter Redis (1msg/1.2s + jitter), spinning de copy DSL, daily limit, janela horária, detector STOP, warm-up; 3 crons; 7 edge cases tratados; hospedagem Railway → Hostinger; 14 testes de integração mapeados; 9 migrations ordenadas. Todas as regras W-01 a W-12, T-07 e AT-07 estão materializadas em código. Pronto pra crítica e Epics.

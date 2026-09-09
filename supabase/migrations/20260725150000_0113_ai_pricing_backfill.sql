@@ -4,7 +4,7 @@
 -- BUG
 --   Os seeds de `ai_pricing` existem só na migration 0010, mas a cadeia fresh
 --   de migrations não sobe — as 10 primeiras são stubs `SELECT 1;`. Quem
---   instala aplica o `supabase/baseline.sql` (é o que o hostgator-setup-kit/
+--   instala aplica o `supabase/baseline.sql` (é o que o setup-kit/
 --   install.sh faz), e o baseline semeia `ai_models` mas NÃO `ai_pricing`.
 --
 --   Resultado: em TODA instalação self-host nova a tabela `ai_pricing` fica

@@ -102,7 +102,7 @@ Quatro leitores. **Três estão mortos ou depreciados; o quarto é a tela.**
 | `BudgetCard` (badges) | `components/ai/BudgetCard.tsx:74-80` | **SIM** | Renderiza `<Badge>Desabilitado</Badge>` e `<Badge>Pausado</Badge>` a partir das flags, em `/app/ai/usage` |
 
 O runtime de produção é o agent-engine: `AGENT_DISPATCH_CONSUMER` faz default
-para `engine` (`.env.example:174`, `.env.hostgator.example:197`), e o cron nativo
+para `engine` (`.env.example:174`, `.env.vps.example:197`), e o cron nativo
 é no-op **em qualquer valor** (`app/api/v1/cron/agent-dispatcher/route.test.ts:5`).
 
 ### a.4 — O enforcement que EXISTE e é vivo (sistema paralelo)
@@ -474,7 +474,7 @@ teto uma vez na tela — e a tela pode dizer isso.
 ### c.7 — Kill switch, e o que aparece quando falta
 
 - `AI_BUDGET_ALARM_ENABLED`, default **`"true"`**. Em `lib/env.ts`,
-  `.env.example` e `.env.hostgator.example` (DoD 9). Default que não quebra
+  `.env.example` e `.env.vps.example` (DoD 9). Default que não quebra
   `.env` antigo (doutrina de packaging).
 - Quando `false`: a rota **ainda responde 200**, com
   `ok({ skipped: true, reason: "disabled" })` — precedente literal em
@@ -574,7 +574,7 @@ cai, então ele não fica aberto para sempre nem exige gesto humano para sumir.
 Teto e limiar: `/app/ai/usage` → `EditBudgetDialog` → `PATCH /api/v1/ai/budget`
 (admin, `route.ts:46`). Ver e mudar, na mesma tela.
 Chave geral: `AI_BUDGET_ALARM_ENABLED` em `lib/env.ts`, `.env.example` e
-`.env.hostgator.example`.
+`.env.vps.example`.
 Falha visível: o `ok()` de cada passada devolve `enabled` e
 `sem_teto_deliberado`, então "não recebo aviso" tem resposta observável em vez
 de virar mistério. É a correção direta do controle decorativo descrito em

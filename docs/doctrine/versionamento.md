@@ -101,8 +101,8 @@ pelo CI, a partir de um PR de release, e **só de um commit contido na `main`**.
 
 Três razões medidas, todas com consequência no parque instalado:
 
-1. **A tag é o gatilho de atualização de todo mundo.** `hostgator-setup-kit/agent.sh` faz
-   `git fetch --tags` e `hostgator-setup-kit/update.sh` puxa a imagem **por número**. Tag
+1. **A tag é o gatilho de atualização de todo mundo.** `setup-kit/agent.sh` faz
+   `git fetch --tags` e `setup-kit/update.sh` puxa a imagem **por número**. Tag
    errada não é erro cosmético de changelog: é o seletor do que cada VPS baixa.
 2. **Uma tag `v*` de qualquer branch move o canal `stable`.** O workflow de publicação não
    testa se o commit está na `main`.

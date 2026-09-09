@@ -1,7 +1,7 @@
 # Plano da Landing Page — deskcomm.com.br
 
 > Plano de conteúdo, layout, narrativa e direção de arte. **Não é código.**
-> Decisões travadas: hero **A Mesa Viva** · eixo **dono do negócio** com trilhas paralelas para dev · banner HostGator **reconstruído responsivo** com a marca deles preservada.
+> Decisões travadas: hero **A Mesa Viva** · eixo **dono do negócio** com trilhas paralelas para dev · banner Hostinger **reconstruído responsivo** com a marca deles preservada.
 
 ---
 
@@ -83,7 +83,7 @@ HEADER (sticky, fino)
  ├─ 10. Instalação — um comando
  ├─ 11. Quanto custa — honestidade como argumento
  ├─ 12. FAQ citável
- ├─ 13. BANNER HostGator (reconstruído)          ◄ conversão VPS
+ ├─ 13. BANNER Hostinger (reconstruído)          ◄ conversão VPS
 FOOTER
 ```
 
@@ -340,7 +340,7 @@ Bloco de código real, copiável:
 
 ```bash
 git clone https://github.com/melgarafael/DeskcommCRM.git
-cd DeskcommCRM/hostgator-setup-kit
+cd DeskcommCRM/setup-kit
 bash install.sh
 ```
 
@@ -385,14 +385,14 @@ A 9 é a mais importante e quase ninguém responde: *"Cada mensagem passa por se
 
 ---
 
-## 13. BANNER HOSTGATOR — reconstruído
+## 13. BANNER HOSTINGER — reconstruído
 
-Reconstruído em HTML fluido (o original é 1680×600 fixo e quebra no celular), **mantendo os sinais visuais da HostGator** — laranja `#F67922`, navy `#073f60` — como um bloco de **parceiro claramente delimitado**. A ruptura de paleta vira intencional em vez de acidental: uma faixa de largura total, com respiro antes e depois, lida como "aqui começa outra coisa".
+Reconstruído em HTML fluido (o original é 1680×600 fixo e quebra no celular), **mantendo os sinais visuais da Hostinger** — laranja `#F67922`, navy `#073f60` — como um bloco de **parceiro claramente delimitado**. A ruptura de paleta vira intencional em vez de acidental: uma faixa de largura total, com respiro antes e depois, lida como "aqui começa outra coisa".
 
 Removidos: **OpenClaw** e **Hermes** — não têm relação com o Deskcomm e diluem a conversão.
 
 > **Eyebrow:** Parceiro oficial
-> **Título:** Soberania com IA é na HostGator
+> **Título:** Soberania com IA é na Hostinger
 > **Corpo:** Datacenter no Brasil, sem transferência internacional de dados. É onde o DeskcommCRM foi feito para rodar.
 > **CTA:** Assinar a VPS com desconto da parceria →
 > **Microcopy:** link de parceria — assinar por ele apoia o projeto

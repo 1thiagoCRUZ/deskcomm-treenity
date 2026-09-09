@@ -9,7 +9,7 @@
 ## 1. Problema
 
 Quem hospeda o DeskcommCRM numa VPS atualiza hoje assim: abre um terminal, conecta por SSH
-(`ssh -p 22022 root@IP`), entra na pasta do projeto e roda `bash hostgator-setup-kit/update.sh`.
+(`ssh -p 22022 root@IP`), entra na pasta do projeto e roda `bash setup-kit/update.sh`.
 
 O produto é distribuído para pessoas que não programam. A maioria não sabe fazer isso — e não
 saber significa rodar para sempre uma versão antiga, sem as correções de segurança e sem as
@@ -77,7 +77,7 @@ VPS (host)                                  container do app
 
 Uma única direção de chamada: host → app. O app nunca alcança o host.
 
-### 4.1 `hostgator-setup-kit/agent.sh` (novo)
+### 4.1 `setup-kit/agent.sh` (novo)
 
 Rodado por cron a cada 5 minutos, instalado pelo `install.sh` **e** pelo `update.sh` (mesma
 função em `_common.sh` que hoje instala o cron do drain).
@@ -255,7 +255,7 @@ Auditoria: `system.update_requested` (quem clicou, de qual versão para qual) e
 ## 7. Bootstrap — a primeira vez ainda é pelo terminal
 
 O agente que atende o botão precisa ser instalado por uma atualização. Quem já tem o CRM rodando
-precisa executar **uma vez** `bash hostgator-setup-kit/update.sh`; a partir daí o cron está
+precisa executar **uma vez** `bash setup-kit/update.sh`; a partir daí o cron está
 instalado e nunca mais é preciso o terminal. Instalações novas já saem com o agente. Isso é
 inerente ao problema, não uma limitação do desenho, e a tela no estado "sem agente" mostra
 exatamente esse comando.

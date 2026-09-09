@@ -1,7 +1,7 @@
 /**
  * O PONTO AUXILIAR HERDA O PROVIDER **E** O MODELO — ou não herda nada.
  *
- * ## O defeito, medido em produção (VPS HostGator, 2026-08-25)
+ * ## O defeito, medido em produção (VPS Hostinger, 2026-08-25)
  *
  * Organização com `settings.llm = {provider: 'anthropic', default_model:
  * 'claude-sonnet-4-5'}` e um agente publicado em OpenAI (`gpt-5.6-luna`). Toda

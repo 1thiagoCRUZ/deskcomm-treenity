@@ -272,7 +272,7 @@ O campo `monthly_budget_cents` sai do `llmSettingsSchema` (`:102`) e do `.catch(
 para a query legada (`select settings->'llm' ...`), devolve `modo: 'off'` e
 `orcamentoIndisponivel: true`. Uma query no caminho feliz; duas só no caminho quebrado.
 
-Isto não é paranoia: `hostgator-setup-kit/update.sh:137-138` aplica o baseline com
+Isto não é paranoia: `setup-kit/update.sh:137-138` aplica o baseline com
 `|| true` (**sem `ON_ERROR_STOP`**) e o `dc up -d` acontece depois, em `:225`. Um apêndice
 parcialmente aplicado deixa a imagem nova consultando uma coluna que não existe, e um throw
 ali derruba **toda** chamada de LLM de **toda** org — pior que o estrangulamento que este
@@ -319,7 +319,7 @@ foi atingido"*.
 
 `LlmBudgetExceededError` (`:40-45`) ganha `readonly terminal = true`.
 
-### 2.4 `lib/env.ts`, `.env.example`, `.env.hostgator.example`
+### 2.4 `lib/env.ts`, `.env.example`, `.env.vps.example`
 
 ```ts
 AI_BUDGET_ENFORCEMENT: z.string().optional().default("on"),
@@ -1149,7 +1149,7 @@ teste com esse nome, para que a próxima pessoa que "simplificar" o gate veja ve
 - `pnpm lint:channels` e `pnpm test:shell` — lembrete de que **`verify` tem cinco passos** e
   `pnpm lint` sozinho não os inclui. `test:shell` é o único gate que exercita o kit; este
   plano não muda `Dockerfile`, compose nem `install.sh`, mas a variável nova em
-  `.env.example`/`.env.hostgator.example` passa por ali.
+  `.env.example`/`.env.vps.example` passa por ali.
 
 **Só com Postgres real** (`pnpm test:db`, job `invariants` do CI):
 

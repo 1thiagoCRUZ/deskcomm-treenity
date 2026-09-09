@@ -21,7 +21,7 @@ Este PRD nasceu (v0.1, abril/2026) com o produto posicionado como **CRM operacio
 
 Implicações de leitura deste documento e dos sub-PRDs:
 - **E-commerce passa de definição do produto a primeiro vertical.** Referências a Nuvemshop, pipeline de pedidos e vocabulário de e-commerce continuam válidas como o template do vertical de origem — o mecanismo que as generaliza é o `vocabulary` configurável por pipeline (Sub-PRD 02 §3.7).
-- **O modelo comercial é open source + infraestrutura** (parceria HostGator para self-host em VPS), não venda de assinatura. Menções a "modo SaaS" descrevem uma opção arquitetural preservada, não o plano comercial corrente.
+- **O modelo comercial é open source + infraestrutura** (parceria Hostinger para self-host em VPS), não venda de assinatura. Menções a "modo SaaS" descrevem uma opção arquitetural preservada, não o plano comercial corrente.
 - Requisitos, contratos e decisões técnicas dos sub-PRDs permanecem válidos — a arquitetura multi-tenant com `vocabulary` configurável foi o que permitiu a expansão multi-nicho sem refactor.
 
 ---
@@ -62,7 +62,7 @@ Implicações de leitura deste documento e dos sub-PRDs:
 
 > "DeskcommCRM é o sistema operacional de vendas onde agentes de IA e humanos atendem juntos os clientes de qualquer negócio que vende pelo WhatsApp, com Customer 360° unificado, compliance LGPD nativa, operação multi-tenant pronta pra escala — e agentes que se auto-aprimoram a cada conversa resolvida."
 
-Em três anos: ser a resposta padrão pra "melhor CRM open source com agentes de IA e WhatsApp" — milhares de instâncias self-hosted (VPS HostGator como caminho recomendado), ecossistema de agentes plugados via MCP público, templates prontos por nicho (e-commerce, clínica, imobiliária, infoproduto), e o flywheel de auto-aprimoramento medido em produção. Posicionamento completo em [`VISION.md`](../../VISION.md).
+Em três anos: ser a resposta padrão pra "melhor CRM open source com agentes de IA e WhatsApp" — milhares de instâncias self-hosted (VPS Hostinger como caminho recomendado), ecossistema de agentes plugados via MCP público, templates prontos por nicho (e-commerce, clínica, imobiliária, infoproduto), e o flywheel de auto-aprimoramento medido em produção. Posicionamento completo em [`VISION.md`](../../VISION.md).
 
 ---
 

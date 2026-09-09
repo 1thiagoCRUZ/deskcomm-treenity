@@ -67,7 +67,7 @@ Ao finalizar um epic:
    - Mudança de schema saiu como **tripla**: arquivo em `supabase/migrations/`, apêndice idempotente
      no `supabase/baseline.sql` e linha no `MANIFEST.md`. O kit self-host aplica **só o baseline** —
      migration que não chega lá não chega em quem instalou numa VPS. Nenhum job de CI confere isso
-   - **Se você tocou `Dockerfile*`, `docker-compose*.yml` ou `hostgator-setup-kit/`:** a mudança
+   - **Se você tocou `Dockerfile*`, `docker-compose*.yml` ou `setup-kit/`:** a mudança
      alcança quem **já** instalou. Lei em [`docs/doctrine/packaging.md`](docs/doctrine/packaging.md).
      O CI reprova serviço `build:`-only, instalação em tag móvel e imagem quebrada (`imagens-ok`);
      o que fica com você é o resto: variável nova com default que não quebre `.env` antigo, e a

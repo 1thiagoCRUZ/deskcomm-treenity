@@ -32,7 +32,7 @@ REVERSE_PROXY=traefik
 O nome da variável diz `traefik` porque foi o primeiro caso que apareceu
 (Hostinger, Coolify, Dokploy), mas o que ela liga não tem nada de específico:
 todo `docker compose` do kit passa pela função `dc()`
-(`hostgator-setup-kit/_common.sh`), e com essa linha ela **deixa de subir o
+(`setup-kit/_common.sh`), e com essa linha ela **deixa de subir o
 Caddy** e publica o app numa rede Docker que o proxy de fora alcança. Um Nginx
 de host é um proxy de fora como qualquer outro.
 
@@ -60,7 +60,7 @@ CRM que abre a tela de login e não deixa ninguém entrar.
 cd /var/www
 git clone https://github.com/melgarafael/DeskcommCRM.git DeskcommCRM
 cd /var/www/DeskcommCRM
-cp .env.hostgator.example .env
+cp .env.vps.example .env
 nano .env
 ```
 
@@ -104,7 +104,7 @@ Rode `basename "$PWD" | tr '[:upper:]' '[:lower:]'` e acrescente `_proxy`.
 
 ```bash
 cd /var/www/DeskcommCRM
-bash hostgator-setup-kit/install.sh --yes
+bash setup-kit/install.sh --yes
 ```
 
 Com a linha do proxy externo no lugar, o instalador vai até o fim: gera os
@@ -287,7 +287,7 @@ curl -s -o /dev/null -w 'webhook global: %{http_code}\n' \
 
 ```bash
 cd /var/www/DeskcommCRM
-bash hostgator-setup-kit/update.sh
+bash setup-kit/update.sh
 ```
 
 Funciona sem nenhum passo extra **porque o `.env` tem `REVERSE_PROXY=traefik`**:

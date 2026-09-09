@@ -6,7 +6,7 @@
 
 **Architecture:** O app roda em container sem acesso ao host, então ele não executa a atualização — ele **publica uma intenção** em duas tabelas de instância. Um agente no host (`agent.sh`, cron a cada 5 min, mesmo mecanismo do cron do `event-log-drain` que já existe) faz `POST` de heartbeat para o app, lê na resposta se alguém pediu atualização e, se sim, roda `bash update.sh --to <tag>` sob `flock`, reportando cada passo. O que atravessa a fronteira é um booleano, nunca um comando.
 
-**Tech Stack:** Next.js 16 App Router · React 19 · TypeScript estrito · Supabase (Postgres + RLS) · TanStack Query · Vitest · Playwright · Bash (kit HostGator) · Docker Compose.
+**Tech Stack:** Next.js 16 App Router · React 19 · TypeScript estrito · Supabase (Postgres + RLS) · TanStack Query · Vitest · Playwright · Bash (kit Hostinger) · Docker Compose.
 
 **Spec:** `docs/superpowers/specs/2026-07-28-atualizar-versao-na-ui-design.md` — leia antes de começar.
 
@@ -53,12 +53,12 @@
 | `components/shell/Sidebar.tsx` | Monta o rodapé | 6 |
 | `app/app/settings/atualizacao/page.tsx` | Página (server, guarda) | 7 |
 | `app/app/settings/atualizacao/_components/UpdatePanel.tsx` | Os 4 estados (client) | 7 |
-| `hostgator-setup-kit/agent.sh` | Agente do host | 8 |
-| `hostgator-setup-kit/update.sh` | `--to <tag>`, checkout de tag, imagem versionada, rollback | 8 |
-| `hostgator-setup-kit/_common.sh` | Instala o cron do agente | 8 |
-| `hostgator-setup-kit/install.sh` | Chama a instalação do cron | 8 |
+| `setup-kit/agent.sh` | Agente do host | 8 |
+| `setup-kit/update.sh` | `--to <tag>`, checkout de tag, imagem versionada, rollback | 8 |
+| `setup-kit/_common.sh` | Instala o cron do agente | 8 |
+| `setup-kit/install.sh` | Chama a instalação do cron | 8 |
 | `tests/e2e/system-update.spec.ts` | Prova pela tela | 9 |
-| `docs/architecture/*`, `CHANGELOG.md`, `hostgator-setup-kit/CLAUDE.md` | Mapa vivo e docs | 9 |
+| `docs/architecture/*`, `CHANGELOG.md`, `setup-kit/CLAUDE.md` | Mapa vivo e docs | 9 |
 
 ---
 
@@ -1550,7 +1550,7 @@ import { apiClient } from "@/lib/api/client";
 import { useSystemVersion } from "@/hooks/system/useSystemVersion";
 import { Button } from "@/components/ui/button";
 
-const COMANDO_MANUAL = "cd DeskcommCRM && bash hostgator-setup-kit/update.sh";
+const COMANDO_MANUAL = "cd DeskcommCRM && bash setup-kit/update.sh";
 
 const PASSOS = [
   { chave: "backup", texto: "Guardando uma cópia de segurança dos seus dados" },
@@ -1608,7 +1608,7 @@ export function UpdatePanel() {
           Voltei para a versão anterior ({versao}) e os seus dados estão intactos. O banco de dados
           já tinha sido atualizado e permanece assim — isso é seguro, a versão anterior funciona com
           ele. Se quiser desfazer também o banco, use a cópia de segurança feita antes da tentativa
-          (<code>bash hostgator-setup-kit/restore.sh</code>).
+          (<code>bash setup-kit/restore.sh</code>).
         </p>
       </Secao>
     );
@@ -1769,10 +1769,10 @@ EOF
 ### Task 8: O agente do host e o `update.sh` por tag
 
 **Files:**
-- Create: `hostgator-setup-kit/agent.sh`
-- Modify: `hostgator-setup-kit/update.sh` (`--to`, checkout de tag, imagem versionada, rollback)
-- Modify: `hostgator-setup-kit/_common.sh` (nova função `setup_update_agent_cron`)
-- Modify: `hostgator-setup-kit/install.sh` (chamar a nova função)
+- Create: `setup-kit/agent.sh`
+- Modify: `setup-kit/update.sh` (`--to`, checkout de tag, imagem versionada, rollback)
+- Modify: `setup-kit/_common.sh` (nova função `setup_update_agent_cron`)
+- Modify: `setup-kit/install.sh` (chamar a nova função)
 
 **Interfaces:**
 - Consumes: `POST /api/v1/system/agent` (task 4).
@@ -1780,7 +1780,7 @@ EOF
 
 - [ ] **Step 1: Escrever o `agent.sh`**
 
-Crie `hostgator-setup-kit/agent.sh`:
+Crie `setup-kit/agent.sh`:
 
 ```bash
 #!/usr/bin/env bash
@@ -1882,7 +1882,7 @@ done
 
 Com o app rodando local e o `.env` carregado:
 
-Run: `bash hostgator-setup-kit/agent.sh` (com `update_requested=false` no banco)
+Run: `bash setup-kit/agent.sh` (com `update_requested=false` no banco)
 Expected: sai em silêncio, código 0, e `system_version.agent_last_seen_at` atualiza. Confirme com:
 ```sql
 select current_version, latest_version, agent_last_seen_at from public.system_version;
@@ -1891,7 +1891,7 @@ Se `agent_last_seen_at` não mudou, o heartbeat não chegou — investigue o `cu
 
 - [ ] **Step 3: Ensinar o `update.sh` a receber `--to`**
 
-Em `hostgator-setup-kit/update.sh`:
+Em `setup-kit/update.sh`:
 
 1. No laço de flags (linhas 14-19), acrescente:
 ```bash
@@ -1950,7 +1950,7 @@ fi
 
 - [ ] **Step 4: Instalar o cron do agente**
 
-Em `hostgator-setup-kit/_common.sh`, acrescente logo após `setup_event_log_drain_cron()`:
+Em `setup-kit/_common.sh`, acrescente logo após `setup_event_log_drain_cron()`:
 
 ```bash
 setup_update_agent_cron() {
@@ -1959,30 +1959,30 @@ setup_update_agent_cron() {
   [ -n "$secret" ] || { c_ylw "⚠ falta INTERNAL_SECRET — não ativei o agente de atualização."; return 0; }
   [ -n "${NEXT_PUBLIC_APP_URL:-}" ] || { c_ylw "⚠ falta NEXT_PUBLIC_APP_URL — não ativei o agente de atualização."; return 0; }
 
-  local cron_line="*/5 * * * * bash ${PROJECT_DIR}/hostgator-setup-kit/agent.sh >/dev/null 2>&1"
+  local cron_line="*/5 * * * * bash ${PROJECT_DIR}/setup-kit/agent.sh >/dev/null 2>&1"
   # "|| true": com pipefail, grep -v sem match sai 1 e derrubaria o subshell.
-  ( crontab -l 2>/dev/null | grep -v 'hostgator-setup-kit/agent.sh' || true; echo "$cron_line" ) | crontab -
+  ( crontab -l 2>/dev/null | grep -v 'setup-kit/agent.sh' || true; echo "$cron_line" ) | crontab -
   c_grn "✓ atualização pela tela ativa (agente a cada 5 minutos)"
 }
 ```
 
 Chame-a em **dois** lugares, ao lado de `setup_event_log_drain_cron`:
-- `hostgator-setup-kit/install.sh` (no passo das automações);
-- `hostgator-setup-kit/update.sh` (bloco 7) — é isso que faz o botão passar a existir para quem já tem o CRM instalado.
+- `setup-kit/install.sh` (no passo das automações);
+- `setup-kit/update.sh` (bloco 7) — é isso que faz o botão passar a existir para quem já tem o CRM instalado.
 
-Torne o script executável: `chmod +x hostgator-setup-kit/agent.sh`.
+Torne o script executável: `chmod +x setup-kit/agent.sh`.
 
 - [ ] **Step 5: Provar o ciclo completo local**
 
 1. Clique em "Atualizar agora" na tela.
-2. Rode `bash hostgator-setup-kit/agent.sh` à mão (simulando o cron).
+2. Rode `bash setup-kit/agent.sh` à mão (simulando o cron).
 3. Confirme na tela: passos avançando e, no fim, "Você está na versão X".
 4. Confirme que a segunda execução imediata do `agent.sh` não dispara nada (o pedido foi limpo).
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add hostgator-setup-kit/
+git add setup-kit/
 git commit -m "$(cat <<'EOF'
 feat(update): agente do host e update.sh por tag publicada
 
@@ -2006,7 +2006,7 @@ EOF
 **Files:**
 - Create: `tests/e2e/system-update.spec.ts`
 - Modify: `CHANGELOG.md` (seção `[Não lançado]`)
-- Modify: `hostgator-setup-kit/CLAUDE.md` (seção "Depois de instalado")
+- Modify: `setup-kit/CLAUDE.md` (seção "Depois de instalado")
 - Modify: `docs/architecture/` (mapa vivo — a peça e suas arestas)
 
 **Interfaces:**
@@ -2102,11 +2102,11 @@ Expected: PASS nos dois casos. Guarde trace/screenshot em `.superpowers/evidence
 
 **⚠️ Requer atenção**
 
-Quem já tem o CRM instalado precisa rodar `bash hostgator-setup-kit/update.sh` **uma vez** pelo
+Quem já tem o CRM instalado precisa rodar `bash setup-kit/update.sh` **uma vez** pelo
 terminal para ativar o botão. A partir daí, nunca mais.
 ```
 
-2. `hostgator-setup-kit/CLAUDE.md`, na seção "Depois de instalado": diga que atualizar agora é
+2. `setup-kit/CLAUDE.md`, na seção "Depois de instalado": diga que atualizar agora é
    pelo próprio CRM (menu → rodapé → *Nova versão*), que o `update.sh` continua existindo para
    o caso de o agente estar fora do ar, e que o alvo agora é a última tag publicada.
 
@@ -2129,7 +2129,7 @@ Expected: todos verdes.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add tests/e2e/system-update.spec.ts CHANGELOG.md hostgator-setup-kit/CLAUDE.md docs/architecture/
+git add tests/e2e/system-update.spec.ts CHANGELOG.md setup-kit/CLAUDE.md docs/architecture/
 git commit -m "$(cat <<'EOF'
 test(update): prova pela tela e documentacao da atualizacao self-service
 
@@ -2150,7 +2150,7 @@ EOF
 O E2E prova a tela; ele **não** prova o host. Antes de considerar a feature entregue:
 
 1. Publicar uma tag de teste e deixar a imagem correspondente no GHCR.
-2. Na VPS (`ssh -p 22022 root@129.121.45.100`), rodar `bash hostgator-setup-kit/update.sh` uma vez
+2. Na VPS (`ssh -p 22022 root@129.121.45.100`), rodar `bash setup-kit/update.sh` uma vez
    pelo terminal — é o bootstrap que instala o agente.
 3. Confirmar `crontab -l` com a linha do `agent.sh`.
 4. Publicar a tag seguinte e esperar (ou forçar) um ciclo do agente.

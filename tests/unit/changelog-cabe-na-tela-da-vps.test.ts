@@ -72,7 +72,7 @@ import { extractChangelogRange, extractChangelogSection } from "@/lib/system/cha
 
 const RAIZ = process.cwd();
 const CHANGELOG = path.join(RAIZ, "CHANGELOG.md");
-const AGENT_SH = path.join(RAIZ, "hostgator-setup-kit", "agent.sh");
+const AGENT_SH = path.join(RAIZ, "setup-kit", "agent.sh");
 
 /** O teto real, lido de onde ele é aplicado. */
 function tetoDoAgente(): number {

@@ -161,7 +161,7 @@ vai existir porque a v1.2.1 é anterior à criação desse pacote.
   ela é verdadeira também num push de tag, então toda release movia `latest` junto e o canal
   oscilava entre os dois significados. O workflow prende `latest` a `ref_type == 'branch'`.
 - **Verificação:** duas, porque são dois caminhos distintos e o primeiro passou verde por
-  meses sem nenhum. `hostgator-setup-kit/test-validators.sh` roda o `install.sh` de verdade
+  meses sem nenhum. `setup-kit/test-validators.sh` roda o `install.sh` de verdade
   contra um remoto local com tags conhecidas e cobra o `.env` pinado na maior delas (a ordem
   alfabética escolheria `v1.9.0` sobre `v1.10.0` — erro que só apareceria na décima release).
   `tests/shell/update-guard.test.sh` prova que o `update.sh` grava as **três** imagens na
@@ -310,7 +310,7 @@ mesma VPS **recusa** mexer, e diz por quê.
   `install.sh` (o guarda antes da coleta de config — recusar depois de arrancar sete
   respostas é fazer a pessoa trabalhar para ouvir "não"). Sabotando só a chamada do
   `install.sh`: 2 falhas, ambas previstas. A integração "instalar de uma CÓPIA IRMÃ" em
-  `hostgator-setup-kit/test-validators.sh` roda o instalador inteiro contra um `docker`
+  `setup-kit/test-validators.sh` roda o instalador inteiro contra um `docker`
   dublê — porque um teste só da regra fica verde enquanto o call site deixa de passar a
   árvore (medido: sabotando só a chamada, o caso de `decide_proxy` segue ✓ e apenas a
   integração reprova).
@@ -465,7 +465,7 @@ parque instalado** percorre, e é o único que a suíte de CI não exercita.
 | CI (mecânico) | `imagens-ok` em `publish-image.yml` | imagem quebrada **reprova o merge** — é required check da `main`. Meça antes de confiar: `gh api repos/melgarafael/DeskcommCRM/branches/main/protection --jq '.required_status_checks.contexts'` |
 | CI (mecânico) | `tests/unit/packaging-artefato-do-cliente.test.ts` | serviço `build:`-only, pin upstream solto, `pull_policy` trocado e versão que mente reprovam |
 | CI (mecânico) | `tests/shell/update-guard.test.sh` | atualização que não pina as três imagens reprova |
-| CI (mecânico) | `hostgator-setup-kit/test-validators.sh` | instalação que nasce em tag móvel reprova |
+| CI (mecânico) | `setup-kit/test-validators.sh` | instalação que nasce em tag móvel reprova |
 | Gate de sessão | item 15 do Definition of Done (`CLAUDE.md`) | nenhuma task de imagem/compose/kit fecha sem responder |
 | Revisão | bloco de packaging em `CONTRIBUTING.md` | contribuidor externo sabe a régua antes do PR |
 | Operação | `docs/runbooks/deploy.md` | o procedimento reflete a lei |
@@ -506,4 +506,4 @@ receber atualização —, nunca economia de plano.
 não fatal) abaixo desse valor, e não em 4.000.000, porque `MemTotal` é o que sobra depois do
 que o kernel reserva: uma VPS de 4 GiB reporta ~4.012.000 KB e uma de "4 GB" decimais reporta
 ~3.735.000 KB. Cortar em 4.000.000 acusaria justamente quem acabou de comprar o plano
-recomendado, na pior hora possível. Coberto por `hostgator-setup-kit/test-validators.sh`.
+recomendado, na pior hora possível. Coberto por `setup-kit/test-validators.sh`.

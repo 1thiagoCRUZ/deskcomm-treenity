@@ -109,7 +109,7 @@ después — y se encarga del resto:
 **Volver a ejecutarlo no rompe nada** — `install.sh` es idempotente: no duplica el cron, no
 recrea el usuario y retoma donde se quedó.
 
-> **Modo no interactivo:** copia `.env.hostgator.example` a `.env`, complétalo y ejecuta
+> **Modo no interactivo:** copia `.env.vps.example` a `.env`, complétalo y ejecuta
 > `bash setup-kit/install.sh --yes`.
 
 ### Hostinger y otros hostings

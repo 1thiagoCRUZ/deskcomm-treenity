@@ -13,7 +13,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * perguntou.
  *
  * Num primeiro deploy, que é o estado em que TODA instalação começa (o
- * `.env.hostgator.example` grava as duas linhas vazias), a sequência era:
+ * `.env.vps.example` grava as duas linhas vazias), a sequência era:
  *
  *   1. a tela promete Push;
  *   2. a pessoa liga o interruptor e o navegador pede permissão — incômodo

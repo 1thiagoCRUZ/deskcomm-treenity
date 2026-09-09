@@ -1,13 +1,13 @@
 ---
-title: Runbook — WAHA em produção (VPS Hostgator)
+title: Runbook — WAHA em produção (VPS Hostinger)
 status: canônico
 last_review: 2026-05-04
 owner: Rafael Melgaço
 ---
 
-# Runbook — WAHA em produção (VPS Hostgator)
+# Runbook — WAHA em produção (VPS Hostinger)
 
-> Guia passo-a-passo pra subir, operar e recuperar a instância WAHA Plus em produção sobre VPS Hostgator. Hostgator é parceiro comercial; este runbook substitui qualquer doc histórico que mencionasse Hetzner.
+> Guia passo-a-passo pra subir, operar e recuperar a instância WAHA Plus em produção sobre VPS Hostinger. Hostinger é parceiro comercial; este runbook substitui qualquer doc histórico que mencionasse Hetzner.
 
 ---
 
@@ -15,20 +15,20 @@ owner: Rafael Melgaço
 
 | Item | Valor recomendado | Notas |
 |---|---|---|
-| Plano Hostgator | **VPS Turing** (ou superior) | Cartesius (1 vCPU/2GB) é insuficiente — puppeteer/baileys + 5+ sessões saturam. |
+| Plano Hostinger | **VPS Turing** (ou superior) | Cartesius (1 vCPU/2GB) é insuficiente — puppeteer/baileys + 5+ sessões saturam. |
 | OS | Ubuntu 22.04 LTS ou 24.04 LTS | NOWEB engine testado em ambos. CentOS funciona mas docs do compose pressupõem Debian-family. |
 | CPU/RAM | mín. 2 vCPU / 4 GB RAM | NOWEB usa ~150 MB por sessão; +overhead Node ~300 MB. |
 | Disco | mín. 80 GB SSD | Mídia inline mínima (vai pro Supabase Storage), mas `.sessions` cresce com histórico WhatsApp Web. |
-| Datacenter | São Paulo (default Hostgator BR) | Latência <30ms pro Meta SP — relevante pra anti-banimento e UX de QR. |
+| Datacenter | São Paulo (default Hostinger BR) | Latência <30ms pro Meta SP — relevante pra anti-banimento e UX de QR. |
 | IP público | Estático (incluso no plano) | Necessário pra DNS A record + egress allowlist. |
 
-> **Sem parceria com Hostgator?** Substitua por Hetzner CX22 (~$5/mês, datacenter EU) ou DigitalOcean Droplet 4GB (~$24/mês). Tudo neste runbook funciona idêntico — só não terá a vantagem de latência BR.
+> **Sem parceria com Hostinger?** Substitua por Hetzner CX22 (~$5/mês, datacenter EU) ou DigitalOcean Droplet 4GB (~$24/mês). Tudo neste runbook funciona idêntico — só não terá a vantagem de latência BR.
 
 ---
 
 ## 2. Pré-requisitos
 
-1. Acesso SSH ao VPS (Hostgator entrega via cPanel ou root SSH; preferir SSH-only).
+1. Acesso SSH ao VPS (Hostinger entrega via cPanel ou root SSH; preferir SSH-only).
 2. Domínio com DNS gerenciado em Cloudflare (ou outro provider) — ex.: `waha.deskcomm.com.br`.
 3. Conta Backblaze B2 com bucket `deskcomm-waha-backup` (R$0,06/GB/mês ≈ $0.005/GB).
 4. Licença ativa **WAHA Plus** (`https://waha.devlike.pro` — ~$30/mês).
@@ -106,7 +106,7 @@ sudo systemctl restart fail2ban
 
 No Cloudflare (ou seu DNS provider):
 
-- `waha.deskcomm.com.br` → A record → IP do VPS Hostgator
+- `waha.deskcomm.com.br` → A record → IP do VPS Hostinger
 - Proxy = **DNS only** (cinza). Cloudflare Proxy (laranja) interfere em SSE/WebSocket que o WAHA usa.
 
 ```bash
@@ -350,9 +350,9 @@ Redeploy da branch `main` aplica.
 
 ---
 
-## 11. Diferenças operacionais Hostgator vs cloud-native (Hetzner/DO)
+## 11. Diferenças operacionais Hostinger vs cloud-native (Hetzner/DO)
 
-| Aspecto | Hostgator | Hetzner / DO |
+| Aspecto | Hostinger | Hetzner / DO |
 |---|---|---|
 | Volume snapshots nativos | ❌ não tem | ✅ tem |
 | Latência pro Meta BR | ✅ <30ms (SP) | ⚠️ 150-200ms (EU) ou 80ms (NYC) |
@@ -361,7 +361,7 @@ Redeploy da branch `main` aplica.
 | Provisionamento via API | ❌ limitado | ✅ Terraform-friendly |
 | Suporte 24x7 PT-BR | ✅ incluso | ⚠️ EN-only, ticket lento |
 
-**Conclusão**: Hostgator paga prêmio pela parceria + suporte BR + datacenter SP. Pra MVP/scale-out até ~50 tenants é OK; acima disso, considerar diversificação (instância secundária Hetzner como DR cross-region).
+**Conclusão**: Hostinger paga prêmio pela parceria + suporte BR + datacenter SP. Pra MVP/scale-out até ~50 tenants é OK; acima disso, considerar diversificação (instância secundária Hetzner como DR cross-region).
 
 ---
 
@@ -373,11 +373,11 @@ Redeploy da branch `main` aplica.
 | WAHA cria session mas não inicia | `start: true` ignorado em algumas versões | Chamar `POST /api/sessions/:name/start` explicitamente |
 | Webhook não chega | Nginx allowlist bloqueando, ou Cloudflare Proxy ON | `tail -f /var/log/nginx/access.log` + desligar proxy CF |
 | QR expira sempre | RTT alto, ou clock drift no VPS | `timedatectl set-ntp true`, conferir RTT pro `web.whatsapp.com` |
-| Container OOMKilled | Sessões demais pro plano | Upgrade Hostgator pra plano superior, ou particionar tenants em VPS secundário |
+| Container OOMKilled | Sessões demais pro plano | Upgrade Hostinger pra plano superior, ou particionar tenants em VPS secundário |
 | Session WORKING mas mensagens não saem | Daily limit atingido, ou janela horária | Conferir `channel_sessions.daily_message_limit` + `lib/waha/throttle` |
 
 ---
 
 ## 13. Histórico de decisão
 
-- **2026-05-04** — Trocamos referências Hetzner→Hostgator nos docs por parceria comercial existente. Custo subiu (~$5 → ~$28) mas latência BR melhora pareamento e suporte ticketing fica em PT-BR. Hetzner mantido como plano B documentado em §1.
+- **2026-05-04** — Trocamos referências Hetzner→Hostinger nos docs por parceria comercial existente. Custo subiu (~$5 → ~$28) mas latência BR melhora pareamento e suporte ticketing fica em PT-BR. Hetzner mantido como plano B documentado em §1.

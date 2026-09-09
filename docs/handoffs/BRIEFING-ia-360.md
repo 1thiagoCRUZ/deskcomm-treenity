@@ -239,7 +239,7 @@ artefatos, sempre juntos:**
 Se a mudança adiciona constraint, **corrija/deduplique os dados ANTES** de criar a constraint —
 senão o `update.sh` de um clone com dados sujos quebra.
 
-**O kit de instalação não pode quebrar.** Se mexer em `hostgator-setup-kit/`, valide num Postgres
+**O kit de instalação não pode quebrar.** Se mexer em `setup-kit/`, valide num Postgres
 descartável (`pgvector/pgvector:pg17`): `install` em banco novo com `ON_ERROR_STOP=1`, e `update`
 re-aplicando em banco existente sem a flag. Os dois têm que passar.
 

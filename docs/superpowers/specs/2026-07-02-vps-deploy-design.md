@@ -1,17 +1,17 @@
-# Spec — DeskcommCRM como template self-hosted na HostGator
+# Spec — DeskcommCRM como template self-hosted na Hostinger
 
 **Data:** 2026-07-02
 **Autor:** Maestro (sessão Claude Code) + investigação multi-agente
 **Status:** aguardando revisão do Rafael
-**Objetivo:** transformar o DeskcommCRM num **template open-source auto-hospedável** cuja rota de deploy oficial é a infra da HostGator (via links de afiliado), com (1) adaptação técnica do projeto, (2) tutorial passo-a-passo para leigos e (3) um `.zip` "Setup Kit" que a pessoa joga no Claude Code dela e ele conduz a configuração.
+**Objetivo:** transformar o DeskcommCRM num **template open-source auto-hospedável** cuja rota de deploy oficial é a infra da Hostinger (via links de afiliado), com (1) adaptação técnica do projeto, (2) tutorial passo-a-passo para leigos e (3) um `.zip` "Setup Kit" que a pessoa joga no Claude Code dela e ele conduz a configuração.
 
 ---
 
 ## 1. Contexto e modelo de negócio
 
-O software é **grátis**; para rodá-lo a pessoa contrata a **infra HostGator pelo link de afiliado**. Isso amarra a decisão técnica: o produto-âncora precisa gerar comissão **e** rodar a stack. Como o app é Next.js 15 SSR + Docker, dos 12 produtos HostGator só **VPS** (e Dedicado, como upsell) atendem — hospedagem compartilhada, WordPress, criador de sites e revenda são PHP/estático e **não rodam** este CRM.
+O software é **grátis**; para rodá-lo a pessoa contrata a **infra Hostinger pelo link de afiliado**. Isso amarra a decisão técnica: o produto-âncora precisa gerar comissão **e** rodar a stack. Como o app é Next.js 15 SSR + Docker, dos 12 produtos Hostinger só **VPS** (e Dedicado, como upsell) atendem — hospedagem compartilhada, WordPress, criador de sites e revenda são PHP/estático e **não rodam** este CRM.
 
-Limite honesto de "100% HostGator": todo o **compute e o WhatsApp** rodam no VPS; o **banco** fica no Supabase Cloud (grátis) e a **IA** (Anthropic) é serviço externo com chave da pessoa — o modelo de IA roda na nuvem da Anthropic por natureza. "100% HostGator" = toda a infra de compute na HostGator + serviços gerenciados grátis/externos para dado e IA.
+Limite honesto de "100% Hostinger": todo o **compute e o WhatsApp** rodam no VPS; o **banco** fica no Supabase Cloud (grátis) e a **IA** (Anthropic) é serviço externo com chave da pessoa — o modelo de IA roda na nuvem da Anthropic por natureza. "100% Hostinger" = toda a infra de compute na Hostinger + serviços gerenciados grátis/externos para dado e IA.
 
 ## 2. Decisões travadas
 
@@ -42,13 +42,13 @@ Serviços externos (chaves no .env): Supabase Cloud (DB/Auth/Realtime/Storage/pg
 
 **Somente o Caddy publica portas (80/443).** `app`, `waha`, `redis`, `srh` ficam só na rede interna do compose. Verificado: o app fala com WAHA por `http://waha:3000` e o webhook WAHA→app por `http://app:3000` — **sem domínio público nem ngrok** (a rota de webhook resolve a sessão por `body.session`).
 
-## 4. Onde a HostGator entra (mapa fechado)
+## 4. Onde a Hostinger entra (mapa fechado)
 
 | Ponto | Papel | Produto (link de afiliado) |
 |---|---|---|
 | **VPS** (host dos 6 containers) | núcleo | âncora de comissão — VPS com Docker (n8n/OpenClaw/GatorClaw já vêm com Docker) |
 | Dedicado | tenant grande / muitos números | upsell |
-| Domínio + DNS | A-record → IP do VPS | registro de domínio HostGator |
+| Domínio + DNS | A-record → IP do VPS | registro de domínio Hostinger |
 | SSL | HTTPS (Caddy/Let's Encrypt, grátis) | — |
 
 Os demais 8 produtos não rodam a stack → viram material de apoio/upsell no tutorial, não caminho principal.
@@ -162,13 +162,13 @@ O build do Next leva ~6min numa máquina forte e **estoura 2GB de RAM** — o VP
 ## 15. Os 3 entregáveis
 
 **Frente A — Adaptação técnica** *(pré-requisito das outras)*
-`Dockerfile` multi-stage (node:20-alpine, corepack/pnpm, `build:webpack`, copiar `.next/standalone`+`.next/static`+`public`, user non-root, `HOSTNAME=0.0.0.0`) · `docker-compose.prod.yml` (app+waha+redis+srh+scheduler+caddy, healthchecks, `depends_on: service_healthy`, log rotation) · `Caddyfile` (proxy + HTTPS + timeout ≥300s em `/api/internal/agents/run`) · Ofelia config · `.env.hostgator.example` · as 5 mudanças de código (§5) · `baseline.sql` (§6) · **validação WAHA Core** (engine NOWEB vs WEBJS, limite de sessão — ver §17).
+`Dockerfile` multi-stage (node:20-alpine, corepack/pnpm, `build:webpack`, copiar `.next/standalone`+`.next/static`+`public`, user non-root, `HOSTNAME=0.0.0.0`) · `docker-compose.prod.yml` (app+waha+redis+srh+scheduler+caddy, healthchecks, `depends_on: service_healthy`, log rotation) · `Caddyfile` (proxy + HTTPS + timeout ≥300s em `/api/internal/agents/run`) · Ofelia config · `.env.vps.example` · as 5 mudanças de código (§5) · `baseline.sql` (§6) · **validação WAHA Core** (engine NOWEB vs WEBJS, limite de sessão — ver §17).
 
 **Frente B — Tutorial para leigos**
-`docs/deploy-hostgator/` passo-a-passo com prints e comandos copiáveis; links de afiliado nos pontos certos (VPS, domínio); sizing recomendado (§17); ordem DNS→SSL; QR; MFA.
+`docs/deploy-vps/` passo-a-passo com prints e comandos copiáveis; links de afiliado nos pontos certos (VPS, domínio); sizing recomendado (§17); ordem DNS→SSL; QR; MFA.
 
 **Frente C — Setup Kit `.zip`**
-`hostgator-setup-kit/`: `install.sh` idempotente (clona, gera segredos, valida `.env`, aplica baseline, bootstrap do dono, sobe) · `CLAUDE.md` copiloto (conduz, coleta credenciais, destrava erros) · `checklist.md` · `.env.template` · `healthcheck.sh` · `update.sh`/`restore.sh`/`reset-*.sh`.
+`setup-kit/`: `install.sh` idempotente (clona, gera segredos, valida `.env`, aplica baseline, bootstrap do dono, sobe) · `CLAUDE.md` copiloto (conduz, coleta credenciais, destrava erros) · `checklist.md` · `.env.template` · `healthcheck.sh` · `update.sh`/`restore.sh`/`reset-*.sh`.
 
 ## 16. Healthcheck & ordering (gap crítico)
 
@@ -178,7 +178,7 @@ O build do Next leva ~6min numa máquina forte e **estoura 2GB de RAM** — o VP
 
 - **WAHA Core (D5):** validar na Frente A se o engine (o compose usa NOWEB, historicamente Plus) e o limite de 1 sessão do Core atendem o template single-número; ajustar `WAHA_DEFAULT_ENGINE`/compose. Confirmar arquitetura do VPS (imagem é amd64) e se o QR pareia.
 - **Ambiguidade da API key WAHA:** `client.ts` diz hash SHA512 no `X-Api-Key`; `.env.example` diz plaintext. Validar contra a imagem real no 1º deploy (erro = 401 em tudo).
-- **Sizing VPS:** mínimo **4 GB RAM / 2 vCPU / 60 GB SSD** (build do Next é faminto; 2 GB só com swap ou build fora do VPS). Mapear ao plano HostGator no tutorial.
+- **Sizing VPS:** mínimo **4 GB RAM / 2 vCPU / 60 GB SSD** (build do Next é faminto; 2 GB só com swap ou build fora do VPS). Mapear ao plano Hostinger no tutorial.
 - **E-mail Resend:** opcional, mas convites falham calados (201 sem enviar) e não há reset de senha por e-mail. Mitigação: expor link de convite na UI quando e-mail falha + `reset-password.sh`.
 
 ## 18. Fora de escopo do v1 (roadmap)

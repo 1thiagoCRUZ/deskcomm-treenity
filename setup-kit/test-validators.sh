@@ -5,7 +5,7 @@
 # papel da chave, projeto cruzado, Direct-connection e senha não codificada.
 # As checagens online (curl/psql) são provadas na instalação real.
 #
-#   bash hostgator-setup-kit/test-validators.sh
+#   bash setup-kit/test-validators.sh
 #
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
@@ -414,7 +414,7 @@ PROV
 ) || fail=1
 rm -rf "$TMP3"
 
-echo "sincronia: o install.sh grava as chaves que o .env.hostgator.example promete"
+echo "sincronia: o install.sh grava as chaves que o .env.vps.example promete"
 # O install.sh monta o .env a partir de uma LISTA FECHADA de `envq` e fecha com
 # `} > .env`, que TRUNCA. Chave fora da lista simplesmente não é gravada — e se a
 # pessoa a tiver posto à mão, some no próximo install, num script que o README
@@ -427,7 +427,7 @@ echo "sincronia: o install.sh grava as chaves que o .env.hostgator.example prome
 # DÍVIDA: chaves que o install.sh hoje não grava. A lista só pode ENCOLHER; se
 # uma delas passar a ser gravada, o teste manda tirá-la daqui.
 DIVIDA="AGENT_DISPATCH_CONSUMER NUVEMSHOP_APP_ID NUVEMSHOP_CLIENT_ID NUVEMSHOP_CLIENT_SECRET"
-EXEMPLO="${EXEMPLO_ENV:-../.env.hostgator.example}"
+EXEMPLO="${EXEMPLO_ENV:-../.env.vps.example}"
 if [ ! -f "$EXEMPLO" ]; then
   # Pular é aceitável (o kit também roda solto, fora do repo), mas em voz alta:
   # pulo silencioso é indistinguível de teste que passou.
@@ -449,7 +449,7 @@ else
   # O piso não precisa acompanhar o crescimento do install.sh: ele separa
   # "pipeline morreu no meio" de "lista completa", e qualquer valor bem abaixo do
   # real serve. Para ver quantas há hoje:
-  #   grep -cE '^[[:space:]]*envq [A-Z_0-9]+' hostgator-setup-kit/install.sh
+  #   grep -cE '^[[:space:]]*envq [A-Z_0-9]+' setup-kit/install.sh
   n_grava="$(printf '%s\n' "$GRAVA" | grep -c . || true)"
   if [ "${n_grava:-0}" -lt 30 ]; then
     printf '  ✗ a lista de escrita voltou com %s chave(s) — a régua está truncada, não o install.sh\n' "${n_grava:-0}"
@@ -465,7 +465,7 @@ else
     novas="$novas $k"
   done
   if [ -n "$novas" ]; then
-    printf '  ✗ o .env.hostgator.example promete chave(s) que o install.sh não grava:%s\n' "$novas"
+    printf '  ✗ o .env.vps.example promete chave(s) que o install.sh não grava:%s\n' "$novas"
     printf '     quem instalar pelo kit não recebe essa configuração; quem puser à mão perde no próximo install\n'
     fail=1
   else
@@ -804,7 +804,7 @@ echo "cron: instalar uma instância não pode silenciar a outra"
 # apagava as duas linhas da primeira, em silêncio.
 CRONTAB_VIZINHO='0 8 * * * /root/trend-radar/run_full_vps.sh
 * * * * * curl -fsS -H "Authorization: Bearer SEGREDO" "https://crm.deskcomm.com.br/api/v1/cron/event-log-drain" >/dev/null 2>&1
-*/5 * * * * cd /root/Aula-Youtube/DeskcommCRM && bash hostgator-setup-kit/agent.sh >/dev/null 2>&1'
+*/5 * * * * cd /root/Aula-Youtube/DeskcommCRM && bash setup-kit/agent.sh >/dev/null 2>&1'
 
 cron_ok() {  # cron_ok <descrição> <esperado_no_resultado> <marcador> <legado> <linha_nova>
   local desc="$1" espera="$2" marcador="$3" legado="$4" nova="$5" out
@@ -816,18 +816,18 @@ NOVO_TAG='# deskcomm:/root/instalacao-nova'
 NOVA_URL='https://crm-novo.exemplo.com.br/api/v1/cron/event-log-drain'
 cron_ok "o drain do vizinho sobrevive"  'crm.deskcomm.com.br/api/v1/cron/event-log-drain' \
         "$NOVO_TAG" "$NOVA_URL" "* * * * * curl \"$NOVA_URL\" $NOVO_TAG"
-cron_ok "o agente do vizinho sobrevive" 'cd /root/Aula-Youtube/DeskcommCRM && bash hostgator-setup-kit/agent.sh' \
-        "$NOVO_TAG" "cd /root/instalacao-nova && bash hostgator-setup-kit/agent.sh" \
-        "*/5 * * * * cd /root/instalacao-nova && bash hostgator-setup-kit/agent.sh $NOVO_TAG"
+cron_ok "o agente do vizinho sobrevive" 'cd /root/Aula-Youtube/DeskcommCRM && bash setup-kit/agent.sh' \
+        "$NOVO_TAG" "cd /root/instalacao-nova && bash setup-kit/agent.sh" \
+        "*/5 * * * * cd /root/instalacao-nova && bash setup-kit/agent.sh $NOVO_TAG"
 cron_ok "a linha alheia (trend-radar) sobrevive" '/root/trend-radar/run_full_vps.sh' \
         "$NOVO_TAG" "$NOVA_URL" "* * * * * curl \"$NOVA_URL\" $NOVO_TAG"
 
 # Re-executar a MESMA instalação substitui a própria linha em vez de empilhar —
 # inclusive a legada, escrita antes de o marcador existir.
 reexec="$(printf '%s\n' "$CRONTAB_VIZINHO" | cron_merge '# deskcomm:/root/Aula-Youtube/DeskcommCRM' \
-          'cd /root/Aula-Youtube/DeskcommCRM && bash hostgator-setup-kit/agent.sh' \
-          '*/5 * * * * cd /root/Aula-Youtube/DeskcommCRM && bash hostgator-setup-kit/agent.sh # deskcomm:/root/Aula-Youtube/DeskcommCRM')"
-n_agent="$(printf '%s\n' "$reexec" | grep -cF 'hostgator-setup-kit/agent.sh')"
+          'cd /root/Aula-Youtube/DeskcommCRM && bash setup-kit/agent.sh' \
+          '*/5 * * * * cd /root/Aula-Youtube/DeskcommCRM && bash setup-kit/agent.sh # deskcomm:/root/Aula-Youtube/DeskcommCRM')"
+n_agent="$(printf '%s\n' "$reexec" | grep -cF 'setup-kit/agent.sh')"
 if [ "$n_agent" = 1 ]; then printf '  ✓ re-executar a mesma instalação não duplica a linha\n'
 else printf '  ✗ re-executar duplicou: %s linhas de agent.sh\n' "$n_agent"; fail=1; fi
 
@@ -840,15 +840,15 @@ else printf '  ✗ re-executar duplicou: %s linhas de agent.sh\n' "$n_agent"; fa
 DIR=/root/instalacao-nova
 TAG_DRAIN="# deskcomm:${DIR}:drain"; TAG_AGENT="# deskcomm:${DIR}:agent"
 L_DRAIN="* * * * * curl \"https://novo.exemplo.com.br/api/v1/cron/event-log-drain\" $TAG_DRAIN"
-L_AGENT="*/5 * * * * cd ${DIR} && bash hostgator-setup-kit/agent.sh $TAG_AGENT"
+L_AGENT="*/5 * * * * cd ${DIR} && bash setup-kit/agent.sh $TAG_AGENT"
 depois_drain="$(printf '%s\n' "$CRONTAB_VIZINHO" | cron_merge "$TAG_DRAIN" 'https://novo.exemplo.com.br/api/v1/cron/event-log-drain' "$L_DRAIN")"
-depois_agent="$(printf '%s\n' "$depois_drain" | cron_merge "$TAG_AGENT" "cd ${DIR} && bash hostgator-setup-kit/agent.sh" "$L_AGENT")"
+depois_agent="$(printf '%s\n' "$depois_drain" | cron_merge "$TAG_AGENT" "cd ${DIR} && bash setup-kit/agent.sh" "$L_AGENT")"
 # Conta as DUAS linhas pelo que elas fazem (a URL do drain, o cd do agente), não
 # pelo formato do marcador: uma asserção sobre o marcador reprovaria uma mudança
 # de formato inofensiva e passaria por perto do que importa, que é as duas
 # tarefas continuarem agendadas.
 tem_drain="$(printf '%s\n' "$depois_agent" | grep -cF 'novo.exemplo.com.br/api/v1/cron/event-log-drain')"
-tem_agent="$(printf '%s\n' "$depois_agent" | grep -cF "cd ${DIR} && bash hostgator-setup-kit/agent.sh")"
+tem_agent="$(printf '%s\n' "$depois_agent" | grep -cF "cd ${DIR} && bash setup-kit/agent.sh")"
 if [ "$tem_drain" -ge 1 ] && [ "$tem_agent" -ge 1 ]; then
   printf '  ✓ drain e agente da mesma instalação coexistem\n'
 else

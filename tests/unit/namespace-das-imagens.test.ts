@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
  *
  * ── Por que este arquivo existe ────────────────────────────────────────────
  *
- * `tests/shell/update-guard.test.sh` e `hostgator-setup-kit/test-validators.sh`
+ * `tests/shell/update-guard.test.sh` e `setup-kit/test-validators.sh`
  * repetiam `ghcr.io/melgarafael` à mão em 31 lugares — fixtures E asserções.
  * Isso amarrava a suíte a UM publicador: um fork que publica as próprias
  * imagens ficava vermelho em 4 casos sem ter quebrado nada, com a mensagem de
@@ -47,10 +47,10 @@ import { describe, expect, it } from "vitest";
 
 const RAIZ = process.cwd();
 
-const COMUM = fs.readFileSync(path.join(RAIZ, "hostgator-setup-kit/_common.sh"), "utf8");
+const COMUM = fs.readFileSync(path.join(RAIZ, "setup-kit/_common.sh"), "utf8");
 const COMPOSE = fs.readFileSync(path.join(RAIZ, "docker-compose.prod.yml"), "utf8");
 const PUBLICA = fs.readFileSync(path.join(RAIZ, ".github/workflows/publish-image.yml"), "utf8");
-const ENV_EXEMPLO = fs.readFileSync(path.join(RAIZ, ".env.hostgator.example"), "utf8");
+const ENV_EXEMPLO = fs.readFileSync(path.join(RAIZ, ".env.vps.example"), "utf8");
 
 /** O valor literal que este repositório publica. A âncora. */
 const NAMESPACE_DESTE_REPO = "ghcr.io/melgarafael";
@@ -63,8 +63,8 @@ const NAMESPACE_DESTE_REPO = "ghcr.io/melgarafael";
  */
 const RECADO_AO_FORK =
   "Publicando as próprias imagens? Troque o namespace em três lugares, e só neles: " +
-  "IMG_NS em hostgator-setup-kit/_common.sh, o default das três linhas `image:` de " +
-  "docker-compose.prod.yml, e as três *_IMAGE de .env.hostgator.example. Depois " +
+  "IMG_NS em setup-kit/_common.sh, o default das três linhas `image:` de " +
+  "docker-compose.prod.yml, e as três *_IMAGE de .env.vps.example. Depois " +
   "atualize NAMESPACE_DESTE_REPO neste arquivo, e a URL do repositório em " +
   "install.sh, comecar.sh, _common.sh e nos três Dockerfiles (os casos abaixo " +
   "prendem os seis). Todo o resto deriva de IMG_NS.";
@@ -90,7 +90,7 @@ function imgNs(): string {
   // O grupo é obrigatório no padrão, mas `noUncheckedIndexedAccess` não sabe
   // disso — e a checagem explícita é melhor que um `!`: se um dia o padrão
   // ganhar um grupo opcional, a mensagem aqui diz o que aconteceu.
-  if (!m?.[1]) throw new Error("não achei a linha IMG_NS= em hostgator-setup-kit/_common.sh");
+  if (!m?.[1]) throw new Error("não achei a linha IMG_NS= em setup-kit/_common.sh");
   return m[1];
 }
 
@@ -146,13 +146,13 @@ describe("o default do compose diz o mesmo que o kit", () => {
       expect(m![1]).toBe(`${imgNs()}/${reposDoKit()[i]}:stable`);
     });
 
-    // `.env.hostgator.example` é DADO — um template que o operador copia. Não há
+    // `.env.vps.example` é DADO — um template que o operador copia. Não há
     // de onde derivar dentro de um arquivo de env, então ele é a última cópia
     // autorizada do literal, e existe este caso para que ela seja uma cópia
     // CONFERIDA em vez de uma afirmação solta.
     it(`o piso de ${chave} no .env de exemplo usa o namespace de IMG_NS`, () => {
       const m = ENV_EXEMPLO.match(new RegExp(`^${chave}=(\\S+)`, "m"));
-      expect(m, `não achei \`${chave}=\` em .env.hostgator.example`).not.toBeNull();
+      expect(m, `não achei \`${chave}=\` em .env.vps.example`).not.toBeNull();
       expect(m![1]).toBe(`${imgNs()}/${reposDoKit()[i]}:stable`);
     });
   });
@@ -162,7 +162,7 @@ describe("o kit aponta para o que o CI realmente publica", () => {
   it("os defaults de código e os labels de origem apontam para este repositório", () => {
     const repo = "https://github.com/melgarafael/DeskcommCRM";
     for (const script of ["install.sh", "comecar.sh"]) {
-      const texto = fs.readFileSync(path.join(RAIZ, "hostgator-setup-kit", script), "utf8");
+      const texto = fs.readFileSync(path.join(RAIZ, "setup-kit", script), "utf8");
       expect(texto).toContain(`REPO_URL="\${REPO_URL:-${repo}.git}"`);
     }
     expect(COMUM).toContain(`local url="\${1:-${repo}.git}" ref`);
@@ -183,7 +183,7 @@ describe("o kit aponta para o que o CI realmente publica", () => {
         [
           "-c",
           `
-        source hostgator-setup-kit/_common.sh
+        source setup-kit/_common.sh
         if [ -n "$1" ]; then IMG_NS="$1"; fi
         curl() {
           local arg
@@ -245,14 +245,14 @@ describe("o kit aponta para o que o CI realmente publica", () => {
  *
  *   _common.sh               a FONTE: o literal nasce aqui
  *   docker-compose.prod.yml  YAML não deriva de shell; conferido acima
- *   .env.hostgator.example   template que o operador copia; conferido acima
+ *   .env.vps.example   template que o operador copia; conferido acima
  *   este arquivo             a âncora, que precisa do literal para ancorar
  */
 describe("catraca: ninguém mais repete o namespace", () => {
   const PERMITIDO = new Set([
-    "hostgator-setup-kit/_common.sh",
+    "setup-kit/_common.sh",
     "docker-compose.prod.yml",
-    ".env.hostgator.example",
+    ".env.vps.example",
     "tests/unit/namespace-das-imagens.test.ts",
   ]);
 

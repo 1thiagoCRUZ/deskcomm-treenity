@@ -236,9 +236,9 @@ function segredoInternoConfere(req: NextRequest): boolean {
  * `NEXT_PUBLIC_SUPABASE_URL` é `.url()` (linha 69); `WAHA_API_BASE_URL` (140) e
  * `UPSTASH_REDIS_REST_URL` (155) são `required()` puro, sem validação de forma:
  *
- *   "redis-interno.hostgator-vps.com"
- *     -> e.message = "Failed to parse URL from redis-interno.hostgator-vps.com"
- *   `"https://redis-interno.hostgator-vps.com"`  (aspas sobrando no .env)
+ *   "redis-interno.hostinger-vps.com"
+ *     -> e.message = "Failed to parse URL from redis-interno.hostinger-vps.com"
+ *   `"https://redis-interno.hostinger-vps.com"`  (aspas sobrando no .env)
  *     -> e.message = "Failed to parse URL from \"https://redis-interno...\""
  *
  * Ou seja: exatamente os dois serviços cujo endereço a rota esconde por decisão

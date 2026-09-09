@@ -106,7 +106,7 @@ de seguir** — chave errada ele recusa na hora, não três passos depois — e 
 **Rodar de novo não quebra nada** — o `install.sh` é idempotente: não duplica cron, não recria
 usuário, retoma de onde parou.
 
-> **Modo não-interativo:** copie `.env.hostgator.example` para `.env`, preencha e rode
+> **Modo não-interativo:** copie `.env.vps.example` para `.env`, preencha e rode
 > `bash setup-kit/install.sh --yes`.
 
 ### Hostinger e outras hospedagens

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Item "Webhooks" no sidebar com página em 3 abas (Receber dados / Automações / Atividade) leigo-friendly, crontab do drain no kit HostGator, e E2E Playwright do fluxo completo.
+**Goal:** Item "Webhooks" no sidebar com página em 3 abas (Receber dados / Automações / Atividade) leigo-friendly, crontab do drain no kit Hostinger, e E2E Playwright do fluxo completo.
 
 **Architecture:** Consome as APIs do plano Parte 1 (`docs/superpowers/plans/2026-07-17-webhooks-backend.md` — PRÉ-REQUISITO: Parte 1 mergeada/no branch). Página segue o padrão do repo: server page (`requireAuth` + `resolveActiveOrg`) + client component em `_components/`. Design system travado: Sage + Atkinson Hyperlegible + Phosphor + estética aerada (ver `app/design/lib/` e memória Design System Locked) — nada de shadcn cru sem os tokens do projeto.
 
@@ -247,17 +247,17 @@ git commit -m "feat(webhooks): aba Atividade — timeline de runs + reenviar"
 
 ---
 
-### Task 5: Kit HostGator — crontab do drain + docs
+### Task 5: Kit Hostinger — crontab do drain + docs
 
 **Files:**
-- Modify: `hostgator-setup-kit/install.sh`
-- Modify: `hostgator-setup-kit/update.sh`
-- Modify: `hostgator-setup-kit/README.md`
+- Modify: `setup-kit/install.sh`
+- Modify: `setup-kit/update.sh`
+- Modify: `setup-kit/README.md`
 
 **Interfaces:**
 - Consumes: rota `/api/v1/cron/event-log-drain` (Parte 1 Task 2), env `INTERNAL_CRON_SECRET`/`INTERNAL_SECRET` já usadas pelo kit.
 
-- [ ] **Step 1:** Leia `hostgator-setup-kit/install.sh` e `_common.sh` inteiros para achar onde o kit configura env/crontab hoje (se já existe bloco de crontab p/ outros crons, siga o padrão; se NÃO existe, crie uma função `setup_cron` em `_common.sh` chamada pelos dois scripts). O objetivo idempotente (não duplicar linha a cada update):
+- [ ] **Step 1:** Leia `setup-kit/install.sh` e `_common.sh` inteiros para achar onde o kit configura env/crontab hoje (se já existe bloco de crontab p/ outros crons, siga o padrão; se NÃO existe, crie uma função `setup_cron` em `_common.sh` chamada pelos dois scripts). O objetivo idempotente (não duplicar linha a cada update):
 
 ```bash
 setup_event_log_drain_cron() {
@@ -270,13 +270,13 @@ setup_event_log_drain_cron() {
 
 - [ ] **Step 2:** README do kit: seção nova "Automações e webhooks" explicando em 3 linhas que o cron acima é obrigatório para as automações rodarem, e como testar (`curl` manual com o secret → esperar `{"data":{"scanned":...}}`).
 
-- [ ] **Step 3:** Teste do shell: `bash -n hostgator-setup-kit/install.sh hostgator-setup-kit/update.sh` (sintaxe) + rodar `setup_event_log_drain_cron` num shell local com `crontab -l` fake se possível; no mínimo, rodar duas vezes e provar que `crontab -l | grep -c event-log-drain` == 1 (idempotência).
+- [ ] **Step 3:** Teste do shell: `bash -n setup-kit/install.sh setup-kit/update.sh` (sintaxe) + rodar `setup_event_log_drain_cron` num shell local com `crontab -l` fake se possível; no mínimo, rodar duas vezes e provar que `crontab -l | grep -c event-log-drain` == 1 (idempotência).
 
 - [ ] **Step 4: Commit:**
 
 ```bash
-git add hostgator-setup-kit/
-git commit -m "feat(webhooks): crontab do event-log-drain no kit HostGator"
+git add setup-kit/
+git commit -m "feat(webhooks): crontab do event-log-drain no kit Hostinger"
 ```
 
 ---
@@ -331,6 +331,6 @@ git push -u origin feat/webhooks-automation
 | §9 aba Receber dados (empty-state, snippets, lead de teste, feed) | 2 |
 | §9 aba Automações (builder, nasce pausada) | 3 |
 | §9 aba Atividade (timeline, reenviar) | 4 |
-| §6 crontab kit HostGator | 5 |
+| §6 crontab kit Hostinger | 5 |
 | §11 E2E + Definition of Done | 6 |
 

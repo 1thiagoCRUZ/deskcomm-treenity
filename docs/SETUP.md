@@ -129,7 +129,7 @@ psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/baseline.sql
 > são stubs `SELECT 1;` — o schema fundacional não está nelas, e a cadeia não sobe do
 > zero. O `db push` **passa sem erro** e te deixa com um banco vazio, e você só descobre
 > muito depois, num erro que não aponta pra cá. O `supabase/baseline.sql` é o schema real
-> e é exatamente o que o `hostgator-setup-kit/install.sh` aplica na VPS.
+> e é exatamente o que o `setup-kit/install.sh` aplica na VPS.
 >
 > As migrations continuam sendo a fonte da verdade para quem **já tem** um banco e está
 > atualizando — é o baseline que serve pra criar do zero.

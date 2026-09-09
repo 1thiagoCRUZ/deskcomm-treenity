@@ -427,7 +427,7 @@ divide o servidor. Só aparece exercitando o produto pela tela.
 ## J12 — A tela diz o que ESTA instalação consegue fazer `[P0]`
 
 **Por que P0:** é primeira impressão pura. **Nenhuma instalação nasce com o par
-VAPID** — o `.env.hostgator.example` grava as duas linhas vazias e gerar o par é
+VAPID** — o `.env.vps.example` grava as duas linhas vazias e gerar o par é
 um passo opcional que ninguém é obrigado a dar. Ou seja, o estado testado aqui é
 o estado em que 100% das instalações começam, e a tela de Notificações tem porta
 na navegação (`lib/navigation/registry.ts:470`), então qualquer pessoa chega nela
@@ -877,7 +877,7 @@ Critério: nenhuma tela quebra, nenhum stack trace, nenhum texto de erro cru.
 
 # Sessão 2026-07-29/30 — instalação do zero na VPS + jornada completa
 
-Ambiente: VPS HostGator (143.95.209.17), domínio `test-crm.vidagamificada.com.br`,
+Ambiente: VPS Hostinger (143.95.209.17), domínio `test-crm.vidagamificada.com.br`,
 projeto Supabase **novo e virgem** (0 tabelas / 0 usuários / 0 buckets antes de cada
 instalação), cache de build do Docker zerado (a VPS realmente compila o worker),
 imagem `ghcr.io/melgarafael/deskcommcrm:latest` — a mesma que o comprador recebe.
@@ -1172,7 +1172,7 @@ worker)"*. O fato estava medido; a pergunta é que faltava.
 
 | # | Caso | Estado |
 |---|---|---|
-| U1 `[P0]` | Instalação nova nasce pinada numa VERSÃO, não em canal móvel | coberto — `hostgator-setup-kit/test-validators.sh` roda o `install.sh` contra um remoto local com tags e cobra o `.env` |
+| U1 `[P0]` | Instalação nova nasce pinada numa VERSÃO, não em canal móvel | coberto — `setup-kit/test-validators.sh` roda o `install.sh` contra um remoto local com tags e cobra o `.env` |
 | U2 `[P0]` | `update.sh` grava as TRÊS imagens na mesma versão | coberto — `tests/shell/update-guard.test.sh` §4b |
 | U3 `[P0]` | Nenhum serviço de produção fica `build:`-only | coberto — `tests/unit/packaging-artefato-do-cliente.test.ts` |
 | U4 | O crontab do scheduler não perde rota ao mudar de arquivo | coberto — `tests/shell/scheduler-entrypoint.test.sh` + `tests/unit/cron-routes-scheduled.test.ts` |
@@ -1212,7 +1212,7 @@ software que ele não contratou. Não há gravidade média nisso.
 
 **Onde o código vive:** `lib/branding/` (resolvedor, rampa, contraste, saída sem DOM),
 `app/admin/(protected)/marca/` e `app/app/settings/marca/` (as duas telas),
-`hostgator-setup-kit/marca-emails.sh` (os e-mails de acesso) e o mapa
+`setup-kit/marca-emails.sh` (os e-mails de acesso) e o mapa
 [`../architecture/marca-propria.architecture.json`](../architecture/marca-propria.architecture.json).
 
 | # | Caso | Estado |

@@ -112,7 +112,7 @@ PME brasileiro de e-commerce na **Nuvemshop**:
            │
 ┌──────────▼──────────┐    ┌──────────────────┐    ┌──────────┐
 │  WAHA Plus (NoWeb)  │    │ Vercel AI Gateway│    │ Upstash  │
-│  Hostgator VPS BR     │    │ Anthropic +      │    │ Redis    │
+│  Hostinger VPS BR     │    │ Anthropic +      │    │ Redis    │
 │                     │    │ OpenAI fallback  │    │ (rate)   │
 └─────────────────────┘    └──────────────────┘    └──────────┘
 ```
@@ -182,7 +182,7 @@ PME brasileiro de e-commerce na **Nuvemshop**:
 |---|---|
 | Vercel Pro | $20 |
 | Supabase Pro | $25 + add-ons |
-| Hostgator VPS (WAHA, plano Turing, SP) | ~R$140 (~$28) |
+| Hostinger VPS (WAHA, plano Turing, SP) | ~R$140 (~$28) |
 | Upstash Redis | $5–15 |
 | WAHA Plus | $30 |
 | Sentry Team | $26 |

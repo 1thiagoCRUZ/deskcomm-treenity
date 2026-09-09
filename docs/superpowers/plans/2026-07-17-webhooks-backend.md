@@ -2466,7 +2466,7 @@ git push -u origin feat/webhooks-automation
 | §9 API de gestão (UI consome) | 12 |
 | §10 segurança (RLS, rate limit, HMAC, SSRF) | 1, 5, 6, 10 |
 | §11 testes | todas + 13 |
-| §6 crontab kit HostGator + §9 UI + E2E Playwright | **Plano Parte 2** (`2026-07-17-webhooks-ui.md`) |
+| §6 crontab kit Hostinger + §9 UI + E2E Playwright | **Plano Parte 2** (`2026-07-17-webhooks-ui.md`) |
 
 
 

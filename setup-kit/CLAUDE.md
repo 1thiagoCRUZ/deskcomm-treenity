@@ -65,7 +65,7 @@ Rode `bash install.sh`. Ele vai:
 - criar o primeiro admin (com o e-mail e senha que a pessoa escolheu);
 - subir o CRM e conferir se ficou no ar.
 
-Prefira preencher o `.env` (copie de `.env.hostgator.example` no repositório) com o que
+Prefira preencher o `.env` (copie de `.env.vps.example` no repositório) com o que
 a pessoa te deu e rodar `--yes` — é mais confiável que digitar nos prompts.
 
 ### 5. Primeiro acesso

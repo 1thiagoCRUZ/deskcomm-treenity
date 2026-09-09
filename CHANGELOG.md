@@ -2939,7 +2939,7 @@ servidor continuaria onde está. A segunda execução fixa tudo na mesma versão
 Para saber em que pé você está, sem mexer em nada:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/melgarafael/DeskcommCRM/main/hostgator-setup-kit/diagnostico.sh | bash
+curl -fsSL https://raw.githubusercontent.com/melgarafael/DeskcommCRM/main/setup-kit/diagnostico.sh | bash
 ```
 
 Ele só lê e explica — não escreve, não reinicia, não atualiza. Se disser que está afetada,
@@ -3151,7 +3151,7 @@ publicado para comparar.
 
 **⚠️ Requer atenção**
 
-Quem já tem o CRM instalado precisa rodar `bash hostgator-setup-kit/update.sh` **duas vezes** pelo
+Quem já tem o CRM instalado precisa rodar `bash setup-kit/update.sh` **duas vezes** pelo
 terminal para ativar o botão. Não é engano: a primeira execução ainda é a do programa antigo, que
 baixa o novo mas não sabe ligar o agente da tela; a segunda já roda o programa atualizado e liga.
 Depois disso, nunca mais é preciso o terminal.
@@ -3210,7 +3210,7 @@ Primeira versão marcada do DeskcommCRM. O projeto vinha sendo desenvolvido publ
 
 ### Self-host
 
-- `hostgator-setup-kit`: instalação completa (app + WAHA + banco) com um comando.
+- `setup-kit`: instalação completa (app + WAHA + banco) com um comando.
 - `baseline.sql` idempotente e auto-curativo — atualização não quebra clone com dados legados.
 - 8 scripts de operação: `install`, `update`, `backup`, `restore`, `reset-password`, `reset-mfa`, `healthcheck` e o assistente de instalação em IA.
 - Imagem publicada em `ghcr.io/melgarafael/deskcommcrm` — a VPS não compila nada.

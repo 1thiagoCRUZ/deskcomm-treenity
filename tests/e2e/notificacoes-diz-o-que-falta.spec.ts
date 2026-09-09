@@ -3,7 +3,7 @@
  *
  * ## Por que este é o estado que importa
  *
- * Nenhuma instalação nasce com o par VAPID. O `.env.hostgator.example` grava as
+ * Nenhuma instalação nasce com o par VAPID. O `.env.vps.example` grava as
  * duas linhas VAZIAS, e gerar o par é um passo que ninguém é obrigado a dar.
  * Ou seja: **este spec roda no estado em que 100% das instalações começam**, e
  * é o estado da doutrina de QA Visual — "teste com os envs opcionais AUSENTES,

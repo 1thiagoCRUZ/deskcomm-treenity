@@ -97,7 +97,7 @@ correspondentes localizados no repo):
 - **IA nativa** — agentes com RAG por tenant (pgvector), sentiment, handoff IA→humano,
   budget por org, MCP server interno.
 - **LGPD** — export e redact via workers, anonimização em cascata, consentimento auditado.
-- **Self-host** — `hostgator-setup-kit`, `baseline.sql` auto-curativo, runbook de produção.
+- **Self-host** — `setup-kit`, `baseline.sql` auto-curativo, runbook de produção.
 - **Webhooks & automação** — captação + regras QUANDO/SE/ENTÃO + gatilhos externos.
 - **Operação visível** — transparência do motivo de retenção anti-ban, central de avisos,
   knobs de proteção de envio, propostas do flywheel com gate humano.

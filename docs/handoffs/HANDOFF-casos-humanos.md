@@ -63,7 +63,7 @@ Sistema de casos/tickets: a IA delega uma tarefa a um humano de retaguarda e **c
 - [ ] **W7** prova E2E do loop completo em conta/conversa REAL + avaliação de UX na tela
 
 ## Log
-- 2026-07-23 **W0**: runtime confirmado (`AGENT_DISPATCH_CONSUMER`=engine default, .env.example/.env.hostgator.example=engine; `workers/agent-worker/main.ts:188`). Spec/plano corrigidos (string `engine`, não `agent-engine`). Ambiguidades da spec resolvidas nas extrações: handoff canônico = `performHumanHandoff` (human-handoff.ts:149); guardrail = gate novo em before-send.ts; UI = polling 60s (useAgentInbox). Sem código de produção ainda.
+- 2026-07-23 **W0**: runtime confirmado (`AGENT_DISPATCH_CONSUMER`=engine default, .env.example/.env.vps.example=engine; `workers/agent-worker/main.ts:188`). Spec/plano corrigidos (string `engine`, não `agent-engine`). Ambiguidades da spec resolvidas nas extrações: handoff canônico = `performHumanHandoff` (human-handoff.ts:149); guardrail = gate novo em before-send.ts; UI = polling 60s (useAgentInbox). Sem código de produção ainda.
 
 ### VALIDADO PELO RAFAEL (24/jul, teste manual na tela) — "Funcionou 100%!"
 Rafael rodou o loop inteiro na mão pela UI, em caso LIMPO (fd622ad2 "Reagendar entrega da 2ª via", info nova = CEP): clicou "Preciso de info do cliente" → IA perguntou o CEP ao lead no WhatsApp → Rafael respondeu como o lead → IA chamou provide_case_update sozinha → caso voltou pra "Aguardando você" com o CEP na timeline. Loop A→B→C→D validado pelo usuário, não só por mim.

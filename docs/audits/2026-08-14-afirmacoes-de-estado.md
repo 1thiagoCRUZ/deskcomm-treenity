@@ -1037,7 +1037,7 @@ v1.3.0 ; CHANGELOG.md:11 "## [1.3.0] — 2026-08-13" ; nenhuma tag nem seção v
 **Mede com:**
 
 ```bash
-grep -rn 'avisos que' hostgator-setup-kit/ ; sed -n '144,151p' hostgator-setup-kit/update.sh
+grep -rn 'avisos que' setup-kit/ ; sed -n '144,151p' setup-kit/update.sh
 ```
 
 **Deu:**
@@ -1302,7 +1302,7 @@ v1.3.0 ; CHANGELOG.md:11 "## [1.3.0] — 2026-08-13" ; nenhuma tag nem seção v
 **Mede com:**
 
 ```bash
-grep -rn 'avisos que' hostgator-setup-kit/ ; sed -n '144,151p' hostgator-setup-kit/update.sh
+grep -rn 'avisos que' setup-kit/ ; sed -n '144,151p' setup-kit/update.sh
 ```
 
 **Deu:**
@@ -1553,7 +1553,7 @@ lib/auth/server.ts:176 requiresMfa() consulta essa politica.
 **Mede com:**
 
 ```bash
-git tag -l 'v*' --sort=-v:refname | head -1 ; gh release list --limit 3 ; grep -n "TARGET_TAG=\"\$(git tag" hostgator-setup-kit/update.sh
+git tag -l 'v*' --sort=-v:refname | head -1 ; gh release list --limit 3 ; grep -n "TARGET_TAG=\"\$(git tag" setup-kit/update.sh
 ```
 
 **Deu:**
@@ -1562,7 +1562,7 @@ git tag -l 'v*' --sort=-v:refname | head -1 ; gh release list --limit 3 ; grep -
 v1.3.0
 v1.3.0 — o worker que nunca era atualizado	Latest	v1.3.0	2026-08-13T19:58:03Z
 v1.2.1 — correções de segurança		v1.2.1	2026-08-12
-hostgator-setup-kit/update.sh:39: [ -n "$TARGET_TAG" ] || TARGET_TAG="$(git tag -l 'v*' --sort=-v:refname | head -1)"
+setup-kit/update.sh:39: [ -n "$TARGET_TAG" ] || TARGET_TAG="$(git tag -l 'v*' --sort=-v:refname | head -1)"
 => o mecanismo ("tag mais nova") está CERTO; o número v1.2.3 nunca existiu — não há tag nem seção no CHANGELOG.
 ```
 
@@ -1577,20 +1577,20 @@ hostgator-setup-kit/update.sh:39: [ -n "$TARGET_TAG" ] || TARGET_TAG="$(git tag 
 **Mede com:**
 
 ```bash
-grep -rn 'avisos que' hostgator-setup-kit/ ; sed -n '144,151p' hostgator-setup-kit/update.sh
+grep -rn 'avisos que' setup-kit/ ; sed -n '144,151p' setup-kit/update.sh
 ```
 
 **Deu:**
 
 ```
-grep 'avisos que' em hostgator-setup-kit/: ZERO ocorrências.
+grep 'avisos que' em setup-kit/: ZERO ocorrências.
 update.sh:146: c_ylw "⚠ Apareceram avisos no banco que NÃO são os esperados:"
 update.sh:149: c_grn "✓ banco atualizado (e conversas reorganizadas, se havia bagunça)."
 ```
 
 **Sugestão:** O script filtra esse ruído e mostra `✓ banco atualizado`. Se aparecer `⚠ Apareceram avisos no banco que NÃO são os esperados:`, aí sim guarde a mensagem.
 
-**Vira teste:** tests/shell/update-guard.test.sh: toda string entre crases nos READMEs que se apresente como saída do `update.sh` existe literalmente em `hostgator-setup-kit/update.sh`
+**Vira teste:** tests/shell/update-guard.test.sh: toda string entre crases nos READMEs que se apresente como saída do `update.sh` existe literalmente em `setup-kit/update.sh`
 
 ### L233 · FALSA · gravidade media · sobre-o-codigo
 
@@ -1856,7 +1856,7 @@ Comentário no próprio arquivo: "O replay DE ERRO continua, porque é o que exp
 **Mede com:**
 
 ```bash
-grep -n 'TARGET_TAG="$(git tag' hostgator-setup-kit/update.sh ; gh release list --limit 6 ; sed -n '163,164p' README.md
+grep -n 'TARGET_TAG="$(git tag' setup-kit/update.sh ; gh release list --limit 6 ; sed -n '163,164p' README.md
 ```
 
 **Deu:**
@@ -1865,9 +1865,9 @@ grep -n 'TARGET_TAG="$(git tag' hostgator-setup-kit/update.sh ; gh release list 
 update.sh:39 → `[ -n "$TARGET_TAG" ] || TARGET_TAG="$(git tag -l 'v*' --sort=-v:refname | head -1)"`. Releases: v1.3.0 (2026-08-13), v1.2.1, v1.2.0, v1.1.0, v1.0.0. README:163 → "**O alvo é a última versão publicada** (`v1.2.3`), não o topo da `main`".
 ```
 
-**Sugestão:** O DeskcommCRM é distribuído por **versões marcadas** (`v1.x.y`), publicadas como release e descritas no [`CHANGELOG.md`]\(CHANGELOG.md\). O `update.sh` sempre aponta para a última versão publicada — nunca para o topo da `main`. Correções de segurança entram na próxima versão; mantenha sua instalação atualizada (`bash hostgator-setup-kit/update.sh` em self-host). Para saber qual é a última: `gh release list --limit 1`.
+**Sugestão:** O DeskcommCRM é distribuído por **versões marcadas** (`v1.x.y`), publicadas como release e descritas no [`CHANGELOG.md`]\(CHANGELOG.md\). O `update.sh` sempre aponta para a última versão publicada — nunca para o topo da `main`. Correções de segurança entram na próxima versão; mantenha sua instalação atualizada (`bash setup-kit/update.sh` em self-host). Para saber qual é a última: `gh release list --limit 1`.
 
-**Vira teste:** assertar que SECURITY.md não afirma "a partir da branch main" enquanto hostgator-setup-kit/update.sh resolver o alvo por `git tag -l 'v*'`
+**Vira teste:** assertar que SECURITY.md não afirma "a partir da branch main" enquanto setup-kit/update.sh resolver o alvo por `git tag -l 'v*'`
 
 ### L9 · FRAGIL · gravidade media · ativo-obrigatorio
 
@@ -1876,7 +1876,7 @@ update.sh:39 → `[ -n "$TARGET_TAG" ] || TARGET_TAG="$(git tag -l 'v*' --sort=-
 **Mede com:**
 
 ```bash
-gh release list --limit 6 ; grep -n 'TARGET_TAG=' hostgator-setup-kit/update.sh | head -3
+gh release list --limit 6 ; grep -n 'TARGET_TAG=' setup-kit/update.sh | head -3
 ```
 
 **Deu:**
@@ -1933,7 +1933,7 @@ lib/auth/types.ts:20 → `export type Role = "viewer" | "agent" | "ai_operator" 
 **Mede com:**
 
 ```bash
-grep -n 'SUPABASE_ACCESS_TOKEN\|Criando o projeto Supabase' hostgator-setup-kit/install.sh | head
+grep -n 'SUPABASE_ACCESS_TOKEN\|Criando o projeto Supabase' setup-kit/install.sh | head
 ```
 
 **Deu:**
@@ -1972,7 +1972,7 @@ os três pares divergem (fc10b029 vs c4bc70b6; 81e5af56 vs 3fe292ca; 4396263b vs
 **Mede com:**
 
 ```bash
-grep -rn 'APP_IMAGE\|WORKER_IMAGE\|SCHEDULER_IMAGE' hostgator-setup-kit/update.sh
+grep -rn 'APP_IMAGE\|WORKER_IMAGE\|SCHEDULER_IMAGE' setup-kit/update.sh
 ```
 
 **Deu:**
@@ -1986,7 +1986,7 @@ grep -rn 'APP_IMAGE\|WORKER_IMAGE\|SCHEDULER_IMAGE' hostgator-setup-kit/update.s
 
 **Sugestão:** - [ ] A versão anterior está anotada — são **três** linhas do `.env`: `APP_IMAGE`, `WORKER_IMAGE` e `SCHEDULER_IMAGE` (`update.sh` grava as três, L194-196). Anotar só a primeira é o defeito que o pin das três veio consertar: o rollback voltaria o app e deixaria worker e scheduler na versão nova
 
-**Vira teste:** assert: toda variável `*_IMAGE` que hostgator-setup-kit/update.sh exporta aparece no bloco Rollback de docs/DEPLOY-CHECKLIST.md
+**Vira teste:** assert: toda variável `*_IMAGE` que setup-kit/update.sh exporta aparece no bloco Rollback de docs/DEPLOY-CHECKLIST.md
 
 ### L77 · FRAGIL · gravidade baixa · sobre-o-codigo
 
@@ -2052,12 +2052,12 @@ grep -rn 'IMAGE_NAME' .github/ ; grep -n 'images:' .github/workflows/publish-ima
 
 ### L46 · FALSA · gravidade media · sobre-o-codigo
 
-> os testes que casam a string (`tests/shell/update-guard.test.sh`, `hostgator-setup-kit/test-validators.sh`, `tests/unit/packaging-artefato-do-cliente.test.ts`)
+> os testes que casam a string (`tests/shell/update-guard.test.sh`, `setup-kit/test-validators.sh`, `tests/unit/packaging-artefato-do-cliente.test.ts`)
 
 **Mede com:**
 
 ```bash
-grep -c 'melgarafael' tests/unit/packaging-artefato-do-cliente.test.ts ; grep -rln 'ghcr.io/melgarafael' --exclude-dir=node_modules . | grep -E 'tests/|hostgator-setup-kit/test'
+grep -c 'melgarafael' tests/unit/packaging-artefato-do-cliente.test.ts ; grep -rln 'ghcr.io/melgarafael' --exclude-dir=node_modules . | grep -E 'tests/|setup-kit/test'
 ```
 
 **Deu:**
@@ -2065,10 +2065,10 @@ grep -c 'melgarafael' tests/unit/packaging-artefato-do-cliente.test.ts ; grep -r
 ```
 0
 tests/shell/update-guard.test.sh
-hostgator-setup-kit/test-validators.sh
+setup-kit/test-validators.sh
 ```
 
-**Sugestão:** ... os testes que casam a string (`tests/shell/update-guard.test.sh`, `hostgator-setup-kit/test-validators.sh`) e os docs — **mais** o `.env` de cada instalação viva, que é a parte que nenhum commit alcança. (`tests/unit/packaging-artefato-do-cliente.test.ts` entra no custo por outro motivo: ele guarda a forma do compose e os gatilhos do workflow, não a string do namespace.) Régua para reconferir antes de citar este parágrafo: `grep -rln "ghcr.io/melgarafael" --exclude-dir=node_modules .`
+**Sugestão:** ... os testes que casam a string (`tests/shell/update-guard.test.sh`, `setup-kit/test-validators.sh`) e os docs — **mais** o `.env` de cada instalação viva, que é a parte que nenhum commit alcança. (`tests/unit/packaging-artefato-do-cliente.test.ts` entra no custo por outro motivo: ele guarda a forma do compose e os gatilhos do workflow, não a string do namespace.) Régua para reconferir antes de citar este parágrafo: `grep -rln "ghcr.io/melgarafael" --exclude-dir=node_modules .`
 
 **Vira teste:** tests/unit/packaging-artefato-do-cliente.test.ts: it("o ADR só lista como guarda-namespace arquivos que contêm a string") — para cada path citado na §D1 como teste que 'casa a string', exigir grep('ghcr.io/melgarafael') > 0
 
@@ -2138,7 +2138,7 @@ git log --diff-filter=A --format='%h %ad' --date=short -- .github/workflows/publ
 **Mede com:**
 
 ```bash
-sed -n '294,299p' hostgator-setup-kit/_common.sh ; grep -n 'up -d` FALHA' hostgator-setup-kit/_common.sh
+sed -n '294,299p' setup-kit/_common.sh ; grep -n 'up -d` FALHA' setup-kit/_common.sh
 ```
 
 **Deu:**
@@ -2154,7 +2154,7 @@ sed -n '294,299p' hostgator-setup-kit/_common.sh ; grep -n 'up -d` FALHA' hostga
 483:# referência, o `up -d` FALHA e o contêiner não sobe, mesmo com a imagem já no
 ```
 
-**Sugestão:** ... O gatilho real é `up -d` — e o repo já documentava esse modo de falha no comentário de `gravar_imagens`, em `hostgator-setup-kit/_common.sh`. Número de linha apodrece a cada edição do script; a régua é `grep -n 'up -d\` FALHA' hostgator-setup-kit/_common.sh`.
+**Sugestão:** ... O gatilho real é `up -d` — e o repo já documentava esse modo de falha no comentário de `gravar_imagens`, em `setup-kit/_common.sh`. Número de linha apodrece a cada edição do script; a régua é `grep -n 'up -d\` FALHA' setup-kit/_common.sh`.
 
 **Vira teste:** tests/unit/docs-ponteiros.test.ts: it("ponteiro arquivo:linha do ADR aponta para o assunto certo") — para cada `<arquivo>:<n>-<m>` citado, exigir que o trecho contenha um termo do contexto ('up -d'), senão reprovar
 
@@ -2230,7 +2230,7 @@ deskcomm-scheduler:1.2.1 -> 404
 **Mede com:**
 
 ```bash
-grep -n 'VERSAO_ALVO=\|trio_publicado' hostgator-setup-kit/install.sh | sed -n '1,12p' ; sed -n '1036,1060p' hostgator-setup-kit/install.sh
+grep -n 'VERSAO_ALVO=\|trio_publicado' setup-kit/install.sh | sed -n '1,12p' ; sed -n '1036,1060p' setup-kit/install.sh
 ```
 
 **Deu:**
@@ -2244,7 +2244,7 @@ grep -n 'VERSAO_ALVO=\|trio_publicado' hostgator-setup-kit/install.sh | sed -n '
 1056:   VERSAO_ALVO="latest"
 ```
 
-**Sugestão:** Três exceções, todas deliberadas e todas com aviso na tela — porque falhar fechado aqui seria recusar instalar por não conseguir resolver um número:  1. **A versão mais recente ainda não tem as três imagens publicadas** (a tag do git nasce minutos antes delas): cai no canal `stable` e avisa. É o caminho mais provável nos primeiros minutos de uma release. 2. **Sem rede ou sem tag no remoto**, cai em `latest` e avisa. Trocar previsibilidade por disponibilidade é o negócio errado numa instalação que já começou. 3. **Quem preenche o `.env` à mão** a partir de `.env.hostgator.example` recebe `stable` — o piso seguro para quem não vai rodar a entrevista. `--yes` com o template preserva esse valor.  A cascata inteira está em `grep -n 'VERSAO_ALVO=' hostgator-setup-kit/install.sh` — leia lá antes de confiar nesta lista.
+**Sugestão:** Três exceções, todas deliberadas e todas com aviso na tela — porque falhar fechado aqui seria recusar instalar por não conseguir resolver um número:  1. **A versão mais recente ainda não tem as três imagens publicadas** (a tag do git nasce minutos antes delas): cai no canal `stable` e avisa. É o caminho mais provável nos primeiros minutos de uma release. 2. **Sem rede ou sem tag no remoto**, cai em `latest` e avisa. Trocar previsibilidade por disponibilidade é o negócio errado numa instalação que já começou. 3. **Quem preenche o `.env` à mão** a partir de `.env.vps.example` recebe `stable` — o piso seguro para quem não vai rodar a entrevista. `--yes` com o template preserva esse valor.  A cascata inteira está em `grep -n 'VERSAO_ALVO=' setup-kit/install.sh` — leia lá antes de confiar nesta lista.
 
 **Vira teste:** tests/shell: para cada atribuição de VERSAO_ALVO a uma tag móvel em install.sh, a doutrina precisa nomear a exceção — assert que o conjunto {stable, latest} extraído de `grep -oE 'VERSAO_ALVO="(stable|latest)"' install.sh` está integralmente citado no bloco de exceções do invariante 3
 
@@ -2777,7 +2777,7 @@ verify, build-and-size, invariants, e2e, imagens-ok
 **Mede com:**
 
 ```bash
-grep -n "REPO_DIR=\|git clone\|PROJECT_DIR=" hostgator-setup-kit/install.sh ; grep -rn "/var/www" hostgator-setup-kit/*.sh ; grep -rn "^cd " docs/runbooks/*.md
+grep -n "REPO_DIR=\|git clone\|PROJECT_DIR=" setup-kit/install.sh ; grep -rn "/var/www" setup-kit/*.sh ; grep -rn "^cd " docs/runbooks/*.md
 ```
 
 **Deu:**
@@ -2805,14 +2805,14 @@ grep -rn "TRAEFIK_DOCKER_NETWORK" . --exclude-dir=node_modules --exclude-dir=.gi
 
 ```
 TRAEFIK_DOCKER_NETWORK -> 1 ocorrência em TODO o repo: docs/runbooks/deploy.md:25 (a própria frase).
-TRAEFIK_NETWORK -> .env.hostgator.example, docker-compose.traefik.yml, hostgator-setup-kit/install.sh, _common.sh, test-validators.sh.
+TRAEFIK_NETWORK -> .env.vps.example, docker-compose.traefik.yml, setup-kit/install.sh, _common.sh, test-validators.sh.
 docker-compose.traefik.yml: traefik.docker.network: "${TRAEFIK_NETWORK:-traefik}" e networks.proxy.name: "${TRAEFIK_NETWORK:-traefik}".
-.env.hostgator.example:75: #TRAEFIK_NETWORK=traefik
+.env.vps.example:75: #TRAEFIK_NETWORK=traefik
 ```
 
 **Sugestão:** - associa o contêiner à rede onde o Traefik o encontra — `TRAEFIK_NETWORK` no `.env`, que o `install.sh` descobre e grava. O nome da variável está no próprio override, não confie nesta linha: `grep -n TRAEFIK docker-compose.traefik.yml`;
 
-**Vira teste:** extrair de docs/runbooks/deploy.md todo token `[A-Z][A-Z0-9_]{3,}` entre crases e assertar que cada um aparece em docker-compose*.yml, .env.example ou .env.hostgator.example — expect(orfaos).toEqual([])
+**Vira teste:** extrair de docs/runbooks/deploy.md todo token `[A-Z][A-Z0-9_]{3,}` entre crases e assertar que cada um aparece em docker-compose*.yml, .env.example ou .env.vps.example — expect(orfaos).toEqual([])
 
 ### L46 · NAO_VERIFICAVEL · gravidade baixa · sobre-o-codigo
 
@@ -2860,7 +2860,7 @@ app/app/layout.tsx:28: if (!user) redirect("/login");
 **Mede com:**
 
 ```bash
-grep -n "TARGET_TAG" hostgator-setup-kit/update.sh | head -3 ; grep -n "stable" docker-compose.prod.yml ; grep -rn "gh release create" docs/ .github/
+grep -n "TARGET_TAG" setup-kit/update.sh | head -3 ; grep -n "stable" docker-compose.prod.yml ; grep -rn "gh release create" docs/ .github/
 ```
 
 **Deu:**
@@ -2882,7 +2882,7 @@ Medido no GHCR: deskcommcrm:latest revision=840917ed (topo da main) vs deskcommc
 **Mede com:**
 
 ```bash
-grep -n "fail-fast\|push: \|- name: deskcomm" .github/workflows/publish-image.yml ; grep -n -A8 'if ! dc pull' hostgator-setup-kit/update.sh
+grep -n "fail-fast\|push: \|- name: deskcomm" .github/workflows/publish-image.yml ; grep -n -A8 'if ! dc pull' setup-kit/update.sh
 ```
 
 **Deu:**
@@ -2910,11 +2910,11 @@ grep -rn "15-25min\|~4min" docker-compose.build.yml docs/
 ```
 docker-compose.build.yml:2: # Uso (avançado — requer VPS >=4GB RAM ou swap; build leva ~15-25min num VPS):
 docs/runbooks/deploy.md:108: (medido: ~4min num VPS de 3.8 GB com 4 GB de swap)
-docs/superpowers/specs/2026-07-02-hostgator-deploy-design.md:64: webpack 34min vs ~4min do turbopack  ← o ~4min ali é do `pnpm build`, não da imagem
+docs/superpowers/specs/2026-07-02-hostinger-deploy-design.md:64: webpack 34min vs ~4min do turbopack  ← o ~4min ali é do `pnpm build`, não da imagem
 docs/adr/0001-packaging-e-distribuicao.md:148: "4–34 min" não existe no repo
 ```
 
-**Sugestão:** Requisitos: >= 4 GB de RAM **ou** swap. Quanto demora, meça na hora (`time docker compose ... build app`) — os dois números que o repo carrega não medem a mesma coisa: o `docker-compose.build.yml` fala em ~15-25min para a **imagem inteira**, e os ~4min de `docs/superpowers/specs/2026-07-02-hostgator-deploy-design.md` são só o `pnpm build` com turbopack, dentro dela. E isto é o requisito **deste caminho de exceção**, não da operação normal.
+**Sugestão:** Requisitos: >= 4 GB de RAM **ou** swap. Quanto demora, meça na hora (`time docker compose ... build app`) — os dois números que o repo carrega não medem a mesma coisa: o `docker-compose.build.yml` fala em ~15-25min para a **imagem inteira**, e os ~4min de `docs/superpowers/specs/2026-07-02-hostinger-deploy-design.md` são só o `pnpm build` com turbopack, dentro dela. E isto é o requisito **deste caminho de exceção**, não da operação normal.
 
 
 ## `docs/runbooks/remediar-worker-congelado.md` — 11
@@ -2984,7 +2984,7 @@ HEAD  :236  version: process.env.APP_VERSION || "desconhecido",
 **Mede com:**
 
 ```bash
-sed -n '250,270p' hostgator-setup-kit/update.sh; grep -n 'set_env_var .env APP_IMAGE "$PREV_IMAGE"' hostgator-setup-kit/agent.sh
+sed -n '250,270p' setup-kit/update.sh; grep -n 'set_env_var .env APP_IMAGE "$PREV_IMAGE"' setup-kit/agent.sh
 ```
 
 **Deu:**
@@ -3005,7 +3005,7 @@ agent.sh:299        set_env_var .env APP_IMAGE "$PREV_IMAGE"
 **Mede com:**
 
 ```bash
-grep -n -A 13 '^gravar_imagens()' hostgator-setup-kit/_common.sh; grep -n 'ensure_encryption_key\|NUVEMSHOP_OAUTH_ENCRYPTION_KEY' hostgator-setup-kit/update.sh hostgator-setup-kit/_common.sh
+grep -n -A 13 '^gravar_imagens()' setup-kit/_common.sh; grep -n 'ensure_encryption_key\|NUVEMSHOP_OAUTH_ENCRYPTION_KEY' setup-kit/update.sh setup-kit/_common.sh
 ```
 
 **Deu:**
@@ -3016,7 +3016,7 @@ update.sh:274  ensure_encryption_key .env
 _common.sh:638  printf '\nNUVEMSHOP_OAUTH_ENCRYPTION_KEY=%s\n' "$key" >> "$envfile"   → 7ª chave possível
 ```
 
-**Sugestão:** O `update.sh` reescreve **seis** chaves de imagem no `.env` — `APP_IMAGE`, `APP_PULL_POLICY`, `WORKER_IMAGE`, `WORKER_PULL_POLICY`, `SCHEDULER_IMAGE`, `SCHEDULER_PULL_POLICY` (todas em `gravar_imagens`, `hostgator-setup-kit/_common.sh`) — e acrescenta `NUVEMSHOP_OAUTH_ENCRYPTION_KEY` se ela faltar. Todo o resto fica intacto, inclusive o que o operador acrescentou à mão. Confira sem depender deste número: `diff /root/.env.antes-remediacao .env`.
+**Sugestão:** O `update.sh` reescreve **seis** chaves de imagem no `.env` — `APP_IMAGE`, `APP_PULL_POLICY`, `WORKER_IMAGE`, `WORKER_PULL_POLICY`, `SCHEDULER_IMAGE`, `SCHEDULER_PULL_POLICY` (todas em `gravar_imagens`, `setup-kit/_common.sh`) — e acrescenta `NUVEMSHOP_OAUTH_ENCRYPTION_KEY` se ela faltar. Todo o resto fica intacto, inclusive o que o operador acrescentou à mão. Confira sem depender deste número: `diff /root/.env.antes-remediacao .env`.
 
 **Vira teste:** tests/unit/packaging-artefato-do-cliente.test.ts: extrair as chaves que `gravar_imagens` grava em `_common.sh` e assertar `expect(chaves).toEqual(['APP_IMAGE','APP_PULL_POLICY','WORKER_IMAGE','WORKER_PULL_POLICY','SCHEDULER_IMAGE','SCHEDULER_PULL_POLICY'])` — quem acrescentar a quarta imagem reprova e vai atualizar o runbook.
 
@@ -3124,7 +3124,7 @@ nenhuma issue com WAHA/resíduo/pin no título; as 5 issues criadas desde 2026-0
 **Mede com:**
 
 ```bash
-grep -n 'PIN_CORRIGIDO=\|update_requested' hostgator-setup-kit/agent.sh; grep -n -A 5 '^completar_pin_ausente()' hostgator-setup-kit/_common.sh
+grep -n 'PIN_CORRIGIDO=\|update_requested' setup-kit/agent.sh; grep -n -A 5 '^completar_pin_ausente()' setup-kit/_common.sh
 ```
 
 **Deu:**
@@ -4059,7 +4059,7 @@ ci.yml:2 · e2e.yml:1 · perf.yml:1 · publish-image.yml:0
 
 ### L63 · FALSA · gravidade alta · pendencia
 
-> Existe (+ `.env.hostgator.example`), mas **6 vars de `lib/env.ts` continuam ausentes**, entre elas 3 secrets
+> Existe (+ `.env.vps.example`), mas **6 vars de `lib/env.ts` continuam ausentes**, entre elas 3 secrets
 
 **Mede com:**
 
@@ -4075,7 +4075,7 @@ grep -c IMPERSONATE_COOKIE_SECRET .env.example; grep -c INTERNAL_CRON_SECRET .en
 1 — as três presentes (idem LGPD_DPO_EMAIL, LGPD_EXPORT_EXPIRES_HOURS, NUVEMSHOP_ENABLED)
 ```
 
-**Sugestão:** | 5 | `.env.example` | ✅ | Existe (+ `.env.hostgator.example`) e cobre as vars de `lib/env.ts`, secrets incluídos. Régua: `for v in $(grep -oE '[A-Z_]{6,}' lib/env.ts | sort -u); do grep -q "$v" .env.example || echo "ausente: $v"; done` |
+**Sugestão:** | 5 | `.env.example` | ✅ | Existe (+ `.env.vps.example`) e cobre as vars de `lib/env.ts`, secrets incluídos. Régua: `for v in $(grep -oE '[A-Z_]{6,}' lib/env.ts | sort -u); do grep -q "$v" .env.example || echo "ausente: $v"; done` |
 
 ### L68 · FRAGIL · gravidade baixa · sobre-o-codigo
 
@@ -4300,18 +4300,18 @@ verify, build-and-size, invariants, e2e, imagens-ok
 **Mede com:**
 
 ```bash
-git log --oneline v1.3.0..HEAD | wc -l ; git log --oneline v1.3.0..HEAD --no-merges -- app lib hostgator-setup-kit supabase workers | wc -l ; git diff --name-only --diff-filter=A v1.3.0 HEAD -- supabase/migrations/
+git log --oneline v1.3.0..HEAD | wc -l ; git log --oneline v1.3.0..HEAD --no-merges -- app lib setup-kit supabase workers | wc -l ; git diff --name-only --diff-filter=A v1.3.0 HEAD -- supabase/migrations/
 ```
 
 **Deu:**
 
 ```
-64 commits desde v1.3.0; 38 deles (sem merges) tocam app/lib/hostgator-setup-kit/supabase/workers; 3 migrations novas: 0155_marca_da_instalacao_no_banco.sql, 0156_quadro_do_onboarding.sql, 0157_marca_por_organizacao.sql. Entre os commits: e4963c6e 'feat(auth): a verificação em duas etapas vira escolha, não imposição', 11d87a11 'marca própria (whitelabel)', 6aabe750 'Pipeline e Kanban saem da interface', c2f88e83 'onboarding: sem chave de IA, o passo de treinar era um BECO'. `git tag --contains` de cada um devolve vazio.
+64 commits desde v1.3.0; 38 deles (sem merges) tocam app/lib/setup-kit/supabase/workers; 3 migrations novas: 0155_marca_da_instalacao_no_banco.sql, 0156_quadro_do_onboarding.sql, 0157_marca_por_organizacao.sql. Entre os commits: e4963c6e 'feat(auth): a verificação em duas etapas vira escolha, não imposição', 11d87a11 'marca própria (whitelabel)', 6aabe750 'Pipeline e Kanban saem da interface', c2f88e83 'onboarding: sem chave de IA, o passo de treinar era um BECO'. `git tag --contains` de cada um devolve vazio.
 ```
 
 **Sugestão:** ## [Não lançado]  ### Adicionado  - **Marca própria.** Nome, cor e logo da instalação e de cada organização passam a viver no banco, e alcançam também e-mail, PDF e o aplicativo autenticador. - **O onboarding monta o funcionário:** o quadro nasce pela IA, a chave é testada na hora, e o vocabulário do funil é escolhido no wizard.  ### Alterado  - **A verificação em duas etapas vira escolha, não imposição.** O cadastro deixa de ser obrigatório para administradores; quem exige agora é uma chave em Configurações › Segurança (na plataforma e na organização), e o padrão é não exigir. Quem JÁ tem o segundo fator continua provando-o na sessão. - **"Pipeline" e "Kanban" saem da interface** — na tela agora são "Funis" e "Etapas do funil".  ### ⚠️ Requer atenção  - **3 mudanças de banco** (migrations 0155 a 0157). O `update.sh` aplica sozinho.  > Esta seção não pode ficar vazia enquanto houver comm
 
-**Vira teste:** tests/unit/changelog-nao-lancado.test.ts — dada a última tag `T` (`git describe --tags --abbrev=0`), se `git log T..HEAD --no-merges -- app lib hostgator-setup-kit supabase workers` tem ≥1 commit, então o bloco entre `## [Não lançado]` e o próximo `## [` deve ter ≥1 linha não vazia. Sabotagem que reprova: apagar o corpo da seção com commits de produto pendentes.
+**Vira teste:** tests/unit/changelog-nao-lancado.test.ts — dada a última tag `T` (`git describe --tags --abbrev=0`), se `git log T..HEAD --no-merges -- app lib setup-kit supabase workers` tem ≥1 commit, então o bloco entre `## [Não lançado]` e o próximo `## [` deve ter ≥1 linha não vazia. Sabotagem que reprova: apagar o corpo da seção com commits de produto pendentes.
 
 ### L11 · FALSA · gravidade media · ponteiro
 
@@ -4340,7 +4340,7 @@ Headings: Não lançado, 1.3.0, 1.2.1, 1.2.0, 1.1.0, 1.0.0. Definições de link
 **Mede com:**
 
 ```bash
-git tag --list | sort -V | tail -3 ; grep -n 'ultima_versao_publicada' hostgator-setup-kit/install.sh
+git tag --list | sort -V | tail -3 ; grep -n 'ultima_versao_publicada' setup-kit/install.sh
 ```
 
 **Deu:**
@@ -4358,7 +4358,7 @@ Tags: v1.2.0, v1.2.1, v1.3.0. install.sh:1025 resolve a última versão publicad
 **Mede com:**
 
 ```bash
-grep -n 'WAHA_IMAGE' hostgator-setup-kit/*.sh ; grep -nE 'image:|pull_policy' docker-compose.prod.yml ; sed -n '405,440p' docs/runbooks/remediar-worker-congelado.md
+grep -n 'WAHA_IMAGE' setup-kit/*.sh ; grep -nE 'image:|pull_policy' docker-compose.prod.yml ; sed -n '405,440p' docs/runbooks/remediar-worker-congelado.md
 ```
 
 **Deu:**
@@ -4378,7 +4378,7 @@ grep -n 'WAHA_IMAGE' hostgator-setup-kit/*.sh ; grep -nE 'image:|pull_policy' do
 **Mede com:**
 
 ```bash
-git show v1.3.0:hostgator-setup-kit/agent.sh | grep -n 'completar_pin_ausente\|pin_incompleto' ; grep -n 'completar_pin_ausente' hostgator-setup-kit/_common.sh ; git log --oneline -S 'o agente de atualização corrige parte disso sozinho' -- CHANGELOG.md ; git tag --contains 81b3bd5d ; git diff v1.3.0 HEAD -- CHANGELOG.md
+git show v1.3.0:setup-kit/agent.sh | grep -n 'completar_pin_ausente\|pin_incompleto' ; grep -n 'completar_pin_ausente' setup-kit/_common.sh ; git log --oneline -S 'o agente de atualização corrige parte disso sozinho' -- CHANGELOG.md ; git tag --contains 81b3bd5d ; git diff v1.3.0 HEAD -- CHANGELOG.md
 ```
 
 **Deu:**
@@ -4398,7 +4398,7 @@ Em v1.3.0 o agent.sh NÃO tem `completar_pin_ausente` nem `pin_incompleto` (grep
 **Mede com:**
 
 ```bash
-grep -n 'WAHA_IMAGE' hostgator-setup-kit/update.sh hostgator-setup-kit/agent.sh hostgator-setup-kit/_common.sh ; grep -n 'Ainda não consertado' docs/runbooks/remediar-worker-congelado.md
+grep -n 'WAHA_IMAGE' setup-kit/update.sh setup-kit/agent.sh setup-kit/_common.sh ; grep -n 'Ainda não consertado' docs/runbooks/remediar-worker-congelado.md
 ```
 
 **Deu:**
@@ -4432,7 +4432,7 @@ tests/invariants/hardening-definer-varredura.test.ts existe (8831 bytes) e está
 **Mede com:**
 
 ```bash
-sed -n '1025,1060p;1310,1340p' hostgator-setup-kit/install.sh
+sed -n '1025,1060p;1310,1340p' setup-kit/install.sh
 ```
 
 **Deu:**
@@ -4488,18 +4488,18 @@ HEAD: 10 conferências, nesta ordem — stop, lgpd, pacing, messaging_window, sp
 **Mede com:**
 
 ```bash
-git ls-tree -r --name-only v1.0.0 hostgator-setup-kit/ ; git show v1.0.0:hostgator-setup-kit/README.md | sed -n '44,52p' ; ls hostgator-setup-kit/*.sh | wc -l
+git ls-tree -r --name-only v1.0.0 setup-kit/ ; git show v1.0.0:setup-kit/README.md | sed -n '44,52p' ; ls setup-kit/*.sh | wc -l
 ```
 
 **Deu:**
 
 ```
-v1.0.0 tinha 8 arquivos `.sh`, mas um deles é `_common.sh` (biblioteca compartilhada, não operação); o README da tag documenta exatamente **7** scripts. O "assistente de instalação em IA" é `hostgator-setup-kit/CLAUDE.md` — um markdown ("# Você é o assistente de instalação do DeskcommCRM"), não um script. Portanto: 7 scripts + 1 documento, contados como 8 scripts. No HEAD a pasta tem 14 `.sh` (entram agent, comecar, diagnostico, marca-emails, supabase-provision, test-validators).
+v1.0.0 tinha 8 arquivos `.sh`, mas um deles é `_common.sh` (biblioteca compartilhada, não operação); o README da tag documenta exatamente **7** scripts. O "assistente de instalação em IA" é `setup-kit/CLAUDE.md` — um markdown ("# Você é o assistente de instalação do DeskcommCRM"), não um script. Portanto: 7 scripts + 1 documento, contados como 8 scripts. No HEAD a pasta tem 14 `.sh` (entram agent, comecar, diagnostico, marca-emails, supabase-provision, test-validators).
 ```
 
 **Sugestão:** - 7 scripts de operação — `install`, `update`, `backup`, `restore`, `reset-password`, `reset-mfa` e `healthcheck` — mais `CLAUDE.md`, o roteiro que faz uma IA conduzir a instalação de ponta a ponta para quem não programa.
 
-**Vira teste:** tests/shell ou tests/unit/kit-readme-casa-com-a-pasta.test.ts — todo `.sh` executável da pasta `hostgator-setup-kit/` que não comece com `_` aparece na tabela do README do kit. Hoje 6 dos 14 estão fora dela, incluindo o `diagnostico.sh` que o próprio CHANGELOG manda o cliente rodar.
+**Vira teste:** tests/shell ou tests/unit/kit-readme-casa-com-a-pasta.test.ts — todo `.sh` executável da pasta `setup-kit/` que não comece com `_` aparece na tabela do README do kit. Hoje 6 dos 14 estão fora dela, incluindo o `diagnostico.sh` que o próprio CHANGELOG manda o cliente rodar.
 
 ### L337 · FALSA · gravidade alta · sobre-o-codigo
 
@@ -4594,17 +4594,17 @@ De 69 reexaminadas, 4 caíram. Duas eram frases escritas na mesma sessão da var
 **Por que caiu:** O varredor grepou a ÁRVORE DE TRABALHO (main @ 840917ed) — `_common.sh:464/466` e `cron_line` — para provar uma afirmação que é ESCOPADA POR VERSÃO ("desde a 1.3.0"). O kit que roda na VPS do cliente é o da tag: `update.sh` faz `git checkout "$TARGET_TAG"` (update.sh:119) e só depois o cron chama o `agent.sh` do disco. Na tag v1.3.0 a função `completar_pin_ausente` NÃO EXISTE — nem em `_common.sh`, nem chamada no `agent.sh`. Ela entrou em `81b3bd5d` (2026-08-14), um dia DEPOIS do commit da v1.3.0 (2026-08-13 16:52), e não está em tag nenhuma: v1.3.0 é a mais recente. Ou seja: nenhuma instalação existente hoje tem esse comportamento. Presença de string na main != comportamento na versão publicada. Pior: quem lê este runbook para atender um cliente afetado vai dizer a ele "espere 5 minutos que o pin se completa sozinho" — e nada acontece, para sempre.
 
 ```bash
-git show v1.3.0:hostgator-setup-kit/_common.sh | grep -c completar_pin_ausente ; git show v1.3.0:hostgator-setup-kit/agent.sh | grep -c completar_pin_ausente ; grep -n completar_pin_ausente hostgator-setup-kit/agent.sh ; git log --oneline -S completar_pin_ausente -- hostgator-setup-kit/_common.sh ; git log -1 --format='%h %ad' --date=short 81b3bd5d ; git merge-base --is-ancestor 81b3bd5d v1.3.0 && echo 'SIM (está na v1.3.0)' || echo 'NAO — posterior a v1.3.0' ; git tag -l 'v*' --sort=-v:refname | head -1 ; git log -1 --format='%ad' --date=iso v1.3.0
+git show v1.3.0:setup-kit/_common.sh | grep -c completar_pin_ausente ; git show v1.3.0:setup-kit/agent.sh | grep -c completar_pin_ausente ; grep -n completar_pin_ausente setup-kit/agent.sh ; git log --oneline -S completar_pin_ausente -- setup-kit/_common.sh ; git log -1 --format='%h %ad' --date=short 81b3bd5d ; git merge-base --is-ancestor 81b3bd5d v1.3.0 && echo 'SIM (está na v1.3.0)' || echo 'NAO — posterior a v1.3.0' ; git tag -l 'v*' --sort=-v:refname | head -1 ; git log -1 --format='%ad' --date=iso v1.3.0
 ```
 
 ```
-$ git show v1.3.0:hostgator-setup-kit/_common.sh | grep -c completar_pin_ausente
+$ git show v1.3.0:setup-kit/_common.sh | grep -c completar_pin_ausente
 0
-$ git show v1.3.0:hostgator-setup-kit/agent.sh | grep -c completar_pin_ausente
+$ git show v1.3.0:setup-kit/agent.sh | grep -c completar_pin_ausente
 0
-$ grep -n completar_pin_ausente hostgator-setup-kit/agent.sh          # HEAD 840917ed
+$ grep -n completar_pin_ausente setup-kit/agent.sh          # HEAD 840917ed
 180:PIN_CORRIGIDO="$(completar_pin_ausente .env)" || PIN_CORRIGIDO=""
-$ git log --oneline -S completar_pin_ausente -- hostgator-setup-kit/_common.sh
+$ git log --oneline -S completar_pin_ausente -- setup-kit/_common.sh
 81b3bd5d feat(kit): o agente completa o pin sozinho — só a lacuna, nunca a decisão
 $ git log -1 --format='%h %ad' --date=short 81b3bd5d
 81b3bd5d 2026-08-14
@@ -4648,15 +4648,15 @@ De fora da VPS: `HTTP 307`, e o health com `supabase: ok`, `redis: ok`, `waha: o
 **Por que caiu:** O comando mediu duas das três parcelas (7 serviços, 768+512+1280 = 2560m) e passou batido pela terceira — o `~150 MB por número de WhatsApp`, que é justamente a que sustenta a recomendação comercial de 4 GB e o limiar de aviso do `install.sh`. Nenhum comando da varredura, e nenhum artefato do repo, mede consumo por sessão WAHA: o número só existe em prosa, em 7 lugares que se citam entre si, e a ocorrência mais antiga é herdada da síntese do curso WAHA (`docs/research/reference-synthesis.md`, "NOWEB … ~150MB"), não de uma medição deste projeto. É número que pega carona: contar de novo os contêineres não calibra a parcela que ninguém mediu.
 
 ```bash
-grep -rn '150 MB\|150MB' --include='*.md' . | grep -v node_modules ; git log --format='%h %ad %s' --date=short -S '150 MB' -- docs/ hostgator-setup-kit/ CHANGELOG.md | tail -3
+grep -rn '150 MB\|150MB' --include='*.md' . | grep -v node_modules ; git log --format='%h %ad %s' --date=short -S '150 MB' -- docs/ setup-kit/ CHANGELOG.md | tail -3
 ```
 
 ```
-CHANGELOG.md:18 · docs/white-label.md:183 · docs/research/reference-synthesis.md:117 · docs/runbooks/waha-hostgator.md:20 · docs/runbooks/deploy.md:110 · docs/doctrine/packaging.md:413 · hostgator-setup-kit/README.md:93   → 7 ocorrências, TODAS prosa; zero teste, zero saída de `docker stats`, zero anexo de medição
+CHANGELOG.md:18 · docs/white-label.md:183 · docs/research/reference-synthesis.md:117 · docs/runbooks/waha-vps.md:20 · docs/runbooks/deploy.md:110 · docs/doctrine/packaging.md:413 · setup-kit/README.md:93   → 7 ocorrências, TODAS prosa; zero teste, zero saída de `docker stats`, zero anexo de medição
 $ git log -S '150 MB' … | tail -3
 efe82e50 2026-08-03 feat(kit): porta de entrada para quem ainda não tem servidor
 fb103fad 2026-07-28 fix(vps): a recomendação passa a ser 4 GB, e o kit para de dizer que 2 GB bastam
-8cd723b8 2026-05-05 docs(waha): switch production hosting recommendation Hetzner → Hostgator   ← origem: prosa herdada, não medição
+8cd723b8 2026-05-05 docs(waha): switch production hosting recommendation Hetzner → Hostinger   ← origem: prosa herdada, não medição
 ```
 
 
@@ -4687,19 +4687,19 @@ QUEBRADOS: []
 - docs/threat-model.md — inventário da superfície de ataque; citado como autoridade por CLAUDE.md e ARCHITECTURE.md. O front-matter declara `audited_against: origin/main @ 789dfa6 (2026-07-27)`, mas o corpo fala em presente e 4 itens já foram fechados no código.
 - triagem/TRIAGEM.md — o procedimento de triagem de PR (o próprio workflow que rodou esta varredura). Lista os checks obrigatórios da branch protection. CLAUDE.md avisa que medir contra a régua errada é 'o modo de falha nº 1 do procedimento de triagem'.
 - triagem/references/complemento-do-ci.md — anexo do TRIAGEM.md com 'o que os gates não provam'.
-- docs/deploy-hostgator/README.md — guia de compra + instalação para leigo (P0 de primeira impressão). Nomeia plano de VPS e ensina um passo de MFA que não existe mais.
+- docs/deploy-vps/README.md — guia de compra + instalação para leigo (P0 de primeira impressão). Nomeia plano de VPS e ensina um passo de MFA que não existe mais.
 - docs/testing/user-journey-map.md — o mapa de jornadas que o DoD 12 manda atualizar; fonte da verdade do QA de produto.
 - tests/invariants/README.md — contrato do harness de invariantes que todo contribuidor lê antes de adicionar um.
 - tests/e2e/README.md e tests/unit/README.md — listas de 'suítes a criar' escritas antes da implementação.
 - lib/waha/README.md, lib/ai/README.md, lib/api/README.md — READMEs de módulo marcados 'Placeholder'.
 - supabase/migrations/MANIFEST.md — o ledger obrigatório do item 11 do Definition of Done.
 - docs/deploy-selfhost/README.md — AUDITADO SEM ACHADO: os 10 paths e as 12 env vars que cita existem; o fluxo bate com update.sh.
-- docs/ATUALIZANDO.md — AUDITADO SEM ACHADO: conferido contra hostgator-setup-kit/update.sh linha a linha; os 6 passos, o backup e os 3 scripts citados conferem.
+- docs/ATUALIZANDO.md — AUDITADO SEM ACHADO: conferido contra setup-kit/update.sh linha a linha; os 6 passos, o backup e os 3 scripts citados conferem.
 - docs/architecture/README.md — AUDITADO SEM ACHADO: a tabela de 10 mapas bate com `ls docs/architecture/*.json` (10).
 - docs/doctrine/sistema-vivo.md — AUDITADO SEM ACHADO: '10 gates before-send' bate com BEFORE_SEND_GATES (10 entradas).
 - docs/white-label.md — AUDITADO SEM ACHADO: /admin/marca, /app/settings/marca, X-Deskcomm-Signature e 'o alarme de orçamento não tem cron' conferem.
-- docs/SETUP.md, docs/runbooks/waha-hostgator.md, docs/runbooks/ai-credentials-rotation.md, VISION.md, docs/business-rules/, docs/doctrine/restricao-de-canal.md, docs/doctrine/separacao-fala-e-operacao.md — varridos por existência de path e por contagem; zero path morto, zero contagem. O runbook de rotação cita `scripts/rotate-ai-cred-aes-key.ts` mas DECLARA que ele não existe — honesto, não é achado.
-- Fora do escopo literal do brief (não são raiz nem docs/) mas não cobertos e com afirmação de estado: .claude/agents/triagem-medidor.md, .claude/skills/sistema-vivo/SKILL.md, hostgator-setup-kit/README.md, hostgator-setup-kit/CLAUDE.md, plan/progress.md, tasks/todo.md.
+- docs/SETUP.md, docs/runbooks/waha-vps.md, docs/runbooks/ai-credentials-rotation.md, VISION.md, docs/business-rules/, docs/doctrine/restricao-de-canal.md, docs/doctrine/separacao-fala-e-operacao.md — varridos por existência de path e por contagem; zero path morto, zero contagem. O runbook de rotação cita `scripts/rotate-ai-cred-aes-key.ts` mas DECLARA que ele não existe — honesto, não é achado.
+- Fora do escopo literal do brief (não são raiz nem docs/) mas não cobertos e com afirmação de estado: .claude/agents/triagem-medidor.md, .claude/skills/sistema-vivo/SKILL.md, setup-kit/README.md, setup-kit/CLAUDE.md, plan/progress.md, tasks/todo.md.
 - NÃO SÃO ACHADO, e é deliberado: docs/specs/* e docs/stories/epics/* citam 324 paths inexistentes (medido). São planos — afirmam futuro, não estado. Excluí-los foi decisão minha, não omissão.
 
 # Achados nesses documentos (19)
@@ -4720,7 +4720,7 @@ gh api repos/melgarafael/DeskcommCRM/branches/main/protection --jq '{contexts:.r
 **Sugestão:** São CINCO: verify, build-and-size, invariants, e2e, imagens-ok. As outras duas afirmações da mesma seção (`strict=false` na linha 89, sem review humano obrigatório na linha 15) foram medidas e CONFEREM — só a lista está velha. É o pior lugar possível para esse erro: CLAUDE.md registra que medir contra a régua errada é 'o modo de falha nº 1 do procedimento de triagem', e este é o arquivo que define o procedimento. Um triador que leia esta linha declara 'passou os obrigatórios' tendo rodado 3 de 5 — e os dois que faltam (`e2e`, `imagens-ok`) são justamente os que cobrem o artefato que o self-hoster instala.
 
 
-## `docs/deploy-hostgator/README.md`:177 · FALSA · gravidade alta
+## `docs/deploy-vps/README.md`:177 · FALSA · gravidade alta
 
 > 3. **Segurança em 2 etapas (MFA):** no primeiro login o CRM pede pra configurar um código de 6 dígitos. Tenha o app **Google Authenticator** ou **Authy** no celular, escaneie o QR e digite o código. (Isso protege a conta de admin.)
 
@@ -4787,19 +4787,19 @@ lib/ai/dispatcher/index.ts:298
 > ### T5 — Secrets ausentes do `.env.example` 🟠 CONFIRMADO — `IMPERSONATE_COOKIE_SECRET`, `INTERNAL_CRON_SECRET`, `LGPD_SIGNING_KEY` estão em `lib/env.ts` e **não** no template. O operador não sabe que precisa gerá-los.
 
 ```bash
-grep -n 'IMPERSONATE_COOKIE_SECRET\|INTERNAL_CRON_SECRET\|LGPD_SIGNING_KEY' .env.example .env.hostgator.example
+grep -n 'IMPERSONATE_COOKIE_SECRET\|INTERNAL_CRON_SECRET\|LGPD_SIGNING_KEY' .env.example .env.vps.example
 ```
 
 ```
 .env.example:20:INTERNAL_CRON_SECRET=
 .env.example:124:IMPERSONATE_COOKIE_SECRET=
 .env.example:132:LGPD_SIGNING_KEY=
-.env.hostgator.example:129:INTERNAL_CRON_SECRET=                    # opcional; vazio = usa INTERNAL_SECRET
-.env.hostgator.example:133:IMPERSONATE_COOKIE_SECRET=               # openssl rand -hex 32  (>=32 chars)
-.env.hostgator.example:134:LGPD_SIGNING_KEY=                        # openssl rand -hex 32
+.env.vps.example:129:INTERNAL_CRON_SECRET=                    # opcional; vazio = usa INTERNAL_SECRET
+.env.vps.example:133:IMPERSONATE_COOKIE_SECRET=               # openssl rand -hex 32  (>=32 chars)
+.env.vps.example:134:LGPD_SIGNING_KEY=                        # openssl rand -hex 32
 ```
 
-**Sugestão:** Os TRÊS estão nos DOIS templates, e o de produção ainda traz o comando de geração ao lado. T5 está fechado; sai do corpo e da tabela de prioridade (linha 195). Deixar risco resolvido marcado 🟠 CONFIRMADO gasta atenção no lugar errado e faz duvidar dos itens que ainda valem — T4 continua VERDADEIRO e merece a atenção que T5 rouba (medido: lib/auth/invite-token.ts:16 ainda tem o literal "dev-fallback", e INVITE_TOKEN_SECRET dá 0 ocorrências em lib/env.ts, .env.example E .env.hostgator.example).
+**Sugestão:** Os TRÊS estão nos DOIS templates, e o de produção ainda traz o comando de geração ao lado. T5 está fechado; sai do corpo e da tabela de prioridade (linha 195). Deixar risco resolvido marcado 🟠 CONFIRMADO gasta atenção no lugar errado e faz duvidar dos itens que ainda valem — T4 continua VERDADEIRO e merece a atenção que T5 rouba (medido: lib/auth/invite-token.ts:16 ainda tem o literal "dev-fallback", e INVITE_TOKEN_SECRET dá 0 ocorrências em lib/env.ts, .env.example E .env.vps.example).
 
 
 ## `docs/threat-model.md`:153 · FALSA · gravidade media
@@ -4944,7 +4944,7 @@ verify, build-and-size, invariants, e2e, imagens-ok
 **Sugestão:** A pendência foi resolvida por outro caminho: em vez de exigir `build-and-push` direto, criou-se o job de fachada `imagens-ok`, que depende dele, falha junto, e É check obrigatório. O nome literal 'build-and-push' de fato não está na protection — então quem confere pelo NOME conclui que a pendência continua. Mas a CONSEQUÊNCIA afirmada ('informa mas não barra') é falsa, e é a consequência que decide se um triador deixa passar um PR que quebra a imagem. Na mesma página, linha 171 diz 'os quatro obrigatórios' — são cinco.
 
 
-## `docs/deploy-hostgator/README.md`:49 · FRAGIL · gravidade media
+## `docs/deploy-vps/README.md`:49 · FRAGIL · gravidade media
 
 > **Plano recomendado: VPS NVMe 4** (2 vCPU / 4 GB / 100 GB NVMe) — é exatamente o mínimo que o runbook de produção declara. A stack sobe num NVMe 2, mas opera no limite.
 
@@ -4953,20 +4953,20 @@ grep -rniE 'turing|cartesius|nvme 4|nvme 2' --include='*.md' --include='*.sh' . 
 ```
 
 ```
-hostgator-setup-kit/comecar.sh:125:    - Plano VPS Turing (ou superior) - 2 vCPU e 4 GB de RAM
-hostgator-setup-kit/comecar.sh:126:      O plano Cartesius (1 vCPU / 2 GB) NAO da conta
-hostgator-setup-kit/README.md:7 -> Turing
-docs/runbooks/waha-hostgator.md:18 -> Turing
+setup-kit/comecar.sh:125:    - Plano VPS Turing (ou superior) - 2 vCPU e 4 GB de RAM
+setup-kit/comecar.sh:126:      O plano Cartesius (1 vCPU / 2 GB) NAO da conta
+setup-kit/README.md:7 -> Turing
+docs/runbooks/waha-vps.md:18 -> Turing
 docs/specs/03-spec-whatsapp-waha.md:61 e :1940 -> Turing
 docs/specs/08-spec-deploy-observability.md:80 e :1367 -> Turing
 docs/prd/03-prd-whatsapp-waha.md:369 -> Turing
 docs/presentation/{pitch-deck,HANDOFF}.md -> Turing
-docs/deploy-hostgator/README.md:49 -> "VPS NVMe 4"   <-- unica ocorrencia no repo
+docs/deploy-vps/README.md:49 -> "VPS NVMe 4"   <-- unica ocorrencia no repo
 --- runbook ---
 docs/runbook
 ```
 
-**Sugestão:** 'VPS NVMe 4' aparece UMA vez no repo inteiro; o artefato executável (comecar.sh:125 — o script que este mesmo guia manda o comprador rodar) e outros 9 documentos nomeiam 'VPS Turing'. O comprador leigo é mandado a uma caixinha com nome que o resto do produto não conhece, e o script que ele roda em seguida lhe diz outro nome. FRAGIL e não FALSA porque não consigo decidir qual está certo sem o catálogo atual da HostGator — mas os dois não podem estar certos, e a régua natural é o script. A segunda metade da frase também não se sustenta: docs/runbooks/deploy.md:108 declara '>= 4 GB de RAM ou swap' e diz explicitamente que é requisito do CAMINHO DE EXCEÇÃO (build na VPS), 'não da operação'.
+**Sugestão:** 'VPS NVMe 4' aparece UMA vez no repo inteiro; o artefato executável (comecar.sh:125 — o script que este mesmo guia manda o comprador rodar) e outros 9 documentos nomeiam 'VPS Turing'. O comprador leigo é mandado a uma caixinha com nome que o resto do produto não conhece, e o script que ele roda em seguida lhe diz outro nome. FRAGIL e não FALSA porque não consigo decidir qual está certo sem o catálogo atual da Hostinger — mas os dois não podem estar certos, e a régua natural é o script. A segunda metade da frase também não se sustenta: docs/runbooks/deploy.md:108 declara '>= 4 GB de RAM ou swap' e diz explicitamente que é requisito do CAMINHO DE EXCEÇÃO (build na VPS), 'não da operação'.
 
 
 ## `tests/invariants/README.md`:35 · FALSA · gravidade media

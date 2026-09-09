@@ -41,9 +41,9 @@ Migrar de namespace não é renomear um repositório: é invalidar o `APP_IMAGE`
 mudança que as consertaria — o clássico problema de atualizar o atualizador.
 
 **Custo medido de uma migração futura:** o namespace vive numa constante única
-(`IMG_NS` em `hostgator-setup-kit/_common.sh`), mais o default de cada serviço em
-`docker-compose.prod.yml`, mais `.env.hostgator.example`, os testes que casam a string
-(`tests/shell/update-guard.test.sh`, `hostgator-setup-kit/test-validators.sh`,
+(`IMG_NS` em `setup-kit/_common.sh`), mais o default de cada serviço em
+`docker-compose.prod.yml`, mais `.env.vps.example`, os testes que casam a string
+(`tests/shell/update-guard.test.sh`, `setup-kit/test-validators.sh`,
 `tests/unit/packaging-artefato-do-cliente.test.ts`) e os docs — **mais** o `.env` de cada
 instalação viva, que é a parte que nenhum commit alcança. Régua para reconferir antes de
 citar este parágrafo: `grep -rln "ghcr.io/melgarafael" --exclude-dir=node_modules .`

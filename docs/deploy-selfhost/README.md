@@ -24,7 +24,7 @@
 
 ```bash
 git clone https://github.com/melgarafael/DeskcommCRM.git && cd DeskcommCRM
-cp .env.hostgator.example .env   # o template de produção (o .env.example é o de dev)
+cp .env.vps.example .env   # o template de produção (o .env.example é o de dev)
 ```
 
 Edite o `.env` e preencha (mínimo):
@@ -106,10 +106,10 @@ Para conferir quem é quem na sua instalação, sem acreditar neste texto:
 
 ```bash
 # cada linha diz "chamada ao Postgres → com qual string"
-grep -nE '(psql|pg_dump) "' hostgator-setup-kit/*.sh
+grep -nE '(psql|pg_dump) "' setup-kit/*.sh
 ```
 
-`url_do_schema` (em `hostgator-setup-kit/_common.sh`) é a resolução: usa
+`url_do_schema` (em `setup-kit/_common.sh`) é a resolução: usa
 `SUPABASE_DB_ADMIN_URL` e, ausente ou vazia, cai em `SUPABASE_DB_URL`.
 
 Duas consequências que valem saber antes de escolher onde declarar:
@@ -117,7 +117,7 @@ Duas consequências que valem saber antes de escolher onde declarar:
 - O `docker-compose.prod.yml` entrega o `.env` inteiro ao `app` e ao `worker`
   (`env_file: .env`). Declarar `SUPABASE_DB_ADMIN_URL` ali a expõe aos
   contêineres. Para não expor, passe-a só no comando:
-  `SUPABASE_DB_ADMIN_URL='...' bash hostgator-setup-kit/install.sh`.
+  `SUPABASE_DB_ADMIN_URL='...' bash setup-kit/install.sh`.
 - Em compensação, o `update.sh` roda **sozinho** (cron do `agent.sh`) e é ele
   que entrega migration nova ao clone. Sem a chave no `.env`, cada atualização
   precisa da sua mão. Escolha consciente, não descuido.
@@ -151,7 +151,7 @@ chegando com link para `https://SEU_DOMINIO/auth/confirm`.
 
 ```bash
 export SUPABASE_ACCESS_TOKEN=sbp_...      # supabase.com/dashboard/account/tokens
-bash hostgator-setup-kit/marca-emails.sh
+bash setup-kit/marca-emails.sh
 ```
 
 Ele sobe assunto e corpo dos dois e-mails **com a marca da sua instalação**
@@ -205,7 +205,7 @@ nome da marca e a cor do botão são `__APP_NAME__` / `__ACCENT__`, e o cliente
 receberia isso literalmente. Renderize antes e aponte para o resultado:
 
 ```bash
-bash hostgator-setup-kit/marca-emails.sh --render-em /opt/deskcomm/emails
+bash setup-kit/marca-emails.sh --render-em /opt/deskcomm/emails
 # GOTRUE_MAILER_TEMPLATES_CONFIRMATION=/opt/deskcomm/emails/confirmation.html
 # GOTRUE_MAILER_TEMPLATES_RECOVERY=/opt/deskcomm/emails/recovery.html
 ```
@@ -242,7 +242,7 @@ e é preciso repetir o comando quando a marca mudar.
   (`FLYWHEEL_INTERVAL_MS`) e grava PROPOSTAS de melhoria de prompt em
   `flywheel_distiller_proposals`. Nada é aplicado sozinho: revise e cole o
   bullet no prompt do agente na tela, publicando uma versão nova.
-- **Atualizar**: `bash hostgator-setup-kit/update.sh` — ele puxa a tag publicada,
+- **Atualizar**: `bash setup-kit/update.sh` — ele puxa a tag publicada,
   re-aplica o `baseline.sql` (idempotente), sobe e faz backup antes. Não use
   `up -d --build`: isso reconstrói na sua máquina em vez de puxar a imagem
   testada, e **numa VPS com proxy reverso próprio o `up -d` precisa dos dois

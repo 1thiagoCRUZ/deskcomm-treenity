@@ -47,7 +47,7 @@
       "lane": "config",
       "col": 6,
       "type": "service",
-      "label": "hostgator-setup-kit/marca-emails.sh",
+      "label": "setup-kit/marca-emails.sh",
       "sublabel": "sem SUPABASE_ACCESS_TOKEN imprime o passo manual e SAI 0 — nunca derruba instalação"
     },
     {

@@ -430,7 +430,7 @@ psql_run() { docker run --rm -i postgres:17-alpine psql "$(url_do_schema)" -v ON
 # Esta linha é a ÚNICA fonte do namespace para tudo que executa — os testes do
 # kit a leem em vez de repetir a string. Quem a confere é
 # `tests/unit/namespace-das-imagens.test.ts`, que assere este valor e cobra que
-# `docker-compose.prod.yml`, `.env.hostgator.example` e a matriz de
+# `docker-compose.prod.yml`, `.env.vps.example` e a matriz de
 # `publish-image.yml` digam o mesmo. Se você é um fork, é lá que está a lista do
 # que trocar junto.
 IMG_NS="ghcr.io/melgarafael"
@@ -792,7 +792,7 @@ setup_update_agent_cron() {
   # morre calada a cada 5 minutos em qualquer REPO_DIR customizado ou /opt.
   # A assinatura legada inclui o PROJECT_DIR: é o que distingue a linha desta
   # instalação da linha de uma vizinha, que roda o mesmo agent.sh em outra pasta.
-  local legado="cd ${PROJECT_DIR} && bash hostgator-setup-kit/agent.sh"
+  local legado="cd ${PROJECT_DIR} && bash setup-kit/agent.sh"
   local marcador; marcador="$(cron_tag agent)"
   local cron_line="*/5 * * * * ${legado} >/dev/null 2>&1 ${marcador}"
   ( crontab -l 2>/dev/null | cron_merge "$marcador" "$legado" "$cron_line" ) | crontab -

@@ -19,7 +19,7 @@ describe("configuração REST do Redis", () => {
   it("aceita o endereço do contêiner do kit self-host, com porta e sem TLS", () => {
     // CONTROLE POSITIVO. Sem ele, um validador "seguro" que reprovasse tudo
     // deixaria os casos abaixo verdes e derrubaria toda instalação em VPS: o
-    // `.env.hostgator.example` aponta para o contêiner `srh` em http.
+    // `.env.vps.example` aponta para o contêiner `srh` em http.
     expect(validarConfigRedisRest("http://srh:80", token)).toEqual({ ok: true, reason: "ok" });
   });
 

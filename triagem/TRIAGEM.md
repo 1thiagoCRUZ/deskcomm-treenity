@@ -110,7 +110,7 @@ Todo comentário desta triagem abre com a âncora invisível `<!-- triagem-de-pr
 | só `package.json`/lockfile | 3, 4 (linha de dependência), 9, 10 |
 | `app/`, `components/`, `lib/` | todos |
 | `supabase/` | todos, com o passe 4 reforçado |
-| `hostgator-setup-kit/`, `docker-compose*`, `Dockerfile` | todos + instalação do zero + **GET externo** |
+| `setup-kit/`, `docker-compose*`, `Dockerfile` | todos + instalação do zero + **GET externo** |
 | `.github/workflows/` vindo de fork | todos + leitura linha a linha |
 
 PR pequeno não paga pipeline caro. Isso não é economia: triagem lenta reintroduz exatamente a
@@ -715,7 +715,7 @@ entre abrir o PR e a primeira resposta humana**.
 
 ## 10-bis. O crédito pode se perder na assinatura, e você é quem vê isso
 
-Um contribuidor desta fila abriu três PRs assinando como `root <root@vpsbr-…hostgator.com.br>` —
+Um contribuidor desta fila abriu três PRs assinando como `root <root@vpsbr-…hostinger.com.br>` —
 ele commitou direto da VPS. `gh api …/pulls/<n>/commits --jq .[].author.login` devolve **`null`**:
 o GitHub não associa aquilo a conta nenhuma, e **o trabalho não aparece no perfil dele**.
 

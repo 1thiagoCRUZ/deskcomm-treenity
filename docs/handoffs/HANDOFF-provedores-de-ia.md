@@ -266,7 +266,7 @@ quem instalou. Tokens em zero e custo em NULL na linha de erro.
 |---|---|---|---|
 | P1 | Visão/áudio ilegível devolvia `""` em silêncio | `workers/media-derive-worker.ts` | ✅ resolvido em `91109c06` (migration 0129) |
 | P2 | Pontos sem telemetria | registro | ✅ parcial: mídia agora avisa na Central; `contagem_de_tokens` e `embedding_consultar` seguem sem log próprio (são chamadas HTTP diretas, fora do seam) |
-| P3 | `install.sh` truncava o `.env` E apagava chave opcional não-coletada | `hostgator-setup-kit/install.sh` | ✅ resolvido |
+| P3 | `install.sh` truncava o `.env` E apagava chave opcional não-coletada | `setup-kit/install.sh` | ✅ resolvido |
 | P4 | Sete variáveis de ambiente de modelo continuam válidas e competem com o binding | `lib/agent-engine/env.ts` | ✅ resolvido em `ab37426c` — precedência declarada e testada |
 | P5 | `psql-transporte.ts` duplica ~10 linhas do `gov-helpers.ts`. Não estendi o original porque `tests/invariants/**` é congelado por hook, e usar a variável de escape seria decidir sozinho uma questão do dono do repo | `tests/invariants/` | aguarda decisão do Rafael |
 | P6 | Resolvedor plugado no seam (`c2a78b31`) | `lib/agent-engine/edge/llm/` | ✅ resolvido |
@@ -377,7 +377,7 @@ de `"$0"` é o que faz isso funcionar depois do `cd`, que era o defeito da 2ª
 execução por caminho relativo.
 
 A alegação das "3 re-execuções" media o código antigo e **não vale mais**. O que
-vale hoje está no CI: `hostgator-setup-kit/test-validators.sh` passou a rodar no
+vale hoje está no CI: `setup-kit/test-validators.sh` passou a rodar no
 job `verify` (via `pnpm test:shell`), com um caso por provedor que afere, no
 `--yes`, que o `.env` sai inteiro e que a chave configurada à mão sobrevive.
 

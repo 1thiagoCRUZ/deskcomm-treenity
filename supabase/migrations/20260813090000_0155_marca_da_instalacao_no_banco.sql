@@ -23,7 +23,7 @@
 --
 -- O parágrafo acima foi escrito como se valesse para as três colunas. Vale para
 -- duas. `install.sh` grava `APP_NAME` e `APP_LOGO_URL` no `.env` e NÃO grava
--- `APP_ACCENT_HEX` (medido: `grep -c APP_ACCENT_HEX hostgator-setup-kit/install.sh`
+-- `APP_ACCENT_HEX` (medido: `grep -c APP_ACCENT_HEX setup-kit/install.sh`
 -- → 0, contra 7 de `APP_NAME`) — a chave só existe em `.env.example`, e o `.env`
 -- é escrito com truncamento, então quem a puser à mão a perde no install
 -- seguinte.

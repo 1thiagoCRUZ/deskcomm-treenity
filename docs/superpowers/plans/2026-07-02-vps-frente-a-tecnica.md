@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Tornar o DeskcommCRM rodável 100% via `docker compose up` num VPS HostGator, sem quebrar o deploy Vercel atual.
+**Goal:** Tornar o DeskcommCRM rodável 100% via `docker compose up` num VPS Hostinger, sem quebrar o deploy Vercel atual.
 
 **Architecture:** Híbrido — compute no VPS (containers app+waha+redis+srh+scheduler+caddy), DB no Supabase Cloud. Mudanças de código mínimas e aditivas (atrás de config/flag); infra nova em arquivos novos.
 
@@ -32,7 +32,7 @@
 | `docker-compose.prod.yml` | Create | 6 serviços + rede + volumes + healthchecks + log rotation |
 | `Caddyfile` | Create | reverse proxy + HTTPS auto + timeout do runner de agente |
 | `ofelia.ini` | Create | 4 jobs de cron (curl na rede interna) |
-| `.env.hostgator.example` | Create | template de env comentado (build-time vs runtime vs gerado) |
+| `.env.vps.example` | Create | template de env comentado (build-time vs runtime vs gerado) |
 | `supabase/baseline.sql` | Create | dump consolidado do schema real (public+storage+publication) |
 | `scripts/bootstrap-owner.ts` | Create | cria 1º dono: user+org+membership+platform_admins |
 | `package.json` | Modify | `db:migrate` aponta pro fluxo baseline (remove stub) |
@@ -74,7 +74,7 @@ Expected: build conclui; existe `.next/standalone/server.js` e `.next/static/`.
 - [ ] **Step 4 (commit):**
 ```bash
 git add next.config.ts lib/env.ts
-git commit -m "feat(hostgator): output standalone + guarda de fase de build no env"
+git commit -m "feat(hostinger): output standalone + guarda de fase de build no env"
 ```
 
 ---
@@ -106,7 +106,7 @@ if (env.NUVEMSHOP_ENABLED && !state.nuvemshop) redirect('/onboarding/connect-nuv
 - [ ] **Step 5 (commit):**
 ```bash
 git add lib/env.ts app/onboarding/page.tsx
-git commit -m "feat(hostgator): Nuvemshop opcional via NUVEMSHOP_ENABLED + auto-skip onboarding"
+git commit -m "feat(hostinger): Nuvemshop opcional via NUVEMSHOP_ENABLED + auto-skip onboarding"
 ```
 
 ---
@@ -133,7 +133,7 @@ docker build --build-arg NEXT_PUBLIC_SUPABASE_URL=https://x.supabase.co \
 ```
 Expected: imagem builda. `docker run --rm -e SUPABASE_SERVICE_ROLE_KEY=... deskcomm-app:test` sobe e loga listen em `:3000` (pode falhar em deps externas, mas o processo inicia).
 
-- [ ] **Step 4 (commit):** `git add Dockerfile .dockerignore && git commit -m "feat(hostgator): Dockerfile multi-stage standalone"`
+- [ ] **Step 4 (commit):** `git add Dockerfile .dockerignore && git commit -m "feat(hostinger): Dockerfile multi-stage standalone"`
 
 ---
 
@@ -159,14 +159,14 @@ select id from storage.buckets order by id;                                     
 select tablename from pg_publication_tables where pubname='supabase_realtime';         -- inclui messages/conversations/crm_leads
 ```
 
-- [ ] **Step 5 (commit):** `git add supabase/baseline.sql package.json && git commit -m "feat(hostgator): baseline.sql consolidado + db:migrate real"`
+- [ ] **Step 5 (commit):** `git add supabase/baseline.sql package.json && git commit -m "feat(hostinger): baseline.sql consolidado + db:migrate real"`
 
 ---
 
 ## Task 5: Compose + Caddy + Ofelia + env template
 
 **Files:**
-- Create: `docker-compose.prod.yml`, `Caddyfile`, `ofelia.ini`, `.env.hostgator.example`
+- Create: `docker-compose.prod.yml`, `Caddyfile`, `ofelia.ini`, `.env.vps.example`
 
 **Interfaces:**
 - Consumes: imagem da Task 3; `INTERNAL_SECRET` para os crons.
@@ -178,31 +178,31 @@ select tablename from pg_publication_tables where pubname='supabase_realtime';  
 
 - [ ] **Step 3:** `ofelia.ini` com os 4 jobs `[job-run]` usando `curlimages/curl` na rede interna, header `Authorization: Bearer ${INTERNAL_SECRET}`: `agent-dispatcher @every 30s`, `storage-redaction?limit=50 @every 5m`, `lgpd-sla-watcher 0 0 12 * * *`, `kb-conversations-batch 0 30 3 * * *`; `TZ=UTC`.
 
-- [ ] **Step 4:** `.env.hostgator.example` comentado em 3 blocos (build-time / runtime-externo / runtime-gerado), com `WAHA_API_BASE_URL=http://waha:3000`, `WAHA_WEBHOOK_BASE_URL=http://app:3000`, `UPSTASH_REDIS_REST_URL=http://srh:80`, `NUVEMSHOP_ENABLED=false`, `INTERNAL_AGENT_RUN_STUB=false`, e comandos `openssl rand` como comentário em cada segredo.
+- [ ] **Step 4:** `.env.vps.example` comentado em 3 blocos (build-time / runtime-externo / runtime-gerado), com `WAHA_API_BASE_URL=http://waha:3000`, `WAHA_WEBHOOK_BASE_URL=http://app:3000`, `UPSTASH_REDIS_REST_URL=http://srh:80`, `NUVEMSHOP_ENABLED=false`, `INTERNAL_AGENT_RUN_STUB=false`, e comandos `openssl rand` como comentário em cada segredo.
 
 - [ ] **Step 5 (verificação):** `docker compose -f docker-compose.prod.yml --env-file .env.local config` valida sem erro; subir a stack com um `.env` real de teste e `curl -f https://<dom>/api/v1/health` (ou `http://localhost` se testar sem TLS) retornar 200.
 
-- [ ] **Step 6 (commit):** `git add docker-compose.prod.yml Caddyfile ofelia.ini .env.hostgator.example && git commit -m "feat(hostgator): compose prod + Caddy + Ofelia + env template"`
+- [ ] **Step 6 (commit):** `git add docker-compose.prod.yml Caddyfile ofelia.ini .env.vps.example && git commit -m "feat(hostinger): compose prod + Caddy + Ofelia + env template"`
 
 ---
 
 ## Task 6: Validação WAHA Core + API key (resolve incertezas da spec §17)
 
 **Files:**
-- Modify: `docker-compose.prod.yml` (imagem/engine WAHA conforme resultado), `.env.hostgator.example`
+- Modify: `docker-compose.prod.yml` (imagem/engine WAHA conforme resultado), `.env.vps.example`
 
 **Interfaces:**
 - Produces: config WAHA confirmada empiricamente (imagem grátis, engine, formato da key).
 
 - [ ] **Step 1:** Subir só o WAHA Core (`docker run` com a imagem grátis `devlikeapro/waha`) e confirmar engine suportada (NOWEB vs WEBJS) e limite de sessão.
 
-- [ ] **Step 2:** Resolver a ambiguidade da key: testar `X-Api-Key` com **hash SHA512** e com **plaintext** contra `/api/sessions`; fixar o formato correto no `.env.hostgator.example` e no passo do `install.sh`.
+- [ ] **Step 2:** Resolver a ambiguidade da key: testar `X-Api-Key` com **hash SHA512** e com **plaintext** contra `/api/sessions`; fixar o formato correto no `.env.vps.example` e no passo do `install.sh`.
 
 - [ ] **Step 3:** Ajustar `docker-compose.prod.yml` (imagem `devlikeapro/waha`, `WAHA_DEFAULT_ENGINE` conforme resultado). Se o Core não pareia/limita demais, escalar a decisão ao Rafael (Plus opcional via `WAHA_IMAGE`).
 
 - [ ] **Step 4 (verificação):** parear um número de teste via QR (`/api/<session>/auth/qr`) e enviar 1 mensagem via `/api/sendText`. Documentar o resultado no topo do compose.
 
-- [ ] **Step 5 (commit):** `git add docker-compose.prod.yml .env.hostgator.example && git commit -m "fix(hostgator): valida WAHA Core (engine + formato da api key)"`
+- [ ] **Step 5 (commit):** `git add docker-compose.prod.yml .env.vps.example && git commit -m "fix(hostinger): valida WAHA Core (engine + formato da api key)"`
 
 ---
 
@@ -223,7 +223,7 @@ OWNER_EMAIL=dono@teste.com OWNER_PASSWORD='Snh!forte123' npx tsx scripts/bootstr
 ```
 Expected: usuário existe, org criada, `select count(*) from platform_admins` = 1; rodar 2x não duplica.
 
-- [ ] **Step 3 (commit):** `git add scripts/bootstrap-owner.ts && git commit -m "feat(hostgator): bootstrap-owner (user+org+platform_admins idempotente)"`
+- [ ] **Step 3 (commit):** `git add scripts/bootstrap-owner.ts && git commit -m "feat(hostinger): bootstrap-owner (user+org+platform_admins idempotente)"`
 
 ---
 

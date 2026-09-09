@@ -229,7 +229,7 @@ Medido em 2026-08-14 @ `741c4ec8`, com o comando ao lado de cada número:
   higieniza — não confie nele como única camada.
 - Não commite screenshot/dump com dado real de cliente.
 
-## Packaging — se você tocou `Dockerfile*`, `docker-compose*.yml` ou `hostgator-setup-kit/`
+## Packaging — se você tocou `Dockerfile*`, `docker-compose*.yml` ou `setup-kit/`
 
 Lei completa em [`docs/doctrine/packaging.md`](docs/doctrine/packaging.md). O não-negociável:
 

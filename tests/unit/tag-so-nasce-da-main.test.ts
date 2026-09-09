@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 /**
  * A tag `vX.Y.Z` é o gatilho de atualização do parque instalado inteiro:
- * `hostgator-setup-kit/agent.sh` oferece a MAIOR tag `v*` a toda VPS, e o
+ * `setup-kit/agent.sh` oferece a MAIOR tag `v*` a toda VPS, e o
  * `update.sh` puxa a imagem por aquele número. Este arquivo vigia as duas
  * propriedades que impedem que ela vire uma porta aberta.
  */
