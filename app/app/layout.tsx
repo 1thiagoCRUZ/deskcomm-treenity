@@ -2,7 +2,7 @@ import { InterfaceRefresh } from "@/hooks/auth/InterfaceRefresh";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { isMfaEnrolled, loadAuthUser, requiresMfa, resolveActiveOrg } from "@/lib/auth/server";
-import { DEFAULT_VISIBILITY_MODE, type VisibilityMode } from "@/lib/auth/types";
+import { DEFAULT_VISIBILITY_MODE, roleAtLeast, type VisibilityMode } from "@/lib/auth/types";
 import { AuthProvider } from "@/hooks/auth/AuthProvider";
 import { AppShell } from "./_components/AppShell";
 import { EstiloDaMarcaDaOrganizacao } from "./_components/EstiloDaMarcaDaOrganizacao";
@@ -16,8 +16,10 @@ import {
   ImpersonateBanner,
 } from "@/components/app/ImpersonateBanner";
 import { ConexaoCaidaBanner } from "@/components/app/ConexaoCaidaBanner";
+import { TreenityBotAlertProvider } from "@/components/app/TreenityBotAlertProvider";
 import { IdiomaProvider } from "@/lib/i18n/IdiomaProvider";
 import { listarConexoesCaidas, type ConexaoCaida } from "@/lib/channels/health";
+import { isConfigured as treenityBotConfigurado } from "@/lib/treenity-bot/config";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await loadAuthUser();
@@ -133,6 +135,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   );
   const shell = <AppShell sidebarCollapsed={collapsed}>{children}</AppShell>;
 
+  // Mesmo gate de role do resto da integração (`minRole: "agent"` em
+  // lib/navigation/catalogo.ts) — sem isso, um "viewer" também abriria um
+  // socket e veria alertas de uma integração que nem aparece pra ele no menu.
+  const mostrarAlertaTreenityBot =
+    treenityBotConfigurado() && roleAtLeast(activeOrg?.role, "agent");
+
   return (
     // O idioma envolve a árvore inteira e recebe o código PRONTO — ele não
     // pergunta quem está logado. Ver `lib/i18n/IdiomaProvider`: foi o
@@ -159,6 +167,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <EstiloDaMarcaDaOrganizacao css={cssDaOrganizacao} />
         <ImpersonateBanner impersonating={impersonating} />
         <ConexaoCaidaBanner caidas={conexoesCaidas} />
+        {mostrarAlertaTreenityBot ? <TreenityBotAlertProvider /> : null}
         {needsMfaGate ? (
           // Gate always mounted for MFA-required roles; it latches the blocking
           // decision client-side so the enroll Server Action's revalidation

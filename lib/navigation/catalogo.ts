@@ -451,6 +451,26 @@ export const NAV_CATALOG = [
     // navegável. Para voltar a mostrá-la, basta devolver `sidebar: true`.
   },
   {
+    href: "/app/integrations/treenity-bot",
+    label: "Treenity Bot",
+    description: "Métricas e atendimentos do bot de vendas (WhatsApp/Facebook), via API externa.",
+    icon: "Robot",
+    group: "canais",
+    minRole: "agent",
+    sidebar: true,
+  },
+  {
+    href: "/app/integrations/treenity-bot/chat",
+    label: "Chat interno (Treenity Bot)",
+    description: "Conversa em tempo real com a equipe, via API do Treenity Bot.",
+    icon: "ChatsCircle",
+    group: "canais",
+    minRole: "agent",
+    // Sem `sidebar`: mesma lógica da dupla de Análise logo abaixo — não repete
+    // "Treenity Bot" na barra lateral. Alcançável pelo ⌘K e pelo link cruzado
+    // em app/app/integrations/treenity-bot/page.tsx.
+  },
+  {
     href: "/app/webhooks",
     label: "Webhooks",
     description: "Avise outros sistemas quando algo acontecer aqui dentro.",
@@ -487,6 +507,18 @@ export const NAV_CATALOG = [
     group: "analise",
     section: "Os números do período",
     sidebar: true,
+  },
+  {
+    href: "/app/analise/treenity-bot",
+    label: "Treenity Bot",
+    description: "Faturamento, clientes e atendimentos do bot de vendas nos últimos 30 dias.",
+    icon: "ChartLineUp",
+    group: "analise",
+    section: "Os números do período",
+    minRole: "agent",
+    // Sem `sidebar`: essa dupla (esta + a de Canais) some do menu lateral pra
+    // não repetir "Treenity Bot" duas vezes na barra — continua alcançável
+    // pelo hub /app/analise e pelo link cruzado na tela de Canais.
   },
   {
     // Logo abaixo de Desempenho porque responde a metade da MESMA pergunta: lá
