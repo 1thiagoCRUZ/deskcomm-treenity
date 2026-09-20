@@ -66,14 +66,32 @@ export default async function MarcaDaOrganizacaoPage() {
   const idioma = user.idioma;
 
   return (
-    <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
-      <header>
+    <div className="relative flex h-full flex-col gap-6 overflow-y-auto p-6">
+      <svg
+        aria-hidden
+        className="pointer-events-none absolute inset-0 h-full w-full opacity-40"
+        preserveAspectRatio="xMidYMid slice"
+        viewBox="0 0 1600 1200"
+      >
+        <defs>
+          <filter id="marca-blob-blur" x="-10%" y="-10%" width="120%" height="120%">
+            <feGaussianBlur stdDeviation="60" />
+          </filter>
+        </defs>
+        <circle cx="200" cy="150" r="180" fill="#d5d7da" filter="url(#marca-blob-blur)" />
+        <circle cx="1400" cy="300" r="220" fill="#dcdee1" filter="url(#marca-blob-blur)" />
+        <circle cx="1500" cy="1050" r="260" fill="#d0d3d7" filter="url(#marca-blob-blur)" />
+        <circle cx="300" cy="1000" r="200" fill="#dadde0" filter="url(#marca-blob-blur)" />
+      </svg>
+
+      <header className="relative">
         <h1 className="text-2xl font-semibold tracking-tight">{traduzir("Marca", idioma)}</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
           {traduzir("O nome e a cor que a sua empresa mostra para quem trabalha aqui dentro.", idioma)}
         </p>
       </header>
 
+      <div className="relative">
       <FormularioDaMarcaDaOrganizacao
         gravada={{
           app_name: gravada?.app_name ?? null,
@@ -104,6 +122,7 @@ export default async function MarcaDaOrganizacaoPage() {
           APP_ACCENT_HEX: env.APP_ACCENT_HEX,
         }}
       />
+      </div>
     </div>
   );
 }

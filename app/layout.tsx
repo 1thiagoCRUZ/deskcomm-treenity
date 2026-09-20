@@ -1,5 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Atkinson_Hyperlegible, IBM_Plex_Mono } from "next/font/google";
+import {
+  Atkinson_Hyperlegible,
+  IBM_Plex_Mono,
+  Inter,
+  Manrope,
+  DM_Sans,
+  Bricolage_Grotesque,
+  Fraunces,
+} from "next/font/google";
 import { headers } from "next/headers";
 import { Toaster } from "sonner";
 import { coresDaBarraDoNavegador } from "@/lib/branding/barra-do-navegador";
@@ -38,6 +46,12 @@ const plexMono = IBM_Plex_Mono({
   display: "swap",
   variable: "--font-mono",
 });
+
+const inter = Inter({ subsets: ["latin"], display: "swap", variable: "--font-inter" });
+const manrope = Manrope({ subsets: ["latin"], display: "swap", variable: "--font-manrope" });
+const dmSans = DM_Sans({ subsets: ["latin"], display: "swap", variable: "--font-dm-sans" });
+const bricolage = Bricolage_Grotesque({ subsets: ["latin"], display: "swap", variable: "--font-bricolage" });
+const fraunces = Fraunces({ subsets: ["latin"], display: "swap", variable: "--font-fraunces" });
 
 /**
  * A pilha de camadas da marca da instalação: BANCO acima, `.env` embaixo.
@@ -278,7 +292,7 @@ export default function RootLayout({
       lang="pt-BR"
       data-theme="light"
       suppressHydrationWarning
-      className={`${atkinson.variable} ${plexMono.variable}`}
+      className={`${atkinson.variable} ${plexMono.variable} ${inter.variable} ${manrope.variable} ${dmSans.variable} ${bricolage.variable} ${fraunces.variable}`}
     >
       <head>
         {/* Primeiro de tudo: a cor da instalação, antes do CSS e do script de tema. */}
@@ -288,7 +302,7 @@ export default function RootLayout({
         <MarcaNoNavegador />
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
-      <body className="min-h-screen bg-bg font-sans text-text antialiased">
+      <body className="min-h-screen bg-bg font-sans text-text antialiased" suppressHydrationWarning>
         <Providers>
           <MarcaDosClientComponents>
             <ThemeProvider>{children}</ThemeProvider>

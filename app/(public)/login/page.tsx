@@ -28,10 +28,12 @@ export default async function LoginPage({
   const t = (texto: string) => traduzir(texto, idioma);
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-1.5 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("Entrar")}</h1>
-        <p className="text-sm text-muted-foreground">{branding().name}</p>
+    <div className="space-y-10">
+      <div className="space-y-3">
+        <h1 className="text-4xl font-bold tracking-tight text-text">{t("Entrar")}</h1>
+        <p className="text-base text-text-muted">
+          {t("Bem-vindo ao")} {branding().name}.
+        </p>
       </div>
       {reset === "success" && (
         <div
@@ -87,7 +89,7 @@ export default async function LoginPage({
         </div>
       )}
       <LoginForm next={next} />
-      <div className="space-y-2 text-center text-sm">
+      <div className="space-y-2 text-sm">
         <p>
           <Link
             href="/login/forgot"

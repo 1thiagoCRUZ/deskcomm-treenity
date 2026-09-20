@@ -58,14 +58,16 @@ export function LoginForm({ next }: { next?: string }) {
   };
 
   return (
-    <form method="post" onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-      <div className="space-y-1.5">
-        <Label htmlFor="email">Email</Label>
+    <form method="post" onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+      <div className="space-y-2">
+        <Label htmlFor="email" className="text-sm font-medium text-text">Email</Label>
         <Input
           id="email"
           type="email"
           autoComplete="email"
           autoFocus
+          placeholder="voce@empresa.com"
+          className="h-11"
           aria-invalid={errors.email ? true : undefined}
           {...register("email")}
         />
@@ -73,12 +75,14 @@ export function LoginForm({ next }: { next?: string }) {
           <p className="text-xs text-destructive">{t(errors.email.message ?? "")}</p>
         )}
       </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="password">{t("Senha")}</Label>
+      <div className="space-y-2">
+        <Label htmlFor="password" className="text-sm font-medium text-text">{t("Senha")}</Label>
         <Input
           id="password"
           type="password"
           autoComplete="current-password"
+          placeholder="••••••••"
+          className="h-11"
           aria-invalid={errors.password ? true : undefined}
           {...register("password")}
         />
@@ -94,7 +98,7 @@ export function LoginForm({ next }: { next?: string }) {
           {serverError}
         </div>
       )}
-      <Button type="submit" className="w-full" disabled={isPending}>
+      <Button type="submit" className="h-11 w-full text-base font-medium" disabled={isPending}>
         {isPending ? t("Entrando...") : t("Entrar")}
       </Button>
     </form>
