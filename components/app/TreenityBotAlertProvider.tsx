@@ -47,6 +47,16 @@ export function TreenityBotAlertProvider() {
 
   useEffect(() => {
     let cancelado = false;
+    let timer: ReturnType<typeof setInterval> | undefined;
+
+    // O token do bot dura 15 min e esta conexão fica aberta o dia todo: sem
+    // renovar, a primeira reconexão depois disso falha e os alertas param.
+    const renovarToken = async () => {
+      const nova = await buscarSessaoChat();
+      if (!nova || cancelado || !socketRef.current) return false;
+      socketRef.current.auth = { token: nova.accessToken };
+      return true;
+    };
 
     (async () => {
       const sessao = await buscarSessaoChat();
@@ -54,6 +64,11 @@ export function TreenityBotAlertProvider() {
 
       const socket = conectarSocketChat(sessao);
       socketRef.current = socket;
+
+      socket.on("connect_error", async (err: Error) => {
+        if (/token/i.test(err.message) && (await renovarToken())) socket.connect();
+      });
+      timer = setInterval(() => void renovarToken(), 10 * 60 * 1000);
 
       socket.on("atendimento_sinalizado", (alerta: AlertaAtendimentoPayload) => {
         toast.warning(alerta.clienteNome, {
@@ -73,6 +88,7 @@ export function TreenityBotAlertProvider() {
 
     return () => {
       cancelado = true;
+      if (timer) clearInterval(timer);
       socketRef.current?.disconnect();
       socketRef.current = null;
     };

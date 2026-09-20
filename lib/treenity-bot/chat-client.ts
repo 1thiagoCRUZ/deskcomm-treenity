@@ -88,12 +88,9 @@ export async function iniciarConversa(sessao: SessaoChatBot, outroUsuarioId: str
   });
 }
 
-export async function buscarHistorico(sessao: SessaoChatBot, conversaId: string): Promise<MensagemBot[]> {
-  const mensagens = await chamarApiBot<MensagemBot[]>(
-    sessao,
-    `/api/chat/history/${encodeURIComponent(conversaId)}`,
-  );
-  return mensagens ?? [];
+/** `null` = falha ao buscar (token vencido, API fora do ar); `[]` = conversa sem mensagens. */
+export async function buscarHistorico(sessao: SessaoChatBot, conversaId: string): Promise<MensagemBot[] | null> {
+  return chamarApiBot<MensagemBot[]>(sessao, `/api/chat/history/${encodeURIComponent(conversaId)}`);
 }
 
 /** Abre a conexão de socket autenticada — quem chama é responsável por fechar (`socket.disconnect()`). */

@@ -7,15 +7,21 @@
  * usando a rota-ponte `/api/treenity-bot/sso` pra virar um accessToken sem
  * nunca expor o segredo de SSO aqui.
  *
- * accessToken dura 15 min (ver JWT_ACCESS_SECRET no api-treenity-bot); pra
- * essa primeira versão não há renovação automática — uma conversa aberta por
- * mais tempo que isso perde a conexão do socket e precisa recarregar a
- * página. Se isso incomodar no uso real, dá pra buscar sessão nova periodicamente.
+ * O histórico mora no banco do bot (criptografado) e a API o devolve inteiro a
+ * cada abertura de conversa — recarregar a página não perde nada. Esta tela
+ * cuida de o usuário ENXERGAR isso: reabre a última conversa depois do reload,
+ * abre na mensagem mais recente (como o WhatsApp Web) e avisa quando algo
+ * falha em vez de mostrar "nenhuma mensagem".
+ *
+ * accessToken dura 15 min (JWT_ACCESS_SECRET do api-treenity-bot): a sessão é
+ * renovada a cada 10 min e o socket reentra na sala da conversa sempre que
+ * reconecta (as salas do socket.io morrem junto com a conexão).
  */
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
+import { toast } from "sonner";
 import { ChatCircle, PaperPlaneTilt, Users } from "@/lib/ui/icons";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
@@ -37,6 +43,10 @@ import {
   type UsuarioBot,
 } from "@/lib/treenity-bot/chat-client";
 
+const CHAVE_ULTIMA_CONVERSA = "treenity-bot:chat:ultima-conversa";
+const RENOVAR_SESSAO_MS = 10 * 60 * 1000;
+const MARGEM_DO_FIM_PX = 80;
+
 export default function ChatInterno() {
   const t = useT();
   const [carregando, setCarregando] = useState(true);
@@ -46,16 +56,41 @@ export default function ChatInterno() {
   const [conversaId, setConversaId] = useState<string | null>(null);
   const [mensagens, setMensagens] = useState<MensagemBot[]>([]);
   const [texto, setTexto] = useState("");
+  const [conectado, setConectado] = useState(false);
+  const [entrou, setEntrou] = useState(false);
+  const [abrindo, setAbrindo] = useState(false);
+  const [erroAoAbrir, setErroAoAbrir] = useState(false);
 
   const socketRef = useRef<Socket | null>(null);
+  const sessaoRef = useRef<SessaoChatBot | null>(null);
   const conversaIdRef = useRef<string | null>(null);
+  const tRef = useRef(t);
+  const listaRef = useRef<HTMLDivElement>(null);
+  const noFimRef = useRef(true);
+  const forcarFimRef = useRef(false);
+  const restauradoRef = useRef(false);
+
+  useEffect(() => {
+    tRef.current = t;
+  }, [t]);
+
+  const renovarSessao = useCallback(async () => {
+    const nova = await buscarSessaoChat();
+    if (!nova) return null;
+    sessaoRef.current = nova;
+    setSessao(nova);
+    if (socketRef.current) socketRef.current.auth = { token: nova.accessToken };
+    return nova;
+  }, []);
 
   useEffect(() => {
     let cancelado = false;
+    let timer: ReturnType<typeof setInterval> | undefined;
 
     (async () => {
       const s = await buscarSessaoChat();
       if (cancelado) return;
+      sessaoRef.current = s;
       setSessao(s);
       setCarregando(false);
       if (!s) return;
@@ -66,44 +101,116 @@ export default function ChatInterno() {
 
       const socket = conectarSocketChat(s);
       socketRef.current = socket;
+
+      socket.on("connect", () => {
+        setConectado(true);
+        // As salas do socket.io somem quando a conexão cai: reentra na conversa aberta.
+        if (conversaIdRef.current) socket.emit("join_chat", { conversaId: conversaIdRef.current });
+      });
+      socket.on("disconnect", () => {
+        setConectado(false);
+        setEntrou(false);
+      });
+      socket.on("connect_error", async (err: Error) => {
+        setConectado(false);
+        if (/token/i.test(err.message) && (await renovarSessao()) && !cancelado) socket.connect();
+      });
+      socket.on("chat_joined", () => setEntrou(true));
+      socket.on("chat_error", (dados: { error?: string }) => {
+        toast.error(dados?.error ?? tRef.current("Falha no chat."));
+      });
       socket.on("receive_message", (mensagem: MensagemBot) => {
         if (mensagem.conversaId !== conversaIdRef.current) return;
         setMensagens((prev) => (prev.some((m) => m.id === mensagem.id) ? prev : [...prev, mensagem]));
       });
+
+      timer = setInterval(() => void renovarSessao(), RENOVAR_SESSAO_MS);
     })();
 
     return () => {
       cancelado = true;
+      if (timer) clearInterval(timer);
       socketRef.current?.disconnect();
       socketRef.current = null;
     };
+  }, [renovarSessao]);
+
+  const selecionarUsuario = useCallback(async (usuario: UsuarioBot) => {
+    const s = sessaoRef.current;
+    if (!s) return;
+
+    setUsuarioSelecionado(usuario);
+    setMensagens([]);
+    setConversaId(null);
+    setEntrou(false);
+    setErroAoAbrir(false);
+    setAbrindo(true);
+    conversaIdRef.current = null;
+    try {
+      localStorage.setItem(`${CHAVE_ULTIMA_CONVERSA}:${s.usuario.id}`, usuario.id);
+    } catch {
+      /* armazenamento indisponível: só não reabre sozinho depois do reload */
+    }
+
+    const conversa = await iniciarConversa(s, usuario.id);
+    if (!conversa) {
+      setAbrindo(false);
+      setErroAoAbrir(true);
+      return;
+    }
+    setConversaId(conversa.id);
+    conversaIdRef.current = conversa.id;
+    socketRef.current?.emit("join_chat", { conversaId: conversa.id });
+
+    const historico = await buscarHistorico(s, conversa.id);
+    if (conversaIdRef.current !== conversa.id) return; // trocou de conversa no meio do caminho
+    setAbrindo(false);
+    if (!historico) {
+      setErroAoAbrir(true);
+      return;
+    }
+    forcarFimRef.current = true;
+    setMensagens(historico);
   }, []);
 
-  const selecionarUsuario = useCallback(
-    async (usuario: UsuarioBot) => {
-      if (!sessao) return;
-      setUsuarioSelecionado(usuario);
-      setMensagens([]);
-      setConversaId(null);
-      conversaIdRef.current = null;
+  // Reabre a última conversa depois de recarregar a página.
+  useEffect(() => {
+    if (restauradoRef.current || !sessao || usuarios.length === 0) return;
+    restauradoRef.current = true;
+    try {
+      const salvo = localStorage.getItem(`${CHAVE_ULTIMA_CONVERSA}:${sessao.usuario.id}`);
+      const alvo = usuarios.find((u) => u.id === salvo);
+      if (alvo) void selecionarUsuario(alvo);
+    } catch {
+      /* sem armazenamento: o usuário escolhe a pessoa de novo */
+    }
+  }, [sessao, usuarios, selecionarUsuario]);
 
-      const conversa = await iniciarConversa(sessao, usuario.id);
-      if (!conversa) return;
+  // Abre na mensagem mais recente; depois só acompanha se a pessoa já estava lá embaixo.
+  useEffect(() => {
+    const el = listaRef.current;
+    if (!el) return;
+    if (forcarFimRef.current || noFimRef.current) el.scrollTop = el.scrollHeight;
+    forcarFimRef.current = false;
+  }, [mensagens]);
 
-      setConversaId(conversa.id);
-      conversaIdRef.current = conversa.id;
-      socketRef.current?.emit("join_chat", { conversaId: conversa.id });
+  function aoRolar() {
+    const el = listaRef.current;
+    if (!el) return;
+    noFimRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < MARGEM_DO_FIM_PX;
+  }
 
-      const historico = await buscarHistorico(sessao, conversa.id);
-      setMensagens(historico);
-    },
-    [sessao],
-  );
+  async function tentarDeNovo() {
+    if (!usuarioSelecionado) return;
+    await renovarSessao();
+    void selecionarUsuario(usuarioSelecionado);
+  }
 
   function enviarMensagem(e: React.FormEvent) {
     e.preventDefault();
     const conteudo = texto.trim();
-    if (!conteudo || !conversaId) return;
+    if (!conteudo || !conversaId || !conectado || !entrou) return;
+    forcarFimRef.current = true;
     socketRef.current?.emit("send_message", { conversaId, conteudo });
     setTexto("");
   }
@@ -121,6 +228,8 @@ export default function ChatInterno() {
       </Card>
     );
   }
+
+  const podeEnviar = conectado && entrou;
 
   return (
     <div className="grid h-full grid-cols-[22rem_1fr] overflow-hidden rounded-lg border border-border bg-surface">
@@ -179,11 +288,33 @@ export default function ChatInterno() {
                   {iniciaisDe(usuarioSelecionado.nome)}
                 </AvatarFallback>
               </Avatar>
-              <span className="text-lg font-semibold">{usuarioSelecionado.nome}</span>
+              <div className="min-w-0">
+                <span className="block truncate text-lg font-semibold">{usuarioSelecionado.nome}</span>
+                {!conectado ? (
+                  <span className="block text-xs text-warning-fg">{t("Reconectando…")}</span>
+                ) : null}
+              </div>
             </div>
 
-            <ScrollArea className="flex-1 px-3 py-4">
-              {mensagens.length === 0 ? (
+            <div
+              ref={listaRef}
+              onScroll={aoRolar}
+              className="min-h-0 flex-1 overflow-y-auto px-3 py-4"
+            >
+              {erroAoAbrir ? (
+                <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
+                  <p className="text-base text-muted-foreground">
+                    {t("Não foi possível carregar esta conversa agora. Suas mensagens continuam salvas.")}
+                  </p>
+                  <Button variant="secondary" size="sm" onClick={() => void tentarDeNovo()}>
+                    {t("Tentar de novo")}
+                  </Button>
+                </div>
+              ) : abrindo ? (
+                <p className="px-4 py-8 text-center text-base text-muted-foreground">
+                  {t("Carregando conversa…")}
+                </p>
+              ) : mensagens.length === 0 ? (
                 <p className="px-4 py-8 text-center text-base text-muted-foreground">
                   {t("Nenhuma mensagem ainda. Diga oi!")}
                 </p>
@@ -220,17 +351,22 @@ export default function ChatInterno() {
                   );
                 })
               )}
-            </ScrollArea>
+            </div>
 
             <form onSubmit={enviarMensagem} className="flex items-center gap-3 border-t border-border p-4">
               <Input
                 value={texto}
                 onChange={(e) => setTexto(e.target.value)}
-                placeholder={t("Escreva uma mensagem...")}
+                placeholder={podeEnviar ? t("Escreva uma mensagem...") : t("Conectando…")}
                 autoComplete="off"
                 className="h-11 text-base"
               />
-              <Button type="submit" size="icon" className="h-11 w-11 shrink-0" disabled={!texto.trim()}>
+              <Button
+                type="submit"
+                size="icon"
+                className="h-11 w-11 shrink-0"
+                disabled={!texto.trim() || !podeEnviar}
+              >
                 <PaperPlaneTilt size={18} weight="fill" aria-hidden />
               </Button>
             </form>
