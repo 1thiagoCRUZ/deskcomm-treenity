@@ -125,6 +125,7 @@ export function FormularioDaMarcaDaOrganizacao({ gravada, instalacao, ambiente }
   const router = useRouter();
   const [nome, setNome] = useState(gravada.app_name ?? "");
   const [hex, setHex] = useState(gravada.accent_hex ?? "");
+  const [corSecundaria, setCorSecundaria] = useState<string>("#6b7078");
   const [erroTecnico, setErroTecnico] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -250,7 +251,7 @@ export function FormularioDaMarcaDaOrganizacao({ gravada, instalacao, ambiente }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-3xl space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6">
       <Card className="space-y-4 p-6">
         <h2 className="text-base font-semibold tracking-tight text-text">
           {t("Como sua empresa aparece")}
@@ -274,48 +275,98 @@ export function FormularioDaMarcaDaOrganizacao({ gravada, instalacao, ambiente }
           </p>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="org_accent_hex">{t("Cor da sua marca")}</Label>
-          <div className="flex items-center gap-3">
-            {/* Atalho, nunca o controle principal: o seletor do navegador escolhe
-                UM pixel e não mostra o que o sistema faz com ele. Quem ensina é a
-                escala abaixo. */}
-            <label
-              className="relative h-10 w-10 shrink-0 cursor-pointer overflow-hidden rounded-sm border border-border"
-              style={{
-                backgroundColor: ehHexValido(hexLimpo)
-                  ? normalizarHex(hexLimpo)
-                  : COR_NEUTRA_DO_SELETOR,
-              }}
-            >
-              <span className="sr-only">{t("Escolher a cor visualmente")}</span>
-              <input
-                type="color"
-                value={ehHexValido(hexLimpo) ? normalizarHex(hexLimpo) : COR_NEUTRA_DO_SELETOR}
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="org_accent_hex">{t("Cor primária")}</Label>
+            <div className="flex items-center gap-3">
+              <label
+                className="relative h-10 w-10 shrink-0 cursor-pointer overflow-hidden rounded-sm border border-border"
+                style={{
+                  backgroundColor: ehHexValido(hexLimpo)
+                    ? normalizarHex(hexLimpo)
+                    : COR_NEUTRA_DO_SELETOR,
+                }}
+              >
+                <span className="sr-only">{t("Escolher a cor primária visualmente")}</span>
+                <input
+                  type="color"
+                  value={ehHexValido(hexLimpo) ? normalizarHex(hexLimpo) : COR_NEUTRA_DO_SELETOR}
+                  onChange={(e) => setHex(e.target.value)}
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                />
+              </label>
+              <Input
+                id="org_accent_hex"
+                value={hex}
                 onChange={(e) => setHex(e.target.value)}
-                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                placeholder="#3b64de"
+                spellCheck={false}
+                autoComplete="off"
+                aria-invalid={!hexValido}
+                aria-describedby="ajuda-da-cor-da-organizacao"
+                className="w-36 font-mono"
               />
-            </label>
-            <Input
-              id="org_accent_hex"
-              value={hex}
-              onChange={(e) => setHex(e.target.value)}
-              placeholder="#7a5cd6"
-              spellCheck={false}
-              autoComplete="off"
-              aria-invalid={!hexValido}
-              aria-describedby="ajuda-da-cor-da-organizacao"
-              className="w-36 font-mono"
-            />
-            {hexLimpo.length > 0 && !hexValido ? (
-              <span className="text-sm text-error-fg">
-                {t("Use um código de cor como #7a5cd6.")}
-              </span>
-            ) : null}
+              {hexLimpo.length > 0 && !hexValido ? (
+                <span className="text-sm text-error-fg">
+                  {t("Use um código de cor como #3b64de.")}
+                </span>
+              ) : null}
+            </div>
+            <p id="ajuda-da-cor-da-organizacao" className="text-xs text-text-muted">
+              {t("Botões, links e destaques. Deixe em branco para voltar à cor que o sistema já usa.")}
+            </p>
           </div>
-          <p id="ajuda-da-cor-da-organizacao" className="text-xs text-text-muted">
-            {t("Deixe em branco para voltar à cor que o sistema já usa.")}
-          </p>
+
+          <div className="space-y-2">
+            <Label htmlFor="org_secondary_hex">{t("Cor secundária")}</Label>
+            <div className="flex items-center gap-3">
+              <label
+                className="relative h-10 w-10 shrink-0 cursor-pointer overflow-hidden rounded-sm border border-border"
+                style={{ backgroundColor: corSecundaria }}
+              >
+                <span className="sr-only">{t("Escolher a cor secundária visualmente")}</span>
+                <input
+                  type="color"
+                  value={corSecundaria}
+                  onChange={(e) => setCorSecundaria(e.target.value)}
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                />
+              </label>
+              <Input
+                id="org_secondary_hex"
+                value={corSecundaria}
+                onChange={(e) => setCorSecundaria(e.target.value)}
+                placeholder="#6b7078"
+                spellCheck={false}
+                autoComplete="off"
+                className="w-36 font-mono"
+              />
+            </div>
+            <p className="text-xs text-text-muted">
+              {t("Detalhes de apoio: fundos suaves, separadores, ícones neutros. Padrão cinza.")}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 rounded-md border border-border bg-surface-elevated p-3">
+          <span className="text-xs font-medium text-text-muted">{t("Prévia:")}</span>
+          <div className="flex items-center gap-2">
+            <div
+              className="h-6 w-16 rounded"
+              style={{ backgroundColor: ehHexValido(hexLimpo) ? normalizarHex(hexLimpo) : COR_NEUTRA_DO_SELETOR }}
+            />
+            <span className="text-xs text-text-muted">{t("Primária")}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div
+              className="h-6 w-16 rounded"
+              style={{ backgroundColor: corSecundaria }}
+            />
+            <span className="text-xs text-text-muted">{t("Secundária")}</span>
+          </div>
+          <span className="ml-auto text-xs text-text-subtle">
+            {t("Secundária ainda não persiste — em breve.")}
+          </span>
         </div>
 
         {derivada ? (

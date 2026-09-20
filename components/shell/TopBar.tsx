@@ -4,6 +4,8 @@ import { MobileSidebar } from "./MobileSidebar";
 import { TenantSwitcher } from "./TenantSwitcher";
 import { UserMenu } from "./UserMenu";
 import { SearchTrigger } from "./SearchTrigger";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { CustomizacaoPopover } from "@/components/branding/CustomizacaoPopover";
 
 export function TopBar() {
   return (
@@ -16,6 +18,8 @@ export function TopBar() {
         <SearchTrigger />
       </div>
       <div className="flex shrink-0 items-center gap-2">
+        <CustomizacaoPopover />
+        <ThemeToggle />
         <AlertsBell />
         <UserMenu />
       </div>
