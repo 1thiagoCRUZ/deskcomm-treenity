@@ -3,7 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { prefixoDoArquivo } from "@/components/auth/RecoveryCodesPanel";
-import { DEFAULT_APP_NAME, resolveBranding } from "@/lib/branding";
+import { DEFAULT_APP_NAME, DEFAULT_LOGO_URL, resolveBranding } from "@/lib/branding";
 
 const RAIZ = process.cwd();
 
@@ -11,8 +11,8 @@ describe("resolveBranding", () => {
   it("cai no padrão quando não há marca configurada", () => {
     expect(resolveBranding(undefined, undefined)).toEqual({
       name: DEFAULT_APP_NAME,
-      logoUrl: null,
-      initial: "D",
+      logoUrl: DEFAULT_LOGO_URL,
+      initial: "T",
     });
   });
 
@@ -22,7 +22,7 @@ describe("resolveBranding", () => {
     // isso como marca válida deixaria a interface sem nome nenhum.
     expect(resolveBranding("", "").name).toBe(DEFAULT_APP_NAME);
     expect(resolveBranding("   ", "   ").name).toBe(DEFAULT_APP_NAME);
-    expect(resolveBranding("   ", "   ").logoUrl).toBeNull();
+    expect(resolveBranding("   ", "   ").logoUrl).toBe(DEFAULT_LOGO_URL);
   });
 
   it("usa a marca configurada e deriva a inicial", () => {
@@ -32,10 +32,10 @@ describe("resolveBranding", () => {
     expect(b.initial).toBe("V");
   });
 
-  it("mantém o nome mas dispensa o logo quando só o nome é configurado", () => {
+  it("mantém o nome e cai no logo padrão do fork quando só o nome é configurado", () => {
     const b = resolveBranding("Acme CRM", undefined);
     expect(b.name).toBe("Acme CRM");
-    expect(b.logoUrl).toBeNull();
+    expect(b.logoUrl).toBe(DEFAULT_LOGO_URL);
   });
 
   it("não parte code point ao derivar a inicial", () => {

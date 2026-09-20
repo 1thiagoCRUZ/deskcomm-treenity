@@ -74,16 +74,16 @@ describe("o ícone carrega para quem NÃO entrou", () => {
     expect(PUBLIC_PATHS.some((re) => re.source === String.raw`^\/icon$`)).toBe(true);
   });
 
-  it("o ícone é gerado em runtime, nunca congelado no build", () => {
-    // Sem `force-dynamic` o `next build` resolve o ícone UMA vez e a marca de
-    // quem buildou vai dentro da imagem — que é uma só para todos os clones.
-    // O defeito é invisível em dev, em teste e na Vercel: só aparece na VPS do
-    // revendedor. Por isso a asserção é sobre o TEXTO: é uma linha que some num
-    // refactor sem nada mais quebrar.
+  it("o ícone é a marca embutida deste fork (PNG), não mais desenhada da cor da instalação", () => {
+    // Este fork tem UMA marca (TreenityCRM), então o ícone é fixo. O original
+    // gerava cor + inicial em runtime porque a imagem dele serve vários
+    // revendedores; aqui isso não se aplica. O PNG mora em base64 em
+    // `marca-icone.ts` porque `public/` não vai no pacote da função serverless.
     const icone = fs.readFileSync(path.join(RAIZ, "app/icon.tsx"), "utf8");
-    expect(icone).toMatch(/export const dynamic\s*=\s*"force-dynamic"/);
-    // E a marca tem de vir do resolvedor, não de literal.
-    expect(icone).toMatch(/marcaDaSaida\(null\)/);
+    expect(icone).toMatch(/ICONE_DA_MARCA_PNG_BASE64/);
+    const marca = fs.readFileSync(path.join(RAIZ, "lib/branding/marca-icone.ts"), "utf8");
+    // Assinatura de PNG (89 50 4E 47 0D 0A 1A 0A) em base64: pega arquivo trocado por lixo.
+    expect(marca).toMatch(/"iVBORw0KGgo/);
   });
 
   it("o layout declara o ícone — é o que mata o pedido a /favicon.ico", () => {

@@ -55,6 +55,16 @@ import { stop } from "./rampa";
 import { REGUA_DO_PRODUTO } from "./regua-do-produto";
 import { camadaDaInstalacao, camadaDoAmbiente, resolverMarca } from "./resolve";
 
+/**
+ * O logo padrão do produto é um caminho do próprio app (`/brand/...`), que só
+ * funciona dentro dele. Quem consome a marca de saída também escreve e-mail, e
+ * cliente de e-mail não resolve caminho relativo — então vira URL absoluta aqui.
+ */
+function urlAbsoluta(url: string | null): string | null {
+  if (!url || !url.startsWith("/")) return url;
+  return `${env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}${url}`;
+}
+
 export type MarcaDeSaida = {
   readonly nome: string;
   /**
@@ -196,7 +206,7 @@ export async function marcaDaSaida(organizationId: string | null): Promise<Marca
 
     return {
       nome: marca.name,
-      logoUrl: marca.logoUrl,
+      logoUrl: urlAbsoluta(marca.logoUrl),
       accent,
       // Nunca `#ffffff` fixo: `melhorFrenteSobre` (`contraste.ts:79`) já
       // decide preto ou branco pelo contraste real. Uma marca amarela colada
