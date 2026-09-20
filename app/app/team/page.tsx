@@ -52,9 +52,14 @@ export default async function TeamPage({
           </p>
         </div>
         {isAdmin ? (
-          <Button asChild className="shrink-0">
-            <Link href="/app/team/invite">{t("Convidar membros")}</Link>
-          </Button>
+          <div className="flex shrink-0 gap-2">
+            <Button asChild variant="secondary">
+              <Link href="/app/team/new">{t("Cadastrar membro")}</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/app/team/invite">{t("Convidar membros")}</Link>
+            </Button>
+          </div>
         ) : null}
       </header>
 
