@@ -28,6 +28,7 @@ import { localeDeData, tagDeIdioma } from "@/lib/i18n/datas";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { cn } from "@/lib/utils";
 import { EncerrarAtendimentoButton } from "./encerrar-button";
+import { ScrollAoFinal } from "./scroll-ao-final";
 
 interface Props {
   params: Promise<{ atendimentoId: string }>;
@@ -72,10 +73,10 @@ export default async function TreenityBotConversaPage({ params }: Props) {
   const grupos = conversa ? agruparPorDia(conversa.mensagens, idioma) : [];
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-5 p-6 lg:p-8">
+    <div className="mx-auto flex h-[calc(100dvh-3.5rem-2*var(--space-6))] w-full max-w-3xl flex-col gap-4">
       <Link
         href="/app/integrations/treenity-bot"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+        className="inline-flex w-fit shrink-0 items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
       >
         <CaretLeft size={14} />
         {traduzir("Voltar", idioma)}
@@ -89,7 +90,7 @@ export default async function TreenityBotConversaPage({ params }: Props) {
         </Card>
       ) : (
         <>
-          <header className="flex flex-wrap items-center gap-3.5">
+          <header className="flex shrink-0 flex-wrap items-center gap-3.5">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent-soft text-sm font-semibold text-accent">
               {iniciaisDe(conversa.atendimento.clienteNome)}
             </span>
@@ -114,13 +115,13 @@ export default async function TreenityBotConversaPage({ params }: Props) {
           </header>
 
           {conversa.atendimento.motivoAtencao ? (
-            <p className="flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            <p className="flex shrink-0 items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
               <Warning size={15} weight="fill" className="mt-0.5 shrink-0" />
               {conversa.atendimento.motivoAtencao}
             </p>
           ) : null}
 
-          <div className="rounded-lg border border-border bg-surface py-4">
+          <ScrollAoFinal className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-border bg-surface py-4">
             {conversa.mensagens.length === 0 ? (
               <p className="px-4 py-6 text-center text-sm text-muted-foreground">
                 {traduzir("Nenhuma mensagem neste atendimento ainda.", idioma)}
@@ -201,10 +202,10 @@ export default async function TreenityBotConversaPage({ params }: Props) {
                 ) : null}
               </>
             )}
-          </div>
+          </ScrollAoFinal>
 
           {conversa.atendimento.precisaAtencaoHumana ? (
-            <p className="rounded-md border border-border bg-surface-elevated px-4 py-3 text-sm text-muted-foreground">
+            <p className="shrink-0 rounded-md border border-border bg-surface-elevated px-4 py-3 text-sm text-muted-foreground">
               {traduzir("Este atendimento está com a IA pausada, esperando um humano.", idioma)}
             </p>
           ) : null}

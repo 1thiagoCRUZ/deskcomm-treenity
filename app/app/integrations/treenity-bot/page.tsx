@@ -142,8 +142,8 @@ export default async function TreenityBotIntegrationPage() {
           </TabsList>
 
           <TabsContent value="visao-geral" className="mt-0 min-h-0 flex-1 space-y-6 overflow-y-auto">
-            <Card className="max-w-4xl">
-              <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
+            <Card className="w-full">
+              <div className="flex flex-wrap items-center justify-between gap-4 px-8 py-6">
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="relative flex h-3 w-3">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent-500 opacity-40" />
@@ -174,10 +174,10 @@ export default async function TreenityBotIntegrationPage() {
                 </Link>
               </div>
               <div className="grid grid-cols-1 divide-y divide-border border-t border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-                <div className="flex flex-col gap-1 px-6 py-6">
+                <div className="flex flex-col gap-2 px-8 py-8">
                   <span
                     className={cn(
-                      "text-3xl font-semibold tracking-tight tabular-nums",
+                      "text-4xl font-semibold tracking-tight tabular-nums lg:text-5xl",
                       dados.sinalizados.length > 0 && "text-error-fg",
                     )}
                   >
@@ -187,16 +187,16 @@ export default async function TreenityBotIntegrationPage() {
                     {traduzir("Precisando de atenção", idioma)}
                   </span>
                 </div>
-                <div className="flex flex-col gap-1 px-6 py-6">
-                  <span className="text-3xl font-semibold tracking-tight tabular-nums">
+                <div className="flex flex-col gap-2 px-8 py-8">
+                  <span className="text-4xl font-semibold tracking-tight tabular-nums lg:text-5xl">
                     {metricaHoje?.total_atendimentos ?? "—"}
                   </span>
                   <span className="text-sm text-muted-foreground">
                     {traduzir("Atendimentos hoje", idioma)}
                   </span>
                 </div>
-                <div className="flex flex-col gap-1 px-6 py-6">
-                  <span className="text-3xl font-semibold tracking-tight tabular-nums">
+                <div className="flex flex-col gap-2 px-8 py-8">
+                  <span className="text-4xl font-semibold tracking-tight tabular-nums lg:text-5xl">
                     {metricaHoje?.total_clientes ?? "—"}
                   </span>
                   <span className="text-sm text-muted-foreground">
@@ -208,7 +208,7 @@ export default async function TreenityBotIntegrationPage() {
           </TabsContent>
 
           <TabsContent value="atencao" className="mt-0 min-h-0 flex-1 overflow-y-auto">
-            <Card className="max-w-4xl">
+            <Card className="w-full">
               <CardHeader>
                 <CardDescription>
                   {traduzir(
