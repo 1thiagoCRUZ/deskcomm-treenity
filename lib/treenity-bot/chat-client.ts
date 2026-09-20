@@ -40,6 +40,20 @@ export interface MensagemBot {
   criadoEm: string;
 }
 
+/** Uma linha de `GET /api/chat/conversas`: a conversa, o outro lado e a última mensagem (prévia). */
+export interface ConversaResumo {
+  id: string;
+  atualizadoEm: string;
+  outroUsuario: UsuarioBot;
+  ultimaMensagem: {
+    id: string;
+    remetenteId: string;
+    /** `null` quando a mensagem está ilegível no bot. */
+    conteudo: string | null;
+    criadoEm: string;
+  } | null;
+}
+
 /** Troca a sessão deskcomm atual por um accessToken da API do bot. `null` = não configurado ou indisponível. */
 export async function buscarSessaoChat(): Promise<SessaoChatBot | null> {
   try {
@@ -74,6 +88,11 @@ async function chamarApiBot<T>(sessao: SessaoChatBot, path: string, init?: Reque
 export async function listarUsuariosBot(sessao: SessaoChatBot): Promise<UsuarioBot[]> {
   const usuarios = await chamarApiBot<UsuarioBot[]>(sessao, "/api/auth/usuarios");
   return (usuarios ?? []).filter((u) => u.id !== sessao.usuario.id);
+}
+
+/** Conversas do usuário, da mais recente pra mais antiga. `null` = falha (ou bot sem o endpoint ainda). */
+export async function listarConversasBot(sessao: SessaoChatBot): Promise<ConversaResumo[] | null> {
+  return chamarApiBot<ConversaResumo[]>(sessao, "/api/chat/conversas");
 }
 
 /**

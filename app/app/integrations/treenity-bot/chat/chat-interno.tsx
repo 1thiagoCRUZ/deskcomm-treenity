@@ -19,7 +19,8 @@
  */
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { format, isToday, isYesterday } from "date-fns";
 import type { Socket } from "socket.io-client";
 import { toast } from "sonner";
 import { ChatCircle, PaperPlaneTilt, Users } from "@/lib/ui/icons";
@@ -37,7 +38,9 @@ import {
   buscarSessaoChat,
   conectarSocketChat,
   iniciarConversa,
+  listarConversasBot,
   listarUsuariosBot,
+  type ConversaResumo,
   type MensagemBot,
   type SessaoChatBot,
   type UsuarioBot,
@@ -45,6 +48,7 @@ import {
 
 const CHAVE_ULTIMA_CONVERSA = "treenity-bot:chat:ultima-conversa";
 const RENOVAR_SESSAO_MS = 10 * 60 * 1000;
+const ATUALIZAR_CONVERSAS_MS = 30 * 1000;
 const MARGEM_DO_FIM_PX = 80;
 
 export default function ChatInterno() {
@@ -52,6 +56,7 @@ export default function ChatInterno() {
   const [carregando, setCarregando] = useState(true);
   const [sessao, setSessao] = useState<SessaoChatBot | null>(null);
   const [usuarios, setUsuarios] = useState<UsuarioBot[]>([]);
+  const [conversas, setConversas] = useState<ConversaResumo[]>([]);
   const [usuarioSelecionado, setUsuarioSelecionado] = useState<UsuarioBot | null>(null);
   const [conversaId, setConversaId] = useState<string | null>(null);
   const [mensagens, setMensagens] = useState<MensagemBot[]>([]);
@@ -83,9 +88,17 @@ export default function ChatInterno() {
     return nova;
   }, []);
 
+  const recarregarConversas = useCallback(async () => {
+    const s = sessaoRef.current;
+    if (!s) return;
+    const lista = await listarConversasBot(s);
+    if (lista) setConversas(lista);
+  }, []);
+
   useEffect(() => {
     let cancelado = false;
     let timer: ReturnType<typeof setInterval> | undefined;
+    let timerConversas: ReturnType<typeof setInterval> | undefined;
 
     (async () => {
       const s = await buscarSessaoChat();
@@ -95,9 +108,10 @@ export default function ChatInterno() {
       setCarregando(false);
       if (!s) return;
 
-      const lista = await listarUsuariosBot(s);
+      const [lista, resumos] = await Promise.all([listarUsuariosBot(s), listarConversasBot(s)]);
       if (cancelado) return;
       setUsuarios(lista);
+      if (resumos) setConversas(resumos);
 
       const socket = conectarSocketChat(s);
       socketRef.current = socket;
@@ -122,18 +136,39 @@ export default function ChatInterno() {
       socket.on("receive_message", (mensagem: MensagemBot) => {
         if (mensagem.conversaId !== conversaIdRef.current) return;
         setMensagens((prev) => (prev.some((m) => m.id === mensagem.id) ? prev : [...prev, mensagem]));
+        void recarregarConversas(); // a prévia e a ordem da lista seguem a última mensagem
       });
 
       timer = setInterval(() => void renovarSessao(), RENOVAR_SESSAO_MS);
+      // O socket só entrega a conversa aberta; as outras entram na lista por esta atualização.
+      timerConversas = setInterval(() => void recarregarConversas(), ATUALIZAR_CONVERSAS_MS);
     })();
 
     return () => {
       cancelado = true;
       if (timer) clearInterval(timer);
+      if (timerConversas) clearInterval(timerConversas);
       socketRef.current?.disconnect();
       socketRef.current = null;
     };
-  }, [renovarSessao]);
+  }, [renovarSessao, recarregarConversas]);
+
+  // Quem já tem conversa vem primeiro, pela última atividade; os demais, em ordem de nome.
+  const { comConversa, semConversa } = useMemo(() => {
+    const resumoPorUsuario = new Map(conversas.map((c) => [c.outroUsuario.id, c]));
+    const com = usuarios
+      .filter((u) => resumoPorUsuario.get(u.id)?.ultimaMensagem)
+      .sort((a, b) =>
+        (resumoPorUsuario.get(b.id)?.ultimaMensagem?.criadoEm ?? "").localeCompare(
+          resumoPorUsuario.get(a.id)?.ultimaMensagem?.criadoEm ?? "",
+        ),
+      );
+    const sem = usuarios.filter((u) => !resumoPorUsuario.get(u.id)?.ultimaMensagem);
+    return {
+      comConversa: com.map((u) => ({ usuario: u, resumo: resumoPorUsuario.get(u.id)! })),
+      semConversa: sem,
+    };
+  }, [usuarios, conversas]);
 
   const selecionarUsuario = useCallback(async (usuario: UsuarioBot) => {
     const s = sessaoRef.current;
@@ -231,6 +266,13 @@ export default function ChatInterno() {
 
   const podeEnviar = conectado && entrou;
 
+  function horaDaLista(iso: string) {
+    const data = new Date(iso);
+    if (isToday(data)) return format(data, "HH:mm");
+    if (isYesterday(data)) return t("Ontem");
+    return format(data, "dd/MM/yyyy");
+  }
+
   return (
     <div className="grid h-full grid-cols-[22rem_1fr] overflow-hidden rounded-lg border border-border bg-surface">
       <div className="flex min-h-0 flex-col border-r border-border">
@@ -244,30 +286,85 @@ export default function ChatInterno() {
               {t("Nenhuma outra pessoa cadastrada no bot ainda.")}
             </p>
           ) : (
-            <ul className="space-y-1 p-2.5">
-              {usuarios.map((usuario) => (
-                <li key={usuario.id}>
-                  <button
-                    type="button"
-                    onClick={() => selecionarUsuario(usuario)}
-                    className={cn(
-                      "flex w-full items-center gap-3 rounded-lg px-3.5 py-3 text-left text-base transition-colors hover:bg-muted",
-                      usuarioSelecionado?.id === usuario.id && "bg-muted",
-                    )}
-                  >
-                    <Avatar className="h-10 w-10 text-sm">
-                      <AvatarFallback className="bg-accent-soft text-accent">
-                        {iniciaisDe(usuario.nome)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="min-w-0 flex-1 truncate font-semibold">{usuario.nome}</span>
-                    <Badge variant="secondary" className="shrink-0 text-xs">
-                      {usuario.papel === "admin" ? t("Admin") : t("Equipe")}
-                    </Badge>
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <>
+              {comConversa.length > 0 ? (
+                <section>
+                  <h3 className="px-5 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t("Conversas")}
+                  </h3>
+                  <ul className="space-y-1 p-2.5 pt-1">
+                    {comConversa.map(({ usuario, resumo }) => {
+                      const ultima = resumo.ultimaMensagem;
+                      const minha = ultima?.remetenteId === sessao.usuario.id;
+                      return (
+                        <li key={usuario.id}>
+                          <button
+                            type="button"
+                            onClick={() => selecionarUsuario(usuario)}
+                            className={cn(
+                              "flex w-full items-center gap-3 rounded-lg px-3.5 py-3 text-left text-base transition-colors hover:bg-muted",
+                              usuarioSelecionado?.id === usuario.id && "bg-muted",
+                            )}
+                          >
+                            <Avatar className="h-10 w-10 shrink-0 text-sm">
+                              <AvatarFallback className="bg-accent-soft text-accent">
+                                {iniciaisDe(usuario.nome)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-baseline justify-between gap-2">
+                                <span className="truncate font-semibold">{usuario.nome}</span>
+                                {ultima ? (
+                                  <span className="shrink-0 text-xs text-muted-foreground">
+                                    {horaDaLista(ultima.criadoEm)}
+                                  </span>
+                                ) : null}
+                              </div>
+                              <p className="truncate text-sm text-muted-foreground">
+                                {minha ? `${t("Você:")} ` : ""}
+                                {ultima?.conteudo ?? t("Mensagem indisponível")}
+                              </p>
+                            </div>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
+              ) : null}
+
+              {semConversa.length > 0 ? (
+                <section>
+                  <h3 className="px-5 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {comConversa.length > 0 ? t("Outras pessoas") : t("Pessoas")}
+                  </h3>
+                  <ul className="space-y-1 p-2.5 pt-1">
+                    {semConversa.map((usuario) => (
+                      <li key={usuario.id}>
+                        <button
+                          type="button"
+                          onClick={() => selecionarUsuario(usuario)}
+                          className={cn(
+                            "flex w-full items-center gap-3 rounded-lg px-3.5 py-3 text-left text-base transition-colors hover:bg-muted",
+                            usuarioSelecionado?.id === usuario.id && "bg-muted",
+                          )}
+                        >
+                          <Avatar className="h-10 w-10 shrink-0 text-sm">
+                            <AvatarFallback className="bg-accent-soft text-accent">
+                              {iniciaisDe(usuario.nome)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="min-w-0 flex-1 truncate font-semibold">{usuario.nome}</span>
+                          <Badge variant="secondary" className="shrink-0 text-xs">
+                            {usuario.papel === "admin" ? t("Admin") : t("Equipe")}
+                          </Badge>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
+            </>
           )}
         </ScrollArea>
       </div>
