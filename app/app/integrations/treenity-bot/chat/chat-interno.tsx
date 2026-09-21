@@ -49,6 +49,7 @@ import {
 const CHAVE_ULTIMA_CONVERSA = "treenity-bot:chat:ultima-conversa";
 const RENOVAR_SESSAO_MS = 10 * 60 * 1000;
 const ATUALIZAR_CONVERSAS_MS = 30 * 1000;
+const ATUALIZAR_CONVERSA_ABERTA_MS = 5 * 1000;
 const MARGEM_DO_FIM_PX = 80;
 
 export default function ChatInterno() {
@@ -170,6 +171,24 @@ export default function ChatInterno() {
     };
   }, [usuarios, conversas]);
 
+  // Duas pessoas com o mesmo nome (ex: dois "Dono") são indistinguíveis na lista, e
+  // mandar a mensagem pra pessoa errada é o resultado. O sufixo é o começo do id:
+  // estável e igual para todo mundo. A correção de verdade é renomear o perfil.
+  const nomesRepetidos = useMemo(() => {
+    const contagem = new Map<string, number>();
+    for (const u of usuarios) {
+      const chave = u.nome.trim().toLowerCase();
+      contagem.set(chave, (contagem.get(chave) ?? 0) + 1);
+    }
+    return new Set([...contagem].filter(([, n]) => n > 1).map(([chave]) => chave));
+  }, [usuarios]);
+
+  function rotuloDe(usuario: UsuarioBot) {
+    return nomesRepetidos.has(usuario.nome.trim().toLowerCase())
+      ? `${usuario.nome} · ${usuario.id.slice(0, 4)}`
+      : usuario.nome;
+  }
+
   const selecionarUsuario = useCallback(async (usuario: UsuarioBot) => {
     const s = sessaoRef.current;
     if (!s) return;
@@ -228,6 +247,29 @@ export default function ChatInterno() {
     if (forcarFimRef.current || noFimRef.current) el.scrollTop = el.scrollHeight;
     forcarFimRef.current = false;
   }, [mensagens]);
+
+  // Rede de segurança: com uma conversa aberta, busca o histórico a cada poucos
+  // segundos e acrescenta o que ainda não está na tela. O socket entrega ao vivo,
+  // mas se a conexão cair, a sala se perder ou algo no caminho bloquear o
+  // websocket, a mensagem de quem escreve pra você ainda chega por aqui.
+  useEffect(() => {
+    if (!conversaId) return;
+    const id = conversaId;
+    const timer = setInterval(async () => {
+      if (document.visibilityState !== "visible") return;
+      const s = sessaoRef.current;
+      if (!s) return;
+      const historico = await buscarHistorico(s, id);
+      if (!historico || conversaIdRef.current !== id) return;
+      setMensagens((prev) => {
+        const conhecidas = new Set(prev.map((m) => m.id));
+        const novas = historico.filter((m) => !conhecidas.has(m.id));
+        if (novas.length === 0) return prev;
+        return [...prev, ...novas].sort((a, b) => a.criadoEm.localeCompare(b.criadoEm));
+      });
+    }, ATUALIZAR_CONVERSA_ABERTA_MS);
+    return () => clearInterval(timer);
+  }, [conversaId]);
 
   function aoRolar() {
     const el = listaRef.current;
@@ -313,7 +355,7 @@ export default function ChatInterno() {
                             </Avatar>
                             <div className="min-w-0 flex-1">
                               <div className="flex items-baseline justify-between gap-2">
-                                <span className="truncate font-semibold">{usuario.nome}</span>
+                                <span className="truncate font-semibold">{rotuloDe(usuario)}</span>
                                 {ultima ? (
                                   <span className="shrink-0 text-xs text-muted-foreground">
                                     {horaDaLista(ultima.criadoEm)}
@@ -354,7 +396,7 @@ export default function ChatInterno() {
                               {iniciaisDe(usuario.nome)}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="min-w-0 flex-1 truncate font-semibold">{usuario.nome}</span>
+                          <span className="min-w-0 flex-1 truncate font-semibold">{rotuloDe(usuario)}</span>
                           <Badge variant="secondary" className="shrink-0 text-xs">
                             {usuario.papel === "admin" ? t("Admin") : t("Equipe")}
                           </Badge>
@@ -386,7 +428,7 @@ export default function ChatInterno() {
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <span className="block truncate text-lg font-semibold">{usuarioSelecionado.nome}</span>
+                <span className="block truncate text-lg font-semibold">{rotuloDe(usuarioSelecionado)}</span>
                 {!conectado ? (
                   <span className="block text-xs text-warning-fg">{t("Reconectando…")}</span>
                 ) : null}
