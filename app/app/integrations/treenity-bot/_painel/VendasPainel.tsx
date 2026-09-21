@@ -9,7 +9,7 @@
  * filtro, não só as linhas já carregadas.
  */
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { ArrowRight } from "@/lib/ui/icons";
@@ -25,9 +25,12 @@ import { useT } from "@/hooks/i18n/useT";
 import { useIdioma } from "@/lib/i18n/IdiomaProvider";
 import { tagDeIdioma } from "@/lib/i18n/datas";
 import type { PaginaDeVendas, ResumoVendas, VendaPainel } from "@/lib/treenity-bot/client";
+import { assinarEstadoDoPainel, ouvirEventosDoPainel, painelEstaAoVivo } from "@/lib/treenity-bot/painel-eventos";
 import { dataHora, moeda, varianteDoStatusDaVenda } from "./formatacao-painel";
 
 const TODOS = "todos";
+const AGRUPAR_AVISOS_MS = 400;
+const POLLING_DE_RESERVA_MS = 30 * 1000;
 const CANAIS_CONHECIDOS = ["Instagram", "Facebook", "WhatsApp"];
 
 interface Filtros {
@@ -38,6 +41,30 @@ interface Filtros {
 }
 
 const FILTROS_VAZIOS: Filtros = { status: TODOS, canal: TODOS, desde: "", ate: "" };
+
+/** Uma página do servidor. `null` = falha. Fora do componente: não depende de estado. */
+async function baixar(f: Filtros, cursor: string | null): Promise<PaginaDeVendas | null> {
+  try {
+    const params = new URLSearchParams();
+    if (f.status !== TODOS) params.set("status", f.status);
+    if (f.canal !== TODOS) params.set("canal", f.canal);
+    if (f.desde) params.set("desde", f.desde);
+    if (f.ate) params.set("ate", f.ate);
+    if (cursor) params.set("cursor", cursor);
+    const res = await fetch(`/api/treenity-bot/vendas?${params.toString()}`, { cache: "no-store" });
+    if (!res.ok) return null;
+    return (await res.json()).data as PaginaDeVendas;
+  } catch {
+    return null;
+  }
+}
+
+/** Junta por id (o mais novo vence) e ordena pela data da venda, da mais recente pra mais antiga. */
+function mesclarVendas(atuais: VendaPainel[], novas: VendaPainel[]): VendaPainel[] {
+  const porId = new Map(atuais.map((v) => [v.id_venda, v]));
+  for (const n of novas) porId.set(n.id_venda, n);
+  return [...porId.values()].sort((a, b) => b.data_venda.localeCompare(a.data_venda));
+}
 
 function Cartao({ rotulo, valor }: { rotulo: string; valor: string }) {
   return (
@@ -74,21 +101,58 @@ export function VendasPainel({ inicial }: { inicial: PaginaDeVendas | null }) {
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState(inicial === null);
   const [aberta, setAberta] = useState<VendaPainel | null>(null);
+  const filtrosRef = useRef(filtros);
+
+  useEffect(() => {
+    filtrosRef.current = filtros;
+  }, [filtros]);
+
+  // "Ao vivo" só quando o bot confirmou que este socket está na sala do painel.
+  const aoVivo = useSyncExternalStore(assinarEstadoDoPainel, painelEstaAoVivo, () => false);
+
+  // Busca a primeira página de novo, sem piscar nem avisar erro, e mescla com o
+  // que já está na tela (quem carregou "mais" não perde as páginas seguintes).
+  const atualizarSilencioso = useCallback(async () => {
+    const f = filtrosRef.current;
+    const nova = await baixar(f, null);
+    if (!nova || filtrosRef.current !== f) return;
+    setItens((prev) => mesclarVendas(prev, nova.itens));
+    setResumo(nova.resumo);
+    setCursor((atual) => atual ?? nova.proximoCursor);
+    setStatusConhecidos((prev) => Array.from(new Set([...prev, ...nova.itens.map((v) => v.status)])));
+    setErro(false);
+  }, []);
+
+  // Ao vivo, uma venda nova/alterada (ou um "reconectado") atualiza na hora.
+  useEffect(() => {
+    let espera: ReturnType<typeof setTimeout> | undefined;
+    const parar = ouvirEventosDoPainel((evento) => {
+      if (evento.tipo !== "venda" && evento.tipo !== "reconectado") return;
+      if (espera) clearTimeout(espera);
+      espera = setTimeout(() => void atualizarSilencioso(), AGRUPAR_AVISOS_MS);
+    });
+    return () => {
+      parar();
+      if (espera) clearTimeout(espera);
+    };
+  }, [atualizarSilencioso]);
+
+  // Reserva: sem tempo real (usuário sem acesso ao vivo, bot antigo), atualiza por
+  // polling. Ao vivo, os avisos acima bastam.
+  useEffect(() => {
+    if (aoVivo) return;
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") void atualizarSilencioso();
+    }, POLLING_DE_RESERVA_MS);
+    return () => clearInterval(timer);
+  }, [aoVivo, atualizarSilencioso]);
 
   async function buscar(f: Filtros, cursorAtual: string | null) {
     setCarregando(true);
     setErro(false);
     try {
-      const params = new URLSearchParams();
-      if (f.status !== TODOS) params.set("status", f.status);
-      if (f.canal !== TODOS) params.set("canal", f.canal);
-      if (f.desde) params.set("desde", f.desde);
-      if (f.ate) params.set("ate", f.ate);
-      if (cursorAtual) params.set("cursor", cursorAtual);
-
-      const res = await fetch(`/api/treenity-bot/vendas?${params.toString()}`, { cache: "no-store" });
-      if (!res.ok) throw new Error(String(res.status));
-      const nova = (await res.json()).data as PaginaDeVendas;
+      const nova = await baixar(f, cursorAtual);
+      if (!nova) throw new Error("falha ao buscar vendas");
 
       setItens((prev) => (cursorAtual ? [...prev, ...nova.itens] : nova.itens));
       setResumo(nova.resumo);

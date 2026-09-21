@@ -3,16 +3,16 @@
 /**
  * Todos os atendimentos da IA, numa aba do Treenity Bot — só para ADMIN.
  *
- * Primeira pintura vem do servidor. Depois a lista se atualiza sozinha (a cada
- * poucos segundos, com a aba visível) buscando a primeira página em
- * `/api/treenity-bot/atendimentos` e mesclando: atendimento que teve mensagem
- * nova sobe pro topo. É polling de propósito (Fase 1); o tempo real de verdade
- * (triggers + LISTEN no bot) entra na Fase 2 e este polling fica de reserva.
+ * Primeira pintura vem do servidor. Depois a lista se atualiza sozinha buscando
+ * a primeira página em `/api/treenity-bot/atendimentos` e mesclando: atendimento
+ * que teve mensagem nova sobe pro topo. Ao vivo (avisos do bot, via
+ * `painel-eventos.ts`) a busca acontece na hora; o polling fica de reserva —
+ * rápido enquanto NÃO está ao vivo, só "por garantia" quando está.
  *
  * Somente leitura. Clicar numa linha abre a transcrição já existente.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Warning } from "@/lib/ui/icons";
@@ -26,9 +26,12 @@ import { useT } from "@/hooks/i18n/useT";
 import { useIdioma } from "@/lib/i18n/IdiomaProvider";
 import { localeDeData, tagDeIdioma } from "@/lib/i18n/datas";
 import type { AtendimentoPainel, PaginaDeAtendimentos } from "@/lib/treenity-bot/client";
+import { assinarEstadoDoPainel, ouvirEventosDoPainel, painelEstaAoVivo } from "@/lib/treenity-bot/painel-eventos";
 import { haQuantoTempo, moeda, varianteDaEtapa } from "./formatacao-painel";
 
 const ATUALIZAR_MS = 8 * 1000;
+const ATUALIZAR_AO_VIVO_MS = 60 * 1000;
+const AGRUPAR_AVISOS_MS = 400;
 const TODOS = "todos";
 const CANAIS_CONHECIDOS = ["Instagram", "Facebook", "WhatsApp"];
 const ETAPAS_CONHECIDAS = ["Iniciou", "Em Negociacao", "Proposta", "Fechada"];
@@ -86,18 +89,44 @@ export function AtendimentosPainel({ inicial }: { inicial: PaginaDeAtendimentos 
     filtrosRef.current = filtros;
   }, [filtros]);
 
-  useEffect(() => {
-    const timer = setInterval(async () => {
-      if (document.visibilityState !== "visible") return;
-      const f = filtrosRef.current;
-      const pagina = await baixar(f, null);
-      if (!pagina || filtrosRef.current !== f) return; // falhou, ou o filtro mudou no meio da busca
-      setItens((prev) => mesclar(prev, pagina.itens));
-      setCursor((atual) => atual ?? pagina.proximoCursor);
-      setErro(false);
-    }, ATUALIZAR_MS);
-    return () => clearInterval(timer);
+  // "Ao vivo" só quando o bot confirmou que este socket está na sala do painel.
+  const aoVivo = useSyncExternalStore(assinarEstadoDoPainel, painelEstaAoVivo, () => false);
+
+  const atualizarSilencioso = useCallback(async () => {
+    const f = filtrosRef.current;
+    const pagina = await baixar(f, null);
+    if (!pagina || filtrosRef.current !== f) return; // falhou, ou o filtro mudou no meio da busca
+    setItens((prev) => mesclar(prev, pagina.itens));
+    setCursor((atual) => atual ?? pagina.proximoCursor);
+    setErro(false);
   }, []);
+
+  // Reserva: polling. Rápido quando NÃO está ao vivo; só um "por garantia" lento
+  // quando está (os avisos abaixo já trazem tudo).
+  useEffect(() => {
+    const timer = setInterval(
+      () => {
+        if (document.visibilityState === "visible") void atualizarSilencioso();
+      },
+      aoVivo ? ATUALIZAR_AO_VIVO_MS : ATUALIZAR_MS,
+    );
+    return () => clearInterval(timer);
+  }, [aoVivo, atualizarSilencioso]);
+
+  // Tempo real: qualquer mudança em mensagens/atendimentos/vendas (ou um
+  // "reconectado") busca a primeira página de novo. Avisos em rajada — o n8n grava
+  // várias linhas por mensagem — viram uma busca só.
+  useEffect(() => {
+    let espera: ReturnType<typeof setTimeout> | undefined;
+    const parar = ouvirEventosDoPainel(() => {
+      if (espera) clearTimeout(espera);
+      espera = setTimeout(() => void atualizarSilencioso(), AGRUPAR_AVISOS_MS);
+    });
+    return () => {
+      parar();
+      if (espera) clearTimeout(espera);
+    };
+  }, [atualizarSilencioso]);
 
   async function aplicar(parcial: Partial<Filtros>) {
     const novo = { ...filtros, ...parcial };
@@ -189,7 +218,7 @@ export function AtendimentosPainel({ inicial }: { inicial: PaginaDeAtendimentos 
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent-500 opacity-40" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent-500" />
             </span>
-            {t("Atualiza sozinho")} · {itens.length} {t("atendimentos")}
+            {aoVivo ? t("Ao vivo") : t("Atualiza sozinho")} · {itens.length} {t("atendimentos")}
           </p>
         </div>
       </CardHeader>

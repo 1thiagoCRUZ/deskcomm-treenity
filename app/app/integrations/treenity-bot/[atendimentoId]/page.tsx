@@ -29,6 +29,7 @@ import { traduzir } from "@/lib/i18n/dicionario";
 import { cn } from "@/lib/utils";
 import { EncerrarAtendimentoButton } from "./encerrar-button";
 import { ScrollAoFinal } from "./scroll-ao-final";
+import { TranscricaoAoVivo } from "./transcricao-ao-vivo";
 
 interface Props {
   params: Promise<{ atendimentoId: string }>;
@@ -74,6 +75,7 @@ export default async function TreenityBotConversaPage({ params }: Props) {
 
   return (
     <div className="mx-auto flex h-[calc(100dvh-3.5rem-2*var(--space-6))] w-full max-w-3xl flex-col gap-4">
+      <TranscricaoAoVivo atendimentoId={atendimentoId} />
       <Link
         href="/app/integrations/treenity-bot"
         className="inline-flex w-fit shrink-0 items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"

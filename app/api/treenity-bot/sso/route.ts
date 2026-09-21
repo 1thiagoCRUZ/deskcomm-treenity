@@ -13,7 +13,8 @@
  */
 import { NextResponse } from "next/server";
 
-import { loadAuthUser } from "@/lib/auth/server";
+import { loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
+import { roleAtLeast } from "@/lib/auth/types";
 import { getConfig } from "@/lib/treenity-bot/config";
 import { trocarToken } from "@/lib/treenity-bot/client";
 
@@ -30,7 +31,14 @@ export async function GET() {
     return NextResponse.json({ error: "not_configured" }, { status: 501 });
   }
 
-  const sessao = await trocarToken({ email: user.email, nome: user.full_name ?? user.email });
+  // Admin da organização leva a permissão de painel no token: é ela que coloca o
+  // socket dele na sala de avisos em tempo real (vendas/atendimentos ao vivo).
+  // Quem não é admin recebe um token comum e nunca entra nessa sala. A decisão é
+  // tomada aqui, no servidor — o navegador só recebe o resultado.
+  const org = await resolveActiveOrg(user);
+  const painelAdmin = roleAtLeast(org?.role, "admin");
+
+  const sessao = await trocarToken({ email: user.email, nome: user.full_name ?? user.email }, { painelAdmin });
   if (!sessao) {
     return NextResponse.json({ error: "treenity_bot_unavailable" }, { status: 503 });
   }

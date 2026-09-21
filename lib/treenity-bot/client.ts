@@ -35,9 +35,10 @@ export async function trocarToken(
     const res = await fetch(`${config.apiUrl}/api/auth/sso`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-SSO-Secret": config.ssoSecret },
-      // `painel_admin` só vai quando quem chama JÁ confirmou que a pessoa é admin
-      // aqui (ver `carregarPainelAdmin`). O token dele NUNCA vai para o navegador:
-      // a rota-ponte do chat (`/api/treenity-bot/sso`) chama sem esta opção.
+      // `painel_admin` só vai quando quem chama JÁ confirmou, no servidor, que a
+      // pessoa é admin da organização (ver `carregarPainelAdmin` e a rota-ponte
+      // `/api/treenity-bot/sso`, que passa a opção só para admin). Para quem não
+      // é admin o token nunca leva essa permissão.
       body: JSON.stringify({
         email: usuario.email,
         nome: usuario.nome,

@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import type { Socket } from "socket.io-client";
 import { useT } from "@/hooks/i18n/useT";
 import { buscarSessaoChat, conectarSocketChat } from "@/lib/treenity-bot/chat-client";
+import { definirPainelAoVivo, emitirEventoDoPainel, type EventoDoPainel } from "@/lib/treenity-bot/painel-eventos";
 
 interface AlertaAtendimentoPayload {
   atendimentoId: string;
@@ -70,6 +71,20 @@ export function TreenityBotAlertProvider() {
       });
       timer = setInterval(() => void renovarToken(), 10 * 60 * 1000);
 
+      // Tempo real do painel admin: este é o ÚNICO socket da aba para isso. Repassa
+      // os avisos aos painéis (lib/treenity-bot/painel-eventos.ts). "Ao vivo" só
+      // depois de `painel_pronto` — o bot confirmando que este socket entrou na
+      // sala do painel (só admin entra); sem isso os painéis mantêm o polling.
+      let jaConectouAntes = false;
+      socket.on("connect", () => {
+        // Reconexão da aba: avisos emitidos enquanto estava fora se perderam.
+        if (jaConectouAntes) emitirEventoDoPainel({ tipo: "reconectado" });
+        jaConectouAntes = true;
+      });
+      socket.on("disconnect", () => definirPainelAoVivo(false));
+      socket.on("painel_pronto", () => definirPainelAoVivo(true));
+      socket.on("painel_evento", (evento: EventoDoPainel) => emitirEventoDoPainel(evento));
+
       socket.on("atendimento_sinalizado", (alerta: AlertaAtendimentoPayload) => {
         toast.warning(alerta.clienteNome, {
           description: alerta.motivo ?? t("Um cliente está precisando de atenção humana."),
@@ -88,6 +103,7 @@ export function TreenityBotAlertProvider() {
 
     return () => {
       cancelado = true;
+      definirPainelAoVivo(false);
       if (timer) clearInterval(timer);
       socketRef.current?.disconnect();
       socketRef.current = null;
