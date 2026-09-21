@@ -1,3 +1,4 @@
+import { logoEhSoSimbolo } from "@/lib/branding";
 import { marcaDaSaida } from "@/lib/branding/saida";
 import { createClient } from "@/lib/supabase/server";
 import { IdiomaProvider } from "@/lib/i18n/IdiomaProvider";
@@ -51,13 +52,20 @@ export default async function PublicLayout({ children }: { children: React.React
         <div className="flex min-h-screen flex-col bg-surface text-text">
           <div className="flex items-center gap-2 px-8 pt-8 lg:px-12">
             {marca.logoUrl && (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                data-testid="logo-da-fachada"
-                src={marca.logoUrl}
-                alt={marca.nome}
-                className="h-8 w-auto max-w-[10rem] object-contain"
-              />
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  data-testid="logo-da-fachada"
+                  src={marca.logoUrl}
+                  alt={logoEhSoSimbolo(marca.logoUrl) ? "" : marca.nome}
+                  className="h-8 w-auto max-w-[10rem] object-contain"
+                />
+                {logoEhSoSimbolo(marca.logoUrl) && (
+                  <span className="text-lg font-semibold tracking-tight text-text">
+                    {marca.nome}
+                  </span>
+                )}
+              </>
             )}
             {!marca.logoUrl && (
               <span className="text-base font-semibold tracking-tight text-text">

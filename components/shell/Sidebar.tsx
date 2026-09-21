@@ -9,6 +9,7 @@ import { toggleSidebar } from "@/app/actions/shell/toggleSidebar";
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import { ConnectionHealthDot } from "@/components/connections/ConnectionHealthDot";
 import { VersionFooter } from "@/components/shell/VersionFooter";
+import { logoEhSoSimbolo } from "@/lib/branding";
 import { useMarcaDaInstalacao } from "@/lib/branding/contexto";
 import { GRUPO_NO_RODAPE, sidebarGroups } from "@/lib/navigation/registry";
 
@@ -119,17 +120,31 @@ export function SidebarContent({
         )}
       >
         {logo && !collapsed ? (
-          // <img> em vez de next/image de propósito: a URL vem de quem hospeda
-          // (banco ou .env), e next/image exige allowlist de domínios fechada em
-          // build — a imagem pré-buildada rejeitaria o domínio do self-hoster.
-          // Altura fixa e largura livre porque a arte enviada tem proporção
-          // desconhecida; forçar as duas distorceria o logo de quem configurou.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={logo} alt={nome} className="h-7 w-auto max-w-[10rem] object-contain" />
+          logoEhSoSimbolo(logo) ? (
+            // Logo padrão = só o símbolo: o nome vem ao lado, em texto.
+            <span className="flex items-center gap-2.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={logo} alt="" className="h-6 w-auto object-contain" />
+              <span className="font-semibold tracking-tight">{nome}</span>
+            </span>
+          ) : (
+            // <img> em vez de next/image de propósito: a URL vem de quem hospeda
+            // (banco ou .env), e next/image exige allowlist de domínios fechada em
+            // build — a imagem pré-buildada rejeitaria o domínio do self-hoster.
+            // Altura fixa e largura livre porque a arte enviada tem proporção
+            // desconhecida; forçar as duas distorceria o logo de quem configurou.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logo} alt={nome} className="h-7 w-auto max-w-[10rem] object-contain" />
+          )
         ) : (
           <span className={cn("font-semibold tracking-tight", collapsed && "sr-only")}>{nome}</span>
         )}
-        {collapsed && (
+        {collapsed && logo && logoEhSoSimbolo(logo) ? (
+          // Recolhido: só o símbolo, no lugar da inicial.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logo} alt="" aria-hidden className="h-6 w-auto max-w-9 object-contain" />
+        ) : null}
+        {collapsed && !(logo && logoEhSoSimbolo(logo)) && (
           <span aria-hidden className="text-lg font-bold text-primary">
             {/* Spread e não `[0]`: nome começando com emoji ou acento composto
                 quebraria no meio do code point. Mesma regra de `resolveBranding`

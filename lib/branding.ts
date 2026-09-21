@@ -25,6 +25,16 @@ export const DEFAULT_APP_NAME = "TreenityCRM";
  */
 export const DEFAULT_LOGO_URL = "/brand/treenity-logo.png";
 
+/**
+ * O logo padrão é só o SÍMBOLO, sem o nome. Quem o exibe desenha o nome ao lado;
+ * um logo enviado pela tela de marca costuma trazer o nome na própria arte, e
+ * repeti-lo em texto duplicaria. `endsWith` porque a marca de saída o entrega
+ * como URL absoluta.
+ */
+export function logoEhSoSimbolo(url: string | null | undefined): boolean {
+  return !!url && url.endsWith(DEFAULT_LOGO_URL);
+}
+
 export type Branding = {
   /** Nome exibido na interface e nos títulos de página. */
   name: string;
