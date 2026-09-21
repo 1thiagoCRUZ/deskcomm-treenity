@@ -38,15 +38,18 @@ import { CaretRight, ChartLineUp, ChatCircle, Clock, Robot } from "@/lib/ui/icon
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { loadAuthUser } from "@/lib/auth/server";
+import { loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
+import { roleAtLeast } from "@/lib/auth/types";
 import { isConfigured } from "@/lib/treenity-bot/config";
-import { carregarDadosTreenityBot } from "@/lib/treenity-bot/client";
+import { carregarDadosTreenityBot, carregarPainelAdmin } from "@/lib/treenity-bot/client";
 import { iniciaisDe } from "@/lib/treenity-bot/formatacao";
 import { normalizarIdioma } from "@/lib/i18n/idiomas";
 import { localeDeData } from "@/lib/i18n/datas";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { cn } from "@/lib/utils";
 import ChatInterno from "./chat/chat-interno";
+import { AtendimentosPainel } from "./_painel/AtendimentosPainel";
+import { VendasPainel } from "./_painel/VendasPainel";
 
 /** `border-l-error` (recém sinalizado) → `border-l-warning-fg` (há um tempo) → neutro. */
 function corDeUrgencia(atencaoSinalizadaEm: string | null): string {
@@ -63,10 +66,17 @@ export default async function TreenityBotIntegrationPage() {
   const locale = localeDeData(idioma);
   const configured = isConfigured();
 
-  const dados =
-    configured && user
-      ? await carregarDadosTreenityBot({ email: user.email, nome: user.full_name ?? user.email })
-      : null;
+  // Vendas e a lista de atendimentos são só para ADMIN da organização. A decisão
+  // é tomada AQUI, no servidor: só quem passa vira `painel_admin` no token do bot,
+  // e o token nunca vai para o navegador (ver `carregarPainelAdmin`).
+  const activeOrg = configured && user ? await resolveActiveOrg(user) : null;
+  const ehAdmin = roleAtLeast(activeOrg?.role, "admin");
+  const usuarioDoBot = user ? { email: user.email, nome: user.full_name ?? user.email } : null;
+
+  const [dados, painel] = await Promise.all([
+    configured && usuarioDoBot ? carregarDadosTreenityBot(usuarioDoBot) : null,
+    configured && usuarioDoBot && ehAdmin ? carregarPainelAdmin(usuarioDoBot) : null,
+  ]);
 
   const hojeISO = new Date().toISOString().slice(0, 10);
   const metricaHoje = dados?.metricas.find((m) => m.data_referencia === hojeISO) ?? null;
@@ -136,6 +146,11 @@ export default async function TreenityBotIntegrationPage() {
                 </Badge>
               ) : null}
             </TabsTrigger>
+            {ehAdmin ? (
+              <TabsTrigger value="atendimentos" className={tabTriggerClass}>
+                {traduzir("Atendimentos", idioma)}
+              </TabsTrigger>
+            ) : null}
             <TabsTrigger value="chat" className={tabTriggerClass}>
               {traduzir("Chat interno", idioma)}
             </TabsTrigger>
@@ -205,6 +220,8 @@ export default async function TreenityBotIntegrationPage() {
                 </div>
               </div>
             </Card>
+
+            {ehAdmin ? <VendasPainel inicial={painel?.vendas ?? null} /> : null}
           </TabsContent>
 
           <TabsContent value="atencao" className="mt-0 min-h-0 flex-1 overflow-y-auto">
@@ -268,6 +285,12 @@ export default async function TreenityBotIntegrationPage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {ehAdmin ? (
+            <TabsContent value="atendimentos" className="mt-0 min-h-0 flex-1 overflow-y-auto">
+              <AtendimentosPainel inicial={painel?.atendimentos ?? null} />
+            </TabsContent>
+          ) : null}
 
           <TabsContent value="chat" className="mt-0 min-h-0 flex-1 overflow-hidden">
             <ChatInterno />
