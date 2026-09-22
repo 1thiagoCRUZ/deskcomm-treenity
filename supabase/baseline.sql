@@ -23350,3 +23350,10 @@ grant execute on function public.fn_decrypt_oauth(bytea) to service_role;
 grant execute on function public.fn_encrypt_oauth(text) to service_role;
 grant execute on function public.fn_lgpd_cascade_redact_contact(uuid, uuid, uuid) to service_role;
 grant execute on function public.fn_update_budget_consumption() to service_role;
+
+-- 0233 — tarefas criadas por integração (Treenity Bot): origem da tarefa + unicidade.
+alter table public.crm_tasks add column if not exists external_ref text;
+
+create unique index if not exists crm_tasks_org_external_ref_uidx
+  on public.crm_tasks (organization_id, external_ref)
+  where external_ref is not null;

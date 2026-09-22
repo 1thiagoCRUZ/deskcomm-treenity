@@ -6,8 +6,8 @@
  * novo — ver `n8n/README.md` e a seção "Integração externa (SSO)" do
  * `README.md` no repo do api-treenity-bot para o desenho completo.
  *
- * Tudo aqui é leitura. Nenhuma mutação nos dados do bot acontece pelo
- * deskcomm nesta primeira fatia.
+ * Quase tudo aqui é leitura. A única escrita nos dados do bot é
+ * `definirPagamentoDaVenda` (admin conclui a tarefa "Conferir pagamento PIX").
  */
 
 import { getConfig } from "./config";
@@ -345,4 +345,58 @@ export async function carregarConversaTreenityBot(
     sessao.accessToken,
     `/api/atendimentos/${encodeURIComponent(atendimentoId)}/mensagens`,
   );
+}
+
+// ─── Pagamento das vendas (server-to-server, sem usuário) ────────────────────
+// Estas duas chamadas usam SÓ o segredo de SSO — sem token de usuário — porque
+// quem as dispara é o sincronizador de tarefas (cron ou rota de admin), e a
+// decisão de "quem pode" já foi tomada aqui, no servidor, antes de chamar.
+
+/** Vendas ainda "Aguardando Pagamento" criadas a partir de `desde`, mais recentes primeiro. `null` = bot indisponível. */
+export async function listarVendasAguardandoPagamento(
+  desde: string,
+  cursor?: string | null,
+): Promise<{ itens: VendaPainel[]; proximoCursor: string | null } | null> {
+  const config = getConfig();
+  if (!config) return null;
+  try {
+    const res = await fetch(
+      `${config.apiUrl}/api/vendas/aguardando-pagamento${montarQuery({ desde, cursor, limit: 100 })}`,
+      { headers: { "X-SSO-Secret": config.ssoSecret }, cache: "no-store" },
+    );
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (!json?.success) return null;
+    return { itens: json.data as VendaPainel[], proximoCursor: (json.proximo_cursor as string | null) ?? null };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Marca a venda como paga (ou desfaz). É a ÚNICA escrita do deskcomm nos dados do
+ * bot: só chame depois de confirmar, no servidor, que quem concluiu a tarefa é
+ * admin. Idempotente no bot. Devolve `false` se o bot não confirmou (fora do ar,
+ * venda inexistente…) — quem chama decide se tenta de novo.
+ */
+export async function definirPagamentoDaVenda(
+  idVenda: string,
+  pagamento: { pago: true; confirmadoPor: string } | { pago: false },
+): Promise<boolean> {
+  const config = getConfig();
+  if (!config) return false;
+  try {
+    const res = await fetch(`${config.apiUrl}/api/vendas/${encodeURIComponent(idVenda)}/pagamento`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-SSO-Secret": config.ssoSecret },
+      body: JSON.stringify(
+        pagamento.pago ? { pago: true, confirmado_por: pagamento.confirmadoPor } : { pago: false },
+      ),
+      cache: "no-store",
+    });
+    if (!res.ok) return false;
+    return (await res.json())?.success === true;
+  } catch {
+    return false;
+  }
 }

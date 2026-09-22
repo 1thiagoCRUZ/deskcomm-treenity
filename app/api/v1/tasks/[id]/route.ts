@@ -22,6 +22,9 @@ import { requireRole } from "@/lib/auth/require-role";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { createClient } from "@/lib/supabase/server";
 import { registraAtividadeDaTarefa } from "@/lib/tarefas/atividade";
+import { logger } from "@/lib/logger";
+import { definirPagamentoDaVenda } from "@/lib/treenity-bot/client";
+import { idDaVendaNaRef } from "@/lib/treenity-bot/tarefas-de-venda";
 import { PRIORIDADES_DA_TAREFA, SITUACOES_DA_TAREFA, type Tarefa } from "@/lib/tarefas/tipos";
 
 export const dynamic = "force-dynamic";
@@ -74,10 +77,20 @@ export async function PATCH(req: NextRequest, ctx: Contexto): Promise<Response> 
   // timeline do negócio — e a segunda seria mentira.
   const { data: antes } = await supabase
     .from("crm_tasks")
-    .select("status")
+    .select("status, external_ref")
     .eq("id", id)
     .eq("organization_id", authz.org.orgId)
     .maybeSingle();
+
+  // Tarefa "Conferir pagamento PIX" (criada pelo sincronizador do Treenity Bot):
+  // concluí-la MARCA A VENDA COMO PAGA no bot, então mexer na situação dela é
+  // decisão de admin — um agente não confirma pagamento.
+  const antesDaTarefa = antes as { status?: string; external_ref?: string | null } | null;
+  const idDaVenda = idDaVendaNaRef(antesDaTarefa?.external_ref);
+  if (idDaVenda && parsed.data.status !== undefined) {
+    const soAdmin = await requireRole("admin", { requestId, resource: "crm_tasks" });
+    if (!soAdmin.ok) return soAdmin.response;
+  }
 
   const { data, error } = await supabase
     .from("crm_tasks")
@@ -111,8 +124,7 @@ export async function PATCH(req: NextRequest, ctx: Contexto): Promise<Response> 
     metadata: { campos: Object.keys(parsed.data) },
   });
 
-  const fechouAgora =
-    tarefa.status === "done" && (antes as { status?: string } | null)?.status !== "done";
+  const fechouAgora = tarefa.status === "done" && antesDaTarefa?.status !== "done";
   if (fechouAgora) {
     await registraAtividadeDaTarefa(supabase, {
       organizationId: authz.org.orgId,
@@ -120,6 +132,22 @@ export async function PATCH(req: NextRequest, ctx: Contexto): Promise<Response> 
       tipo: "task_completed",
       actorUserId: authz.user.id,
     });
+  }
+
+  // Concluir marca a venda como paga; reabrir desfaz. Se o bot não responder a
+  // tarefa já mudou: o sincronizador refaz a confirmação (concluída + venda ainda
+  // aguardando). O desfazer não tem essa rede — fica só o aviso no log.
+  if (idDaVenda) {
+    const reabriu = antesDaTarefa?.status === "done" && tarefa.status !== "done";
+    if (fechouAgora || reabriu) {
+      const confirmado = await definirPagamentoDaVenda(
+        idDaVenda,
+        fechouAgora ? { pago: true, confirmadoPor: authz.user.email } : { pago: false },
+      );
+      if (!confirmado) {
+        logger.error("[treenity-vendas] bot não confirmou o pagamento", { venda: idDaVenda, fechouAgora, requestId });
+      }
+    }
   }
 
   return ok({ task: tarefa }, { requestId });
@@ -137,6 +165,19 @@ export async function DELETE(_req: NextRequest, ctx: Contexto): Promise<Response
   const t = (texto: string) => traduzir(texto, authz.user.idioma);
 
   const supabase = await createClient();
+
+  // Apagar uma tarefa de venda ainda aguardando faria o sincronizador recriá-la
+  // na próxima passada. Cancelar (status "cancelled") a tira da fila de verdade.
+  const { data: alvo } = await supabase
+    .from("crm_tasks")
+    .select("external_ref")
+    .eq("id", id)
+    .eq("organization_id", authz.org.orgId)
+    .maybeSingle();
+  if (idDaVendaNaRef((alvo as { external_ref?: string | null } | null)?.external_ref)) {
+    return fail("conflict", t("Tarefa de venda não se apaga: cancele-a para tirá-la da fila."), 409, { requestId });
+  }
+
   // `.select()` no delete para saber se ALGUMA linha saiu. Sem isso, apagar uma
   // tarefa de outra organização devolveria 200 — e a tela sumiria com a linha
   // do próprio usuário na próxima recarga, sem que nada tivesse sido apagado.

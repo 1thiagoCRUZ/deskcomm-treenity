@@ -1,0 +1,52 @@
+name: Tarefas de venda do Treenity Bot (agendado)
+
+# Cria a tarefa "Conferir pagamento PIX" para cada venda nova do Treenity Bot
+# ainda "Aguardando Pagamento" (ver lib/treenity-bot/tarefas-de-venda.ts) e
+# refaz a confirmação de pagamento que tiver falhado. O navegador de um admin
+# já dispara isto na hora quando o painel avisa de uma venda nova
+# (app/api/treenity-bot/sincronizar-tarefas) — este workflow é a rede de
+# segurança para quando ninguém está com o painel aberto.
+#
+# ⚠️ `schedule:` do GitHub Actions só roda na branch DEFAULT do repositório —
+# mesma pegadinha documentada em relogio.yml. Sem TREENITY_BOT_TAREFAS_ORG_ID
+# e TREENITY_BOT_TAREFAS_DESDE configuradas no deskcomm, a rota responde
+# `ativo: false` e não faz nada — este workflow fica inofensivo até alguém
+# ligar o recurso.
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+permissions: {}
+
+concurrency:
+  group: treenity-vendas
+  cancel-in-progress: false
+
+jobs:
+  sincronizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Chama /api/v1/cron/treenity-vendas
+        env:
+          APP_URL: ${{ vars.PROD_URL }}
+          SECRET: ${{ secrets.INTERNAL_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${APP_URL}" ] || [ -z "${SECRET}" ]; then
+            echo "::error::A variável de repositório PROD_URL ou o secret INTERNAL_SECRET não estão configurados."
+            exit 1
+          fi
+          CORPO=$(mktemp)
+          CODIGO=$(curl -sS -o "$CORPO" -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer ${SECRET}" \
+            --max-time 90 \
+            "${APP_URL%/}/api/v1/cron/treenity-vendas" || echo "000")
+          echo "HTTP ${CODIGO}"
+          cat "$CORPO"
+          echo
+          case "${CODIGO}" in
+            2??) echo "sincronismo ok" ;;
+            *) echo "::error::rota devolveu ${CODIGO}"; exit 1 ;;
+          esac

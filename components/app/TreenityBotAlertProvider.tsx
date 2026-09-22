@@ -49,6 +49,7 @@ export function TreenityBotAlertProvider() {
   useEffect(() => {
     let cancelado = false;
     let timer: ReturnType<typeof setInterval> | undefined;
+    let sincronismo: ReturnType<typeof setTimeout> | undefined;
 
     // O token do bot dura 15 min e esta conexão fica aberta o dia todo: sem
     // renovar, a primeira reconexão depois disso falha e os alertas param.
@@ -82,8 +83,24 @@ export function TreenityBotAlertProvider() {
         jaConectouAntes = true;
       });
       socket.on("disconnect", () => definirPainelAoVivo(false));
-      socket.on("painel_pronto", () => definirPainelAoVivo(true));
-      socket.on("painel_evento", (evento: EventoDoPainel) => emitirEventoDoPainel(evento));
+
+      // Venda nova => tarefa "Conferir pagamento PIX". Quem recebe estes avisos é
+      // admin (sala do painel), então só admin dispara o sincronismo; a rota
+      // confere de novo no servidor. Vários avisos seguidos viram uma chamada só.
+      const pedirSincronismoDeTarefas = () => {
+        if (sincronismo) clearTimeout(sincronismo);
+        sincronismo = setTimeout(() => {
+          void fetch("/api/treenity-bot/sincronizar-tarefas", { method: "POST" }).catch(() => {});
+        }, 2000);
+      };
+      socket.on("painel_pronto", () => {
+        definirPainelAoVivo(true);
+        pedirSincronismoDeTarefas(); // pega o que ficou pendente enquanto ninguém estava conectado
+      });
+      socket.on("painel_evento", (evento: EventoDoPainel) => {
+        emitirEventoDoPainel(evento);
+        if (evento.tipo === "venda" || evento.tipo === "reconectado") pedirSincronismoDeTarefas();
+      });
 
       socket.on("atendimento_sinalizado", (alerta: AlertaAtendimentoPayload) => {
         toast.warning(alerta.clienteNome, {
@@ -105,6 +122,7 @@ export function TreenityBotAlertProvider() {
       cancelado = true;
       definirPainelAoVivo(false);
       if (timer) clearInterval(timer);
+      if (sincronismo) clearTimeout(sincronismo);
       socketRef.current?.disconnect();
       socketRef.current = null;
     };
