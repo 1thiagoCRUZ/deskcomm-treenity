@@ -16,16 +16,39 @@ import { ArrowRight } from "@/lib/ui/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useT } from "@/hooks/i18n/useT";
 import { useIdioma } from "@/lib/i18n/IdiomaProvider";
 import { tagDeIdioma } from "@/lib/i18n/datas";
 import type { PaginaDeVendas, ResumoVendas, VendaPainel } from "@/lib/treenity-bot/client";
-import { assinarEstadoDoPainel, ouvirEventosDoPainel, painelEstaAoVivo } from "@/lib/treenity-bot/painel-eventos";
+import {
+  assinarEstadoDoPainel,
+  ouvirEventosDoPainel,
+  painelEstaAoVivo,
+} from "@/lib/treenity-bot/painel-eventos";
 import { dataHora, moeda, varianteDoStatusDaVenda } from "./formatacao-painel";
 
 const TODOS = "todos";
@@ -71,7 +94,9 @@ function Cartao({ rotulo, valor }: { rotulo: string; valor: string }) {
     <Card>
       <CardContent className="flex flex-col gap-2 px-8 py-6">
         <span className="text-sm text-muted-foreground">{rotulo}</span>
-        <span className="text-3xl font-semibold tracking-tight tabular-nums lg:text-4xl">{valor}</span>
+        <span className="text-3xl font-semibold tracking-tight tabular-nums lg:text-4xl">
+          {valor}
+        </span>
       </CardContent>
     </Card>
   );
@@ -119,7 +144,9 @@ export function VendasPainel({ inicial }: { inicial: PaginaDeVendas | null }) {
     setItens((prev) => mesclarVendas(prev, nova.itens));
     setResumo(nova.resumo);
     setCursor((atual) => atual ?? nova.proximoCursor);
-    setStatusConhecidos((prev) => Array.from(new Set([...prev, ...nova.itens.map((v) => v.status)])));
+    setStatusConhecidos((prev) =>
+      Array.from(new Set([...prev, ...nova.itens.map((v) => v.status)])),
+    );
     setErro(false);
   }, []);
 
@@ -157,7 +184,9 @@ export function VendasPainel({ inicial }: { inicial: PaginaDeVendas | null }) {
       setItens((prev) => (cursorAtual ? [...prev, ...nova.itens] : nova.itens));
       setResumo(nova.resumo);
       setCursor(nova.proximoCursor);
-      setStatusConhecidos((prev) => Array.from(new Set([...prev, ...nova.itens.map((v) => v.status)])));
+      setStatusConhecidos((prev) =>
+        Array.from(new Set([...prev, ...nova.itens.map((v) => v.status)])),
+      );
     } catch {
       setErro(true);
       toast.error(t("Não foi possível carregar as vendas agora."));
@@ -180,7 +209,10 @@ export function VendasPainel({ inicial }: { inicial: PaginaDeVendas | null }) {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Cartao rotulo={t("Vendas")} valor={resumo ? String(resumo.quantidade) : "—"} />
-        <Cartao rotulo={t("Faturamento")} valor={resumo ? moeda(resumo.faturamento_total, tag) : "—"} />
+        <Cartao
+          rotulo={t("Faturamento")}
+          valor={resumo ? moeda(resumo.faturamento_total, tag) : "—"}
+        />
         <Cartao rotulo={t("Frete total")} valor={resumo ? moeda(resumo.frete_total, tag) : "—"} />
         <Cartao rotulo={t("Ticket médio")} valor={resumo ? moeda(resumo.ticket_medio, tag) : "—"} />
       </div>
@@ -257,7 +289,9 @@ export function VendasPainel({ inicial }: { inicial: PaginaDeVendas | null }) {
         <CardContent className="p-0">
           {erro ? (
             <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
-              <p className="text-base text-muted-foreground">{t("Não foi possível carregar as vendas agora.")}</p>
+              <p className="text-base text-muted-foreground">
+                {t("Não foi possível carregar as vendas agora.")}
+              </p>
               <Button variant="secondary" size="sm" onClick={() => void buscar(filtros, null)}>
                 {t("Tentar de novo")}
               </Button>
@@ -267,41 +301,62 @@ export function VendasPainel({ inicial }: { inicial: PaginaDeVendas | null }) {
               {carregando ? t("Carregando…") : t("Nenhuma venda encontrada.")}
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="pl-6">{t("Data")}</TableHead>
-                  <TableHead>{t("Cliente")}</TableHead>
-                  <TableHead>{t("Canal")}</TableHead>
-                  <TableHead>{t("Itens")}</TableHead>
-                  <TableHead className="text-right">{t("Frete")}</TableHead>
-                  <TableHead className="text-right">{t("Total")}</TableHead>
-                  <TableHead className="pr-6">{t("Status")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {itens.map((venda) => (
-                  <TableRow key={venda.id_venda} className="cursor-pointer" onClick={() => setAberta(venda)}>
-                    <TableCell className="pl-6 whitespace-nowrap">{dataHora(venda.data_venda)}</TableCell>
-                    <TableCell className="font-medium">{venda.cliente}</TableCell>
-                    <TableCell>
-                      {venda.canal ? <Badge variant="neutral">{venda.canal}</Badge> : "—"}
-                    </TableCell>
-                    <TableCell className="max-w-xs truncate">{venda.itens || "—"}</TableCell>
-                    <TableCell className="text-right tabular-nums">{moeda(venda.frete, tag)}</TableCell>
-                    <TableCell className="text-right font-semibold tabular-nums">{moeda(venda.total, tag)}</TableCell>
-                    <TableCell className="pr-6">
-                      <Badge variant={varianteDoStatusDaVenda(venda.status)}>{venda.status}</Badge>
-                    </TableCell>
+            // Fundo do CANVAS (não `bg-surface`, que é branco igual ao Card): sem
+            // ele, cada linha vira uma pílula branca sobre um Card branco — a
+            // borda de 1px é a ÚNICA coisa entre "listagem" e "tabela lisa".
+            <div className="rounded-b-lg bg-bg p-[var(--density-gap)]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="pl-6">{t("Data")}</TableHead>
+                    <TableHead>{t("Cliente")}</TableHead>
+                    <TableHead>{t("Canal")}</TableHead>
+                    <TableHead>{t("Itens")}</TableHead>
+                    <TableHead className="text-right">{t("Frete")}</TableHead>
+                    <TableHead className="text-right">{t("Total")}</TableHead>
+                    <TableHead className="pr-6">{t("Status")}</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {itens.map((venda) => (
+                    <TableRow
+                      key={venda.id_venda}
+                      className="cursor-pointer"
+                      onClick={() => setAberta(venda)}
+                    >
+                      <TableCell className="pl-6 whitespace-nowrap">
+                        {dataHora(venda.data_venda)}
+                      </TableCell>
+                      <TableCell className="font-medium">{venda.cliente}</TableCell>
+                      <TableCell>
+                        {venda.canal ? <Badge variant="neutral">{venda.canal}</Badge> : "—"}
+                      </TableCell>
+                      <TableCell className="max-w-xs truncate">{venda.itens || "—"}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {moeda(venda.frete, tag)}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold tabular-nums">
+                        {moeda(venda.total, tag)}
+                      </TableCell>
+                      <TableCell className="pr-6">
+                        <Badge variant={varianteDoStatusDaVenda(venda.status)}>
+                          {venda.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
 
           {cursor && !erro ? (
             <div className="flex justify-center border-t border-border p-4">
-              <Button variant="secondary" disabled={carregando} onClick={() => void buscar(filtros, cursor)}>
+              <Button
+                variant="secondary"
+                disabled={carregando}
+                onClick={() => void buscar(filtros, cursor)}
+              >
                 {carregando ? t("Carregando…") : t("Carregar mais")}
               </Button>
             </div>
@@ -324,7 +379,7 @@ export function VendasPainel({ inicial }: { inicial: PaginaDeVendas | null }) {
               <div className="space-y-5">
                 <div>
                   <h3 className="mb-1 text-sm font-semibold">{t("Itens do pedido")}</h3>
-                  <p className="text-sm whitespace-pre-wrap break-words">{aberta.itens || "—"}</p>
+                  <p className="text-sm break-words whitespace-pre-wrap">{aberta.itens || "—"}</p>
                 </div>
 
                 <div>
@@ -345,10 +400,18 @@ export function VendasPainel({ inicial }: { inicial: PaginaDeVendas | null }) {
 
                 <div>
                   <h3 className="mb-1 text-sm font-semibold">{t("Cliente e atendimento")}</h3>
-                  <Linha rotulo={t("Identificador")}>{aberta.cliente_detalhes.id_face ?? "—"}</Linha>
-                  <Linha rotulo={t("Cliente desde")}>{dataHora(aberta.cliente_detalhes.cliente_desde)}</Linha>
-                  <Linha rotulo={t("Etapa do funil")}>{aberta.atendimento_detalhes.status_funil ?? "—"}</Linha>
-                  <Linha rotulo={t("Nota da IA")}>{aberta.atendimento_detalhes.qualidade_ia ?? "—"}</Linha>
+                  <Linha rotulo={t("Identificador")}>
+                    {aberta.cliente_detalhes.id_face ?? "—"}
+                  </Linha>
+                  <Linha rotulo={t("Cliente desde")}>
+                    {dataHora(aberta.cliente_detalhes.cliente_desde)}
+                  </Linha>
+                  <Linha rotulo={t("Etapa do funil")}>
+                    {aberta.atendimento_detalhes.status_funil ?? "—"}
+                  </Linha>
+                  <Linha rotulo={t("Nota da IA")}>
+                    {aberta.atendimento_detalhes.qualidade_ia ?? "—"}
+                  </Linha>
                   {aberta.cliente_detalhes.resumo ? (
                     <p className="mt-2 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
                       {aberta.cliente_detalhes.resumo}

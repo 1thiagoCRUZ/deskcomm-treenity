@@ -16,7 +16,14 @@
 import Link from "next/link";
 import { ChartLineUp } from "@/lib/ui/icons";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { loadAuthUser } from "@/lib/auth/server";
 import { isConfigured } from "@/lib/treenity-bot/config";
 import { carregarDadosTreenityBot, type DashboardMetrica } from "@/lib/treenity-bot/client";
@@ -32,11 +39,7 @@ function Sparkline({ valores }: { valores: number[] }) {
   const pontos = pontosSparkline(valores, 100, SPARK_H);
   if (!pontos) return null;
   return (
-    <svg
-      viewBox={`0 0 100 ${SPARK_H}`}
-      preserveAspectRatio="none"
-      className="block h-12 w-full"
-    >
+    <svg viewBox={`0 0 100 ${SPARK_H}`} preserveAspectRatio="none" className="block h-12 w-full">
       <path d={pontos.area} className="fill-accent-soft" />
       <polyline
         points={pontos.linha}
@@ -52,7 +55,13 @@ function Sparkline({ valores }: { valores: number[] }) {
   );
 }
 
-function DeltaBadge({ valor, idioma }: { valor: number | null; idioma: ReturnType<typeof normalizarIdioma> }) {
+function DeltaBadge({
+  valor,
+  idioma,
+}: {
+  valor: number | null;
+  idioma: ReturnType<typeof normalizarIdioma>;
+}) {
   if (valor === null) return null;
   const sinal = valor > 0 ? "+" : valor < 0 ? "−" : "";
   const abs = Math.abs(valor).toLocaleString(tagDeIdioma(idioma), {
@@ -90,7 +99,9 @@ function StatCard({
   return (
     <Card className="flex flex-col gap-3 p-6">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">{label}</span>
+        <span className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+          {label}
+        </span>
         <DeltaBadge valor={delta} idioma={idioma} />
       </div>
       <span className="text-4xl font-semibold tracking-tight tabular-nums">{valor}</span>
@@ -116,7 +127,9 @@ export default async function TreenityBotAnalisePage() {
   // A API devolve mais recente primeiro; sparkline e delta precisam de ordem
   // cronológica (mais antigo → mais recente) pra "crescendo" apontar pro lado
   // certo. A tabela abaixo usa `metricas` (ordem da API) sem tocar nisso.
-  const metricasCronologicas = [...metricas].sort((a, b) => a.data_referencia.localeCompare(b.data_referencia));
+  const metricasCronologicas = [...metricas].sort((a, b) =>
+    a.data_referencia.localeCompare(b.data_referencia),
+  );
   const faturamentoSerie = metricasCronologicas.map((m) => m.faturamento_total);
   const atendimentosSerie = metricasCronologicas.map((m) => m.total_atendimentos);
   const clientesSerie = metricasCronologicas.map((m) => m.total_clientes);
@@ -137,7 +150,9 @@ export default async function TreenityBotAnalisePage() {
           <ChartLineUp size={34} weight="duotone" className="text-muted-foreground" />
         </div>
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">{traduzir("Treenity Bot — histórico", idioma)}</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">
+            {traduzir("Treenity Bot — histórico", idioma)}
+          </h1>
           <p className="mt-1.5 text-base text-muted-foreground">
             {traduzir("Faturamento, clientes e atendimentos dos últimos 30 dias.", idioma)}
           </p>
@@ -196,33 +211,51 @@ export default async function TreenityBotAnalisePage() {
           </div>
 
           <Card>
-            <CardContent className="p-0">
+            {/* Fundo do CANVAS (não `bg-surface`, que é branco igual ao Card):
+                sem ele, cada linha vira uma pílula branca sobre um Card branco. */}
+            <CardContent className="rounded-b-lg bg-bg p-[var(--density-gap)]">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="py-4 pl-6 text-sm">{traduzir("Data", idioma)}</TableHead>
-                    <TableHead className="py-4 text-right text-sm">{traduzir("Clientes", idioma)}</TableHead>
-                    <TableHead className="py-4 text-right text-sm">{traduzir("Atendimentos", idioma)}</TableHead>
-                    <TableHead className="py-4 pr-6 text-right text-sm">{traduzir("Faturamento", idioma)}</TableHead>
+                    <TableHead className="py-4 text-right text-sm">
+                      {traduzir("Clientes", idioma)}
+                    </TableHead>
+                    <TableHead className="py-4 text-right text-sm">
+                      {traduzir("Atendimentos", idioma)}
+                    </TableHead>
+                    <TableHead className="py-4 pr-6 text-right text-sm">
+                      {traduzir("Faturamento", idioma)}
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {metricas.map((m) => (
                     <TableRow key={m.data_referencia}>
                       <TableCell className="py-4 pl-6 text-base">
-                        {new Date(`${m.data_referencia}T00:00:00`).toLocaleDateString(tagDeIdioma(idioma))}
+                        {new Date(`${m.data_referencia}T00:00:00`).toLocaleDateString(
+                          tagDeIdioma(idioma),
+                        )}
                       </TableCell>
-                      <TableCell className="py-4 text-right text-base tabular-nums">{m.total_clientes}</TableCell>
-                      <TableCell className="py-4 text-right text-base tabular-nums">{m.total_atendimentos}</TableCell>
+                      <TableCell className="py-4 text-right text-base tabular-nums">
+                        {m.total_clientes}
+                      </TableCell>
+                      <TableCell className="py-4 text-right text-base tabular-nums">
+                        {m.total_atendimentos}
+                      </TableCell>
                       <TableCell className="py-4 pr-6 text-right text-base tabular-nums">
                         <div className="flex items-center justify-end gap-3">
                           <span className="h-2.5 w-28 overflow-hidden rounded-full bg-accent-soft">
                             <span
                               className="block h-full rounded-full bg-accent"
-                              style={{ width: `${Math.max(4, (m.faturamento_total / maxFaturamento) * 100)}%` }}
+                              style={{
+                                width: `${Math.max(4, (m.faturamento_total / maxFaturamento) * 100)}%`,
+                              }}
                             />
                           </span>
-                          <span className="min-w-[110px] font-medium">{moeda(m.faturamento_total)}</span>
+                          <span className="min-w-[110px] font-medium">
+                            {moeda(m.faturamento_total)}
+                          </span>
                         </div>
                       </TableCell>
                     </TableRow>

@@ -20,13 +20,30 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useT } from "@/hooks/i18n/useT";
 import { useIdioma } from "@/lib/i18n/IdiomaProvider";
 import { localeDeData, tagDeIdioma } from "@/lib/i18n/datas";
 import type { AtendimentoPainel, PaginaDeAtendimentos } from "@/lib/treenity-bot/client";
-import { assinarEstadoDoPainel, ouvirEventosDoPainel, painelEstaAoVivo } from "@/lib/treenity-bot/painel-eventos";
+import {
+  assinarEstadoDoPainel,
+  ouvirEventosDoPainel,
+  painelEstaAoVivo,
+} from "@/lib/treenity-bot/painel-eventos";
 import { haQuantoTempo, moeda, varianteDaEtapa } from "./formatacao-painel";
 
 const ATUALIZAR_MS = 8 * 1000;
@@ -52,7 +69,9 @@ async function baixar(f: Filtros, cursor: string | null): Promise<PaginaDeAtendi
     if (f.etapa !== TODOS) params.set("etapa", f.etapa);
     if (f.venda !== TODOS) params.set("com_venda", f.venda === "com" ? "true" : "false");
     if (cursor) params.set("cursor", cursor);
-    const res = await fetch(`/api/treenity-bot/atendimentos?${params.toString()}`, { cache: "no-store" });
+    const res = await fetch(`/api/treenity-bot/atendimentos?${params.toString()}`, {
+      cache: "no-store",
+    });
     if (!res.ok) return null;
     return (await res.json()).data as PaginaDeAtendimentos;
   } catch {
@@ -197,7 +216,10 @@ export function AtendimentosPainel({ inicial }: { inicial: PaginaDeAtendimentos 
           </div>
           <div className="space-y-1.5">
             <Label>{t("Venda")}</Label>
-            <Select value={filtros.venda} onValueChange={(v) => void aplicar({ venda: v as Filtros["venda"] })}>
+            <Select
+              value={filtros.venda}
+              onValueChange={(v) => void aplicar({ venda: v as Filtros["venda"] })}
+            >
               <SelectTrigger className="w-44">
                 <SelectValue />
               </SelectTrigger>
@@ -226,7 +248,9 @@ export function AtendimentosPainel({ inicial }: { inicial: PaginaDeAtendimentos 
       <CardContent className="p-0">
         {erro && itens.length === 0 ? (
           <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
-            <p className="text-base text-muted-foreground">{t("Não foi possível carregar os atendimentos agora.")}</p>
+            <p className="text-base text-muted-foreground">
+              {t("Não foi possível carregar os atendimentos agora.")}
+            </p>
             <Button variant="secondary" size="sm" onClick={() => void aplicar({})}>
               {t("Tentar de novo")}
             </Button>
@@ -236,79 +260,92 @@ export function AtendimentosPainel({ inicial }: { inicial: PaginaDeAtendimentos 
             {carregando ? t("Carregando…") : t("Nenhum atendimento encontrado.")}
           </p>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="pl-6">{t("Cliente")}</TableHead>
-                <TableHead>{t("Canal")}</TableHead>
-                <TableHead>{t("Etapa")}</TableHead>
-                <TableHead className="text-right">{t("Nota da IA")}</TableHead>
-                <TableHead>{t("Última mensagem")}</TableHead>
-                <TableHead className="text-right">{t("Msgs")}</TableHead>
-                <TableHead className="pr-6 text-right">{t("Venda")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {itens.map((a) => {
-                const ultima = a.ultimaMensagem;
-                const previa = ultima?.conteudo || (ultima?.formato === "audio" ? `(${t("áudio")})` : "");
-                return (
-                  <TableRow
-                    key={a.id}
-                    className="cursor-pointer"
-                    onClick={() => router.push(`/app/integrations/treenity-bot/${a.id}`)}
-                  >
-                    <TableCell className="pl-6">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{a.cliente?.nome ?? t("Desconhecido")}</span>
-                        {a.precisaAtencaoHumana ? (
-                          <Badge variant="error" className="gap-1">
-                            <Warning size={11} weight="fill" aria-hidden />
-                            {t("Atenção")}
-                          </Badge>
-                        ) : null}
-                      </div>
-                      {a.cliente?.idFace ? (
-                        <span className="text-xs text-muted-foreground">{a.cliente.idFace}</span>
-                      ) : null}
-                    </TableCell>
-                    <TableCell>{a.canal ? <Badge variant="neutral">{a.canal}</Badge> : "—"}</TableCell>
-                    <TableCell>
-                      {a.statusFunil ? <Badge variant={varianteDaEtapa(a.statusFunil)}>{a.statusFunil}</Badge> : "—"}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {a.qualidadeIa != null ? Number(a.qualidadeIa).toFixed(1) : "—"}
-                    </TableCell>
-                    <TableCell className="max-w-sm">
-                      {ultima ? (
-                        <>
-                          <p className="truncate text-sm">
-                            <span className="text-muted-foreground">
-                              {ultima.remetente === "ia" ? t("IA") : t("Cliente")}:{" "}
-                            </span>
-                            {previa}
-                          </p>
-                          <span className="text-xs text-muted-foreground">
-                            {haQuantoTempo(ultima.enviadoEm, locale)}
+          // Fundo do CANVAS (não `bg-surface`, que é branco igual ao Card): sem
+          // ele, cada linha vira uma pílula branca sobre um Card branco.
+          <div className="rounded-b-lg bg-bg p-[var(--density-gap)]">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="pl-6">{t("Cliente")}</TableHead>
+                  <TableHead>{t("Canal")}</TableHead>
+                  <TableHead>{t("Etapa")}</TableHead>
+                  <TableHead className="text-right">{t("Nota da IA")}</TableHead>
+                  <TableHead>{t("Última mensagem")}</TableHead>
+                  <TableHead className="text-right">{t("Msgs")}</TableHead>
+                  <TableHead className="pr-6 text-right">{t("Venda")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {itens.map((a) => {
+                  const ultima = a.ultimaMensagem;
+                  const previa =
+                    ultima?.conteudo || (ultima?.formato === "audio" ? `(${t("áudio")})` : "");
+                  return (
+                    <TableRow
+                      key={a.id}
+                      className="cursor-pointer"
+                      onClick={() => router.push(`/app/integrations/treenity-bot/${a.id}`)}
+                    >
+                      <TableCell className="pl-6">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">
+                            {a.cliente?.nome ?? t("Desconhecido")}
                           </span>
-                        </>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">{a.totalMensagens}</TableCell>
-                    <TableCell className="pr-6 text-right tabular-nums">
-                      {a.venda ? (
-                        <span className="font-semibold">{moeda(a.venda.total, tag)}</span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                          {a.precisaAtencaoHumana ? (
+                            <Badge variant="error" className="gap-1">
+                              <Warning size={11} weight="fill" aria-hidden />
+                              {t("Atenção")}
+                            </Badge>
+                          ) : null}
+                        </div>
+                        {a.cliente?.idFace ? (
+                          <span className="text-xs text-muted-foreground">{a.cliente.idFace}</span>
+                        ) : null}
+                      </TableCell>
+                      <TableCell>
+                        {a.canal ? <Badge variant="neutral">{a.canal}</Badge> : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {a.statusFunil ? (
+                          <Badge variant={varianteDaEtapa(a.statusFunil)}>{a.statusFunil}</Badge>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {a.qualidadeIa != null ? Number(a.qualidadeIa).toFixed(1) : "—"}
+                      </TableCell>
+                      <TableCell className="max-w-sm">
+                        {ultima ? (
+                          <>
+                            <p className="truncate text-sm">
+                              <span className="text-muted-foreground">
+                                {ultima.remetente === "ia" ? t("IA") : t("Cliente")}:{" "}
+                              </span>
+                              {previa}
+                            </p>
+                            <span className="text-xs text-muted-foreground">
+                              {haQuantoTempo(ultima.enviadoEm, locale)}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">{a.totalMensagens}</TableCell>
+                      <TableCell className="pr-6 text-right tabular-nums">
+                        {a.venda ? (
+                          <span className="font-semibold">{moeda(a.venda.total, tag)}</span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         )}
 
         {cursor ? (
