@@ -16,7 +16,20 @@ export function AppShell({ sidebarCollapsed, children }: AppShellProps) {
   useCrmAlerts();
   useNotifyOpenFromServiceWorker();
   return (
-    <div className="flex min-h-screen w-full bg-background">
+    // `h-dvh` + `overflow-hidden`, não `min-h-screen`: com `min-h-screen` a
+    // CAIXA CRESCE com o conteúdo, e numa página alta (ex.: a grade de
+    // horários da Agenda) o DOCUMENTO passava a rolar, não só `main`. Isso
+    // quebrava a sidebar: ela é `sticky` (ver Sidebar.tsx), e `html`/`body`
+    // têm `overflow-x: hidden` sem `overflow-y` explícito — por regra da spec
+    // CSS, isso faz o navegador computar `overflow-y: auto` nos DOIS ao mesmo
+    // tempo, criando dois contêineres de rolagem empilhados. `position:
+    // sticky` gruda relativo ao contêiner de rolagem mais próximo, e com dois
+    // no meio o cálculo sai errado — a sidebar "soma" a rolagem duas vezes e
+    // sai da tela (medido: 900px de scroll levaram o topo dela pra -844px).
+    // Prendendo esta caixa em exatamente a altura da viewport, o documento
+    // NUNCA precisa rolar — só `main`, por dentro do próprio `overflow-auto`
+    // — e a sidebar sticky nunca chega a testar esse cálculo quebrado.
+    <div className="flex h-dvh w-full overflow-hidden bg-background">
       <div className="hidden md:block">
         <Sidebar collapsed={sidebarCollapsed} />
       </div>
@@ -39,7 +52,7 @@ export function AppShell({ sidebarCollapsed, children }: AppShellProps) {
         SEGUNDA medida da mesma coisa — a que discordava e deixava a barra por
         cima da lista.
       */}
-      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+      <div className="flex h-full min-w-0 flex-1 flex-col">
         <TopBar />
         <main className="flex-1 overflow-auto p-6">{children}</main>
       </div>

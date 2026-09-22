@@ -69,9 +69,20 @@ export function AdminShell({ userEmail, children }: AdminShellProps) {
 
   return (
     <TooltipProvider>
-      <div className="flex min-h-screen w-full flex-col bg-background">
+      {/* `h-dvh` + `overflow-hidden`, não `min-h-screen`: mesmo fix de
+          `app/app/_components/AppShell.tsx` — com a caixa crescendo com o
+          conteúdo, uma página alta fazia o DOCUMENTO rolar (não só `main`),
+          e `html`/`body` com `overflow-x: hidden` sem `overflow-y` explícito
+          viram dois contêineres de rolagem empilhados (regra da spec CSS),
+          o que quebra `position: sticky` (a sidebar soma a rolagem errado e
+          sai da tela). Prender esta caixa na altura da viewport tira o
+          documento da jogada — só `main` rola. */}
+      <div className="flex h-dvh w-full flex-col overflow-hidden bg-background">
         <PlatformModeBanner />
-        <div className="flex flex-1">
+        {/* `min-h-0`: filho de flex-column nasce com `min-height: auto` (não
+            encolhe abaixo do conteúdo) — sem isto a linha empurraria a caixa
+            pai além de `h-dvh` em vez de ficar contida nela. */}
+        <div className="flex min-h-0 flex-1">
           <AdminSidebar userEmail={userEmail} />
           <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
             <SheetContent side="left" className="w-72 max-w-[85vw] gap-0 p-0 lg:hidden">
@@ -79,7 +90,7 @@ export function AdminShell({ userEmail, children }: AdminShellProps) {
               <AdminSidebar userEmail={userEmail} variant="mobile" />
             </SheetContent>
           </Sheet>
-          <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             {/* Sem TopBar própria no admin (era só sidebar + main): esta barra
                 existe só pra carregar o hambúrguer abaixo de `lg`, onde a
                 sidebar fixa não está mais no DOM. */}
