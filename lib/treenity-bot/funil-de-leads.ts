@@ -232,10 +232,10 @@ async function sincronizarOrg(
         await encerraDemanda(admin, ctx, { leadId: lead.id, desfecho: "won" });
         fechados++;
       } else if (lead.stage_id !== stageAlvo) {
-        await moveLeadHandler(admin, ctx, lead.id, {
-          to_stage_id: stageAlvo,
-          expected_updated_at: lead.updated_at,
-        });
+        // `MoveLeadAdminInput` (chamada direta ao handler) não tem
+        // `expected_updated_at` — isso é só do schema HTTP do /move; o handler
+        // já lê o `updated_at` atual sozinho e faz o controle de corrida nele.
+        await moveLeadHandler(admin, ctx, lead.id, { to_stage_id: stageAlvo });
         movidos++;
       }
 

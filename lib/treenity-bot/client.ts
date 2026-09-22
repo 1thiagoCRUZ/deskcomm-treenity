@@ -204,6 +204,8 @@ export interface FiltrosDeAtendimentos {
   canal?: string;
   etapa?: string;
   comVenda?: boolean;
+  /** `YYYY-MM-DD` ou ISO, inclusivo — o bot filtra pela última atividade. */
+  desde?: string;
   cursor?: string;
   limit?: number;
 }
