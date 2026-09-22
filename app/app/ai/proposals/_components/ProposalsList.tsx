@@ -86,9 +86,12 @@ function Pendentes({
   }
 
   return (
-    <ul className="divide-y divide-border rounded-lg border border-border">
+    <ul className="flex flex-col gap-[var(--density-gap)]">
       {itens.map((p) => (
-        <li key={`${p.lead_id}-${p.seq}`} className="flex flex-col gap-3 p-4">
+        <li
+          key={`${p.lead_id}-${p.seq}`}
+          className="flex flex-col gap-3 rounded-md border border-border bg-surface p-[var(--density-py)] transition-colors hover:bg-surface-elevated hover:border-accent"
+        >
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <span className="text-sm font-medium">{p.lead_title}</span>
             {p.contact_name && (
@@ -150,9 +153,12 @@ function Historico({ itens }: { itens: DecisaoPassada[] }) {
   }
 
   return (
-    <ul className="divide-y divide-border rounded-lg border border-border">
+    <ul className="flex flex-col gap-[var(--density-gap)]">
       {itens.map((d) => (
-        <li key={d.activity_id} className="flex flex-col gap-1.5 p-4">
+        <li
+          key={d.activity_id}
+          className="flex flex-col gap-1.5 rounded-md border border-border bg-surface p-[var(--density-py)]"
+        >
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             {/* IGNORAR NÃO É "NADA ACONTECEU": ganha o mesmo destaque visual de
                 aprovar, porque a wave 4 existe exatamente para que a recusa

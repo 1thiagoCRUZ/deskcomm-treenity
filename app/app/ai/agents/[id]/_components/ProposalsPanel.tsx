@@ -76,14 +76,18 @@ export function ProposalsPanel({
   }
 
   return (
-    <ul className="divide-y divide-border rounded-lg border border-border">
+    <ul className="flex flex-col gap-[var(--density-gap)]">
       {items.map((p) => {
         const when = formatDistanceToNowStrict(new Date(p.proposed_at), {
           addSuffix: true,
           locale: localeDaData,
         });
         return (
-          <li key={p.id} className="flex items-start gap-3 px-4 py-3" data-testid="proposal-item">
+          <li
+            key={p.id}
+            className="flex items-start gap-3 rounded-md border border-border bg-surface px-[var(--density-px)] py-[var(--density-py)] transition-colors hover:bg-surface-elevated hover:border-accent"
+            data-testid="proposal-item"
+          >
             <Badge variant={p.applied_at ? "success" : "info"} className="mt-0.5 shrink-0">
               {p.applied_at ? t("aplicada") : t("pendente")}
             </Badge>

@@ -341,11 +341,11 @@ export function StagesSection({
           alinha com nada: lá o mesmo texto vai em cima de cada controle
           (`sm:hidden`, mesmas constantes). `aria-label` não substitui nenhum dos
           dois — é invisível para quem enxerga. */}
-      {/* `border border-transparent`: a lista abaixo tem borda de 1px, que empurra
-          o conteúdo dela 1px para dentro. Sem a mesma borda aqui, cada rótulo
-          fica 1px à direita do controle que nomeia — medido, não estimado. */}
+      {/* Cada linha da lista abaixo tem sua própria borda/padding agora (barra
+          arredondada, não mais uma caixa única) — `px-[var(--density-px)]`
+          alinha este cabeçalho com o conteúdo interno de cada linha. */}
       <div
-        className="hidden gap-3 border border-transparent px-4 text-xs font-medium text-text-muted sm:flex"
+        className="hidden gap-3 px-[var(--density-px)] text-xs font-medium text-text-muted sm:flex"
         data-testid="etapas-cabecalho"
       >
         <span className="w-6 shrink-0" />
@@ -355,7 +355,7 @@ export function StagesSection({
         <span className={`${LARGURA.arquivar} shrink-0`} />
       </div>
 
-      <ul className="flex flex-col divide-y divide-border rounded-md border border-border">
+      <ul className="flex flex-col gap-[var(--density-gap)]">
         {etapas.map((etapa, i) => {
           const passo = passos.get(etapa.id) ?? null;
           const erroDaLinha = erro?.etapaId === etapa.id ? erro.texto : null;
@@ -366,7 +366,7 @@ export function StagesSection({
           return (
             <li
               key={`${etapa.id}:${etapa.name}`}
-              className="flex flex-col gap-3 p-4"
+              className="flex flex-col gap-3 rounded-md border border-border bg-surface p-[var(--density-py)]"
               data-testid={`etapa-${etapa.id}`}
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

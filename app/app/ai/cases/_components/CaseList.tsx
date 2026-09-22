@@ -48,7 +48,7 @@ export function CaseList() {
             </p>
           </div>
         ) : (
-          <ul className="divide-y divide-border rounded-lg border border-border">
+          <ul className="flex flex-col gap-[var(--density-gap)]">
             {data.cases.map((c) => (
               <CaseRow
                 key={c.id}
@@ -88,8 +88,8 @@ function CaseRow({
         aria-current={selected ? "true" : undefined}
         data-testid="case-item"
         className={cn(
-          "flex w-full flex-col items-start gap-1 px-4 py-3 text-left transition-colors hover:bg-accent-soft",
-          selected && "bg-accent-soft",
+          "flex w-full flex-col items-start gap-1 rounded-md border border-border bg-surface px-[var(--density-px)] py-[var(--density-py)] text-left transition-colors hover:bg-surface-elevated hover:border-accent",
+          selected && "bg-accent-soft border-accent",
         )}
       >
         <div className="flex w-full items-center justify-between gap-2">

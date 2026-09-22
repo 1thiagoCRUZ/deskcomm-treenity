@@ -89,7 +89,7 @@ export function AgentInboxList({ canResolve }: { canResolve: boolean }) {
           </p>
         </div>
       ) : (
-        <ul className="divide-y divide-border rounded-lg border border-border">
+        <ul className="flex flex-col gap-[var(--density-gap)]">
           {data.items.map((item) => (
             <InboxRow
               key={item.id}
@@ -123,7 +123,10 @@ function InboxRow({
     locale: localeDaData,
   });
   return (
-    <li className="flex flex-wrap items-start gap-3 px-4 py-3" data-testid="inbox-item">
+    <li
+      className="flex flex-wrap items-start gap-3 rounded-md border border-border bg-surface px-[var(--density-px)] py-[var(--density-py)] transition-colors hover:bg-surface-elevated hover:border-accent"
+      data-testid="inbox-item"
+    >
       <Badge variant={SEVERITY_VARIANT[item.severity]} className="mt-0.5 shrink-0">
         {t(SEVERITY_LABEL[item.severity])}
       </Badge>

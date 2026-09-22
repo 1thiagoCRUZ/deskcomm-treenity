@@ -345,9 +345,13 @@ export function ProdutosClient({
           <p className="mt-1 text-sm text-muted-foreground">{textos.vazioDica}</p>
         </div>
       ) : (
-        <ul className="divide-y rounded-lg border" data-testid="lista-produtos">
+        <ul className="flex flex-col gap-[var(--density-gap)]" data-testid="lista-produtos">
           {filtrados.map((p) => (
-            <li key={p.id} className="flex items-center gap-4 p-3" data-testid={`produto-${p.codigo}`}>
+            <li
+              key={p.id}
+              className="flex items-center gap-4 rounded-md border border-border bg-surface p-[var(--density-py)] transition-colors hover:bg-surface-elevated hover:border-accent"
+              data-testid={`produto-${p.codigo}`}
+            >
               <div className="min-w-0 flex-1">
                 <p className={`truncate font-medium ${p.ativo ? "" : "text-muted-foreground line-through"}`}>
                   {p.nome}

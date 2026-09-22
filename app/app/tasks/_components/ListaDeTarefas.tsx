@@ -72,7 +72,10 @@ function Linha({
   return (
     <div
       className={cn(
-        "group flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-muted/40",
+        // Mesma linguagem visual da Table (ver components/ui/table.tsx): cada
+        // linha é sua própria barra arredondada, separada da próxima pelo gap
+        // do container (`ListaDeTarefas`), não por uma borda entre elas.
+        "group flex items-start gap-3 rounded-md border border-border bg-surface px-[var(--density-px)] py-[var(--density-py)] transition-colors hover:bg-surface-elevated hover:border-accent",
         encerrada && "opacity-60",
       )}
     >
@@ -215,7 +218,7 @@ export function ListaDeTarefas({
           >
             {rotuloDaFaixa[grupo.faixa]}
           </h2>
-          <div className="rounded-xl border bg-card py-1">
+          <div className="flex flex-col gap-[var(--density-gap)]">
             {grupo.tarefas.map((tarefa) => (
               <Linha
                 key={tarefa.id}

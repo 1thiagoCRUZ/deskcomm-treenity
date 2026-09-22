@@ -218,14 +218,18 @@ export function FunisClient({
         </p>
       )}
 
-      <ul className="flex flex-col divide-y divide-border rounded-md border border-border">
+      <ul className="flex flex-col gap-[var(--density-gap)]">
         {funis.map((funil, i) => {
           const renomeandoAqui = renomeando?.id === funil.id ? renomeando : null;
           const arquivandoAqui = arquivando?.id === funil.id ? arquivando : null;
           const erroDaLinha = erro?.id === funil.id ? erro.texto : null;
 
           return (
-            <li key={funil.id} className="flex flex-col gap-3 p-4" data-testid={`funil-${funil.id}`}>
+            <li
+              key={funil.id}
+              className="flex flex-col gap-3 rounded-md border border-border bg-surface p-[var(--density-py)]"
+              data-testid={`funil-${funil.id}`}
+            >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 {podeGerenciar && (
                   <div className="flex shrink-0 flex-wrap gap-1">

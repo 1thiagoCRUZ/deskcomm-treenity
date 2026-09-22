@@ -234,19 +234,23 @@ export default async function TreenityBotIntegrationPage() {
                   )}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="p-0">
+              <CardContent className={dados.sinalizados.length === 0 ? "p-0" : "p-[var(--density-gap)]"}>
                 {dados.sinalizados.length === 0 ? (
                   <p className="px-6 py-4 text-sm text-muted-foreground">
                     {traduzir("Nada precisando de atenção agora.", idioma)}
                   </p>
                 ) : (
-                  <ul className="divide-y divide-border">
+                  <ul className="flex flex-col gap-[var(--density-gap)]">
                     {dados.sinalizados.map((item) => (
                       <li key={item.id}>
                         <Link
                           href={`/app/integrations/treenity-bot/${item.id}`}
                           className={cn(
-                            "flex items-center gap-4 border-l-2 px-6 py-4 transition-colors hover:bg-muted",
+                            // Borda esquerda mais grossa carrega a urgência (cor de
+                            // `corDeUrgencia`); as outras três lados fecham a pílula
+                            // padrão da listagem — por isso o hover não mexe na borda,
+                            // só no fundo, pra não apagar o sinal de urgência.
+                            "flex items-center gap-4 rounded-md border border-border border-l-2 bg-surface px-6 py-4 transition-colors hover:bg-surface-elevated",
                             corDeUrgencia(item.atencaoSinalizadaEm),
                           )}
                         >

@@ -262,7 +262,7 @@ export function AgentMappingSection({
         </p>
       </div>
 
-      <ul className="flex flex-col divide-y divide-border rounded-md border border-border">
+      <ul className="flex flex-col gap-[var(--density-gap)]">
         {LEAD_STAGES.map((passo) => {
           const opcoes = opcoesDoPasso(passo, etapas, rascunho);
           // A etapa já escolhida some das opções DOS OUTROS passos, nunca das
@@ -272,7 +272,7 @@ export function AgentMappingSection({
           return (
             <li
               key={passo}
-              className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:gap-4"
+              className="flex flex-col gap-2 rounded-md border border-border bg-surface p-[var(--density-py)] sm:flex-row sm:items-center sm:gap-4"
               data-testid={`passo-${passo}`}
             >
               <div className="min-w-0 sm:w-64">

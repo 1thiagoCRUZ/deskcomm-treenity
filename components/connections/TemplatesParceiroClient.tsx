@@ -443,13 +443,16 @@ export function TemplatesParceiroClient() {
           {t("para trazer os que já existem na plataforma.")}
         </p>
       ) : (
-        <ul className="divide-y divide-border rounded-md border border-border">
+        <ul className="flex flex-col gap-[var(--density-gap)]">
           {templates.map((tpl) => {
             const chave = `${tpl.name}|${tpl.language}`;
             const c = lerConteudo(tpl.components);
             const expandido = aberto === chave;
             return (
-              <li key={chave} className="px-3 py-2">
+              <li
+                key={chave}
+                className="rounded-md border border-border bg-surface px-3 py-2 transition-colors hover:bg-surface-elevated hover:border-accent"
+              >
                 {/* A linha inteira ABRE o conteúdo. Ver "APPROVED" sem ver o
                     texto obriga a abrir a plataforma para saber o que a
                     definição diz — e é o texto que decide qual mandar. */}
