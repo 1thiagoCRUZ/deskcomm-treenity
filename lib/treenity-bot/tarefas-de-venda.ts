@@ -17,13 +17,15 @@
  * "Aguardando Pagamento". A próxima execução vê a tarefa concluída + venda ainda
  * aguardando e refaz a chamada.
  *
- * ─── Configuração (opcional; sem ela o recurso fica desligado) ──────────────
- * TREENITY_BOT_TAREFAS_ORG_ID — organização que recebe as tarefas (uma só).
- * TREENITY_BOT_TAREFAS_DESDE  — ISO; só vendas criadas a partir daí geram tarefa
- *                               (o histórico anterior nunca vira tarefa).
+ * ─── Configuração ────────────────────────────────────────────────────────────
+ * Por organização, em `organizations.settings.treenity_bot.tarefas` — ligar,
+ * desligar e o "desde" são decisão do cliente, pela tela (ver
+ * lib/treenity-bot/configuracao.ts). Organização sem isso ligado não gera
+ * nenhuma tarefa.
  */
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logger } from "@/lib/logger";
+import { orgsComTarefasAtivas, type OrgComTarefasAtivas } from "./configuracao";
 import { definirPagamentoDaVenda, listarVendasAguardandoPagamento, type VendaPainel } from "./client";
 
 export const PREFIXO_REF_VENDA = "treenity:venda:";
@@ -39,15 +41,9 @@ export function idDaVendaNaRef(ref: string | null | undefined): string | null {
 
 export interface ResultadoDoSincronismo {
   ativo: boolean;
+  organizacoes: number;
   criadas: number;
   pagamentosRefeitos: number;
-}
-
-function configuracao(): { orgId: string; desde: string } | null {
-  const orgId = process.env.TREENITY_BOT_TAREFAS_ORG_ID || "";
-  const desde = process.env.TREENITY_BOT_TAREFAS_DESDE || "";
-  if (!orgId || !desde || Number.isNaN(Date.parse(desde))) return null;
-  return { orgId, desde: new Date(desde).toISOString() };
 }
 
 const brl = (valor: number) => valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -84,24 +80,22 @@ async function buscarVendasAguardando(desde: string): Promise<VendaPainel[] | nu
   return vendas;
 }
 
-export async function sincronizarTarefasDeVenda(): Promise<ResultadoDoSincronismo> {
-  const config = configuracao();
-  if (!config) return { ativo: false, criadas: 0, pagamentosRefeitos: 0 };
+async function sincronizarOrg(
+  admin: ReturnType<typeof createAdminClient>,
+  org: OrgComTarefasAtivas,
+): Promise<{ criadas: number; pagamentosRefeitos: number }> {
+  const vendas = await buscarVendasAguardando(org.desde);
+  if (!vendas || vendas.length === 0) return { criadas: 0, pagamentosRefeitos: 0 };
 
-  const vendas = await buscarVendasAguardando(config.desde);
-  if (!vendas || vendas.length === 0) return { ativo: true, criadas: 0, pagamentosRefeitos: 0 };
-
-  const admin = createAdminClient();
   const refs = vendas.map((v) => refDaVenda(v.id_venda));
-
   const { data: existentes, error } = await admin
     .from("crm_tasks")
     .select("external_ref, status")
-    .eq("organization_id", config.orgId)
+    .eq("organization_id", org.orgId)
     .in("external_ref", refs);
   if (error) {
-    logger.error("[treenity-vendas] falha ao ler tarefas", { error: error.message });
-    return { ativo: true, criadas: 0, pagamentosRefeitos: 0 };
+    logger.error("[treenity-vendas] falha ao ler tarefas", { org: org.orgId, error: error.message });
+    return { criadas: 0, pagamentosRefeitos: 0 };
   }
 
   const statusPorRef = new Map((existentes ?? []).map((t) => [t.external_ref as string, t.status as string]));
@@ -114,7 +108,7 @@ export async function sincronizarTarefasDeVenda(): Promise<ResultadoDoSincronism
 
     if (situacao === undefined) {
       const { error: erroCriar } = await admin.from("crm_tasks").insert({
-        organization_id: config.orgId,
+        organization_id: org.orgId,
         ...montarTarefa(venda),
         // Sem prazo de propósito: é um lembrete, não um compromisso — prazo
         // encheria a lista de "atrasadas" com vendas que só esperam o cliente pagar.
@@ -126,7 +120,11 @@ export async function sincronizarTarefasDeVenda(): Promise<ResultadoDoSincronism
       if (!erroCriar) criadas++;
       else if (erroCriar.code !== "23505") {
         // 23505 = outra execução criou primeiro; qualquer outra coisa é problema de verdade.
-        logger.error("[treenity-vendas] falha ao criar tarefa", { error: erroCriar.message, venda: venda.id_venda });
+        logger.error("[treenity-vendas] falha ao criar tarefa", {
+          org: org.orgId,
+          error: erroCriar.message,
+          venda: venda.id_venda,
+        });
       }
     } else if (situacao === "done") {
       // Concluída, mas a venda segue aguardando: a chamada ao bot falhou antes.
@@ -138,5 +136,21 @@ export async function sincronizarTarefasDeVenda(): Promise<ResultadoDoSincronism
     }
   }
 
-  return { ativo: true, criadas, pagamentosRefeitos };
+  return { criadas, pagamentosRefeitos };
+}
+
+export async function sincronizarTarefasDeVenda(): Promise<ResultadoDoSincronismo> {
+  const admin = createAdminClient();
+  const orgs = await orgsComTarefasAtivas(admin);
+  if (orgs.length === 0) return { ativo: false, organizacoes: 0, criadas: 0, pagamentosRefeitos: 0 };
+
+  let criadas = 0;
+  let pagamentosRefeitos = 0;
+  for (const org of orgs) {
+    const resultado = await sincronizarOrg(admin, org);
+    criadas += resultado.criadas;
+    pagamentosRefeitos += resultado.pagamentosRefeitos;
+  }
+
+  return { ativo: true, organizacoes: orgs.length, criadas, pagamentosRefeitos };
 }

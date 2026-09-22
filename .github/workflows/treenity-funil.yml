@@ -1,17 +1,15 @@
-name: Tarefas de venda do Treenity Bot (agendado)
+name: Funil de leads do Treenity Bot (agendado)
 
-# Cria a tarefa "Conferir pagamento PIX" para cada venda nova do Treenity Bot
-# ainda "Aguardando Pagamento" (ver lib/treenity-bot/tarefas-de-venda.ts) e
-# refaz a confirmação de pagamento que tiver falhado. O navegador de um admin
-# já dispara isto na hora quando o painel avisa de uma venda nova
-# (app/api/treenity-bot/sincronizar-tarefas) — este workflow é a rede de
-# segurança para quando ninguém está com o painel aberto.
+# Sincroniza os atendimentos do Treenity Bot que já viraram negociação com o
+# funil dedicado no deskcomm (crm_leads) — ver lib/treenity-bot/funil-de-leads.ts.
+# O navegador de um admin já dispara isto na hora quando o painel avisa de
+# atendimento/venda nova; este workflow é a rede de segurança para quando
+# ninguém está com o painel aberto.
 #
 # ⚠️ `schedule:` do GitHub Actions só roda na branch DEFAULT do repositório —
-# mesma pegadinha documentada em relogio.yml. O recurso em si é ligado pelo
-# cliente na tela (aba "Automações" da integração, não env var) — nenhuma
-# organização com ele desligado responde `ativo: false` e este workflow fica
-# inofensivo até alguém ligar.
+# mesma pegadinha documentada em relogio.yml e treenity-vendas.yml. O recurso
+# em si é ligado pelo cliente na tela (aba "Automações" da integração, não
+# env var) — organização sem ele ligado não gera nada.
 on:
   schedule:
     - cron: "*/5 * * * *"
@@ -20,7 +18,7 @@ on:
 permissions: {}
 
 concurrency:
-  group: treenity-vendas
+  group: treenity-funil
   cancel-in-progress: false
 
 jobs:
@@ -28,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Chama /api/v1/cron/treenity-vendas
+      - name: Chama /api/v1/cron/treenity-funil
         env:
           APP_URL: ${{ vars.PROD_URL }}
           SECRET: ${{ secrets.INTERNAL_SECRET }}
@@ -42,7 +40,7 @@ jobs:
           CODIGO=$(curl -sS -o "$CORPO" -w '%{http_code}' -X POST \
             -H "Authorization: Bearer ${SECRET}" \
             --max-time 90 \
-            "${APP_URL%/}/api/v1/cron/treenity-vendas" || echo "000")
+            "${APP_URL%/}/api/v1/cron/treenity-funil" || echo "000")
           echo "HTTP ${CODIGO}"
           cat "$CORPO"
           echo

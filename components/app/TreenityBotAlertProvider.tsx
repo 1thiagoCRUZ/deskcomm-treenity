@@ -50,6 +50,7 @@ export function TreenityBotAlertProvider() {
     let cancelado = false;
     let timer: ReturnType<typeof setInterval> | undefined;
     let sincronismo: ReturnType<typeof setTimeout> | undefined;
+    let sincronismoFunil: ReturnType<typeof setTimeout> | undefined;
 
     // O token do bot dura 15 min e esta conexão fica aberta o dia todo: sem
     // renovar, a primeira reconexão depois disso falha e os alertas param.
@@ -93,13 +94,24 @@ export function TreenityBotAlertProvider() {
           void fetch("/api/treenity-bot/sincronizar-tarefas", { method: "POST" }).catch(() => {});
         }, 2000);
       };
+      // Etapa mudou ou venda nova => card do funil (crm_leads) precisa se mexer.
+      const pedirSincronismoDeFunil = () => {
+        if (sincronismoFunil) clearTimeout(sincronismoFunil);
+        sincronismoFunil = setTimeout(() => {
+          void fetch("/api/treenity-bot/sincronizar-funil", { method: "POST" }).catch(() => {});
+        }, 2000);
+      };
       socket.on("painel_pronto", () => {
         definirPainelAoVivo(true);
         pedirSincronismoDeTarefas(); // pega o que ficou pendente enquanto ninguém estava conectado
+        pedirSincronismoDeFunil();
       });
       socket.on("painel_evento", (evento: EventoDoPainel) => {
         emitirEventoDoPainel(evento);
         if (evento.tipo === "venda" || evento.tipo === "reconectado") pedirSincronismoDeTarefas();
+        if (evento.tipo === "atendimento" || evento.tipo === "venda" || evento.tipo === "reconectado") {
+          pedirSincronismoDeFunil();
+        }
       });
 
       socket.on("atendimento_sinalizado", (alerta: AlertaAtendimentoPayload) => {
@@ -123,6 +135,7 @@ export function TreenityBotAlertProvider() {
       definirPainelAoVivo(false);
       if (timer) clearInterval(timer);
       if (sincronismo) clearTimeout(sincronismo);
+      if (sincronismoFunil) clearTimeout(sincronismoFunil);
       socketRef.current?.disconnect();
       socketRef.current = null;
     };

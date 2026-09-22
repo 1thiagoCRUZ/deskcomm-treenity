@@ -50,6 +50,7 @@ import { cn } from "@/lib/utils";
 import ChatInterno from "./chat/chat-interno";
 import { AtendimentosPainel } from "./_painel/AtendimentosPainel";
 import { VendasPainel } from "./_painel/VendasPainel";
+import { AutomacoesPainel } from "./_automacoes/AutomacoesPainel";
 
 /** `border-l-error` (recém sinalizado) → `border-l-warning-fg` (há um tempo) → neutro. */
 function corDeUrgencia(atencaoSinalizadaEm: string | null): string {
@@ -154,6 +155,11 @@ export default async function TreenityBotIntegrationPage() {
             <TabsTrigger value="chat" className={tabTriggerClass}>
               {traduzir("Chat interno", idioma)}
             </TabsTrigger>
+            {ehAdmin ? (
+              <TabsTrigger value="automacoes" className={tabTriggerClass}>
+                {traduzir("Automações", idioma)}
+              </TabsTrigger>
+            ) : null}
           </TabsList>
 
           <TabsContent value="visao-geral" className="mt-0 min-h-0 flex-1 space-y-6 overflow-y-auto">
@@ -299,6 +305,12 @@ export default async function TreenityBotIntegrationPage() {
           <TabsContent value="chat" className="mt-0 min-h-0 flex-1 overflow-hidden">
             <ChatInterno />
           </TabsContent>
+
+          {ehAdmin ? (
+            <TabsContent value="automacoes" className="mt-0 min-h-0 flex-1 overflow-y-auto">
+              <AutomacoesPainel />
+            </TabsContent>
+          ) : null}
         </Tabs>
       )}
     </div>
