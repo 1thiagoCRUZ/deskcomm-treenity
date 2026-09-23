@@ -74,7 +74,11 @@ export default async function TreenityBotConversaPage({ params }: Props) {
   const grupos = conversa ? agruparPorDia(conversa.mensagens, idioma) : [];
 
   return (
-    <div className="mx-auto flex h-[calc(100dvh-3.5rem-2*var(--space-6))] w-full max-w-3xl flex-col gap-4">
+    // Mesma fórmula de altura/largura da tela principal do Treenity Bot (ver
+    // app/app/integrations/treenity-bot/page.tsx e o Chat interno lá dentro):
+    // sem `mx-auto`/`max-w-3xl` — a transcrição ocupa a tela toda, não fica
+    // espremida numa coluna central com sobra dos dois lados.
+    <div className="flex h-[calc(100dvh-3.5rem-2*var(--space-6))] w-full flex-col gap-4">
       <TranscricaoAoVivo atendimentoId={atendimentoId} />
       <Link
         href="/app/integrations/treenity-bot"
