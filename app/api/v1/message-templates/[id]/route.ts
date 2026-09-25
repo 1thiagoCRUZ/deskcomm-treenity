@@ -1,7 +1,13 @@
 import { requireSupportWrite } from "@/lib/impersonate/support";
 /**
- * PATCH  /api/v1/message-templates/[id] — atualiza título/corpo/atalho.
+ * PATCH  /api/v1/message-templates/[id] — atualiza título/corpo/atalho e os
+ *        gatilhos do bot (`bot_*`). O update espalha `parsed.data`, então um
+ *        campo só entra quando veio no corpo: o schema é quem decide o que é
+ *        aceito, e um PATCH parcial nunca zera o que não foi mandado.
  * DELETE /api/v1/message-templates/[id] — remove o template.
+ *
+ * Os dois levam a mudança ao Treenity Bot quando a resposta está (ou vai) lá —
+ * ver `lib/treenity-bot/respostas-salvas.ts`.
  *
  * O `.eq("organization_id", org.orgId)` é defesa extra, não substitui a RLS
  * `message_templates_write` — quem já não é dono (agent) nem manager (compartilhado)
@@ -15,10 +21,18 @@ import { fail, ok, noContent } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { updateTemplateSchema } from "@/lib/schemas/templates";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { traduzir } from "@/lib/i18n/dicionario";
+import {
+  COLUNAS_DO_ESPELHO,
+  espelharResposta,
+  tirarRespostaDoBot,
+  type RespostaSalva,
+} from "@/lib/treenity-bot/respostas-salvas";
 
 export const dynamic = "force-dynamic";
-const COLS = "id, organization_id, owner_user_id, title, body, shortcut, created_by_user_id, created_at, updated_at";
+const COLS =
+  "id, organization_id, owner_user_id, title, body, shortcut, bot_triggers, bot_context, bot_max_chars, bot_enabled, bot_synced_at, bot_sync_error, usage_count, last_used_at, created_by_user_id, created_at, updated_at";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -63,7 +77,11 @@ export async function PATCH(req: NextRequest, { params }: RouteParams): Promise<
     requestId,
     metadata: { fields: Object.keys(parsed.data) },
   });
-  return ok(data, { requestId });
+
+  const noBot = await espelharResposta(createAdminClient(), org.orgId, data as RespostaSalva);
+  if (noBot === "nada") return ok(data, { requestId });
+  const { data: atualizada } = await supabase.from("message_templates").select(COLS).eq("id", data.id).single();
+  return ok(atualizada ?? data, { requestId });
 }
 
 export async function DELETE(_req: NextRequest, { params }: RouteParams): Promise<Response> {
@@ -78,6 +96,24 @@ export async function DELETE(_req: NextRequest, { params }: RouteParams): Promis
   const { id } = await params;
 
   const supabase = await createClient();
+
+  // Tira do bot ANTES de apagar aqui: na ordem inversa, uma falha de rede
+  // deixaria no bot uma resposta que ninguém mais vê nem consegue apagar.
+  const { data: atual } = await supabase
+    .from("message_templates")
+    .select(COLUNAS_DO_ESPELHO)
+    .eq("id", id)
+    .eq("organization_id", org.orgId)
+    .maybeSingle();
+  if (atual && !(await tirarRespostaDoBot(atual as RespostaSalva))) {
+    return fail(
+      "upstream_unavailable",
+      t("Não foi possível tirar esta resposta do bot agora. Tente de novo em instantes."),
+      502,
+      { requestId },
+    );
+  }
+
   // .select() confirma que a linha existia E era visível/apagável pela RLS.
   // Sem isso, um DELETE barrado pela RLS afeta 0 linhas mas ainda retornaria
   // 204 + audit falso (mutação que não ocorreu). Espelha a semântica do PATCH.

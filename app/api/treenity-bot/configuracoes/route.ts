@@ -1,7 +1,7 @@
 /**
  * GET/PATCH /api/treenity-bot/configuracoes — liga/desliga e ajusta as
- * automações do Treenity Bot (tarefas de PIX e funil de leads) PARA A
- * ORGANIZAÇÃO ATIVA. Só admin — decisão de negócio, não config de deploy
+ * automações do Treenity Bot (tarefas de PIX, funil de leads e respostas
+ * salvas no bot) PARA A ORGANIZAÇÃO ATIVA. Só admin — decisão de negócio, não config de deploy
  * (ver lib/treenity-bot/configuracao.ts).
  *
  * Guardado em `organizations.settings.treenity_bot` — o PATCH faz
@@ -18,6 +18,7 @@ import { requireRole } from "@/lib/auth/require-role";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { lerConfigDoTreenityBot, type ConfigDoTreenityBot } from "@/lib/treenity-bot/configuracao";
+import { espelharTodas } from "@/lib/treenity-bot/respostas-salvas";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,7 @@ const patchSchema = z.object({
       perdido_dias: z.coerce.number().int().min(1).max(90).optional(),
     })
     .optional(),
+  respostas: z.object({ ativo: z.boolean().optional() }).optional(),
 });
 
 export async function GET(): Promise<Response> {
@@ -102,6 +104,7 @@ export async function PATCH(req: NextRequest): Promise<Response> {
             : atual.funil.desde,
       perdidoDias: parsed.data.funil?.perdido_dias ?? atual.funil.perdidoDias,
     },
+    respostas: { ativo: parsed.data.respostas?.ativo ?? atual.respostas.ativo },
   };
 
   const settingsAnterior =
@@ -117,12 +120,20 @@ export async function PATCH(req: NextRequest): Promise<Response> {
         treenity_bot: {
           tarefas: { ativo: novo.tarefas.ativo, desde: novo.tarefas.desde },
           funil: { ativo: novo.funil.ativo, desde: novo.funil.desde, perdido_dias: novo.funil.perdidoDias },
+          respostas: { ativo: novo.respostas.ativo },
         },
       },
     })
     .eq("id", authz.org.orgId);
   if (updErr) {
     return fail("internal_error", t("Erro ao salvar a configuração."), 500, { requestId });
+  }
+
+  // Ligou: as respostas com gatilho que já existiam vão para o bot agora.
+  // Desligou: saem de lá. Sem isto, só as salvas DEPOIS da mudança seguiriam.
+  if (novo.respostas.ativo !== atual.respostas.ativo) {
+    const espelho = await espelharTodas(admin, authz.org.orgId);
+    return ok({ ...novo, espelho }, { requestId });
   }
 
   return ok(novo, { requestId });
