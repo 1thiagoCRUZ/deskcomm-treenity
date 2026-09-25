@@ -97,8 +97,8 @@ describe("espelharResposta — o laço de retorno", () => {
     const { admin, updates } = adminFalso(true);
     expect(await espelharResposta(admin, "org-1", resposta())).toBe("espelhada");
     expect(updates).toHaveLength(1);
-    expect(updates[0].bot_sync_error).toBeNull();
-    expect(typeof updates[0].bot_synced_at).toBe("string");
+    expect(updates[0]?.bot_sync_error).toBeNull();
+    expect(typeof updates[0]?.bot_synced_at).toBe("string");
   });
 
   it("bot não confirmou: guarda o erro para a lista avisar, sem apagar o último envio bom", async () => {

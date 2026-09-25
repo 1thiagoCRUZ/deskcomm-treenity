@@ -8207,7 +8207,6 @@ export const DICIONARIO: Traducoes = {
   "Usos": { es: "Usos" },
   "vira Bom dia, Boa tarde ou Boa noite pelo horário.": { es: "se convierte en Buenos días, Buenas tardes o Buenas noches según la hora." },
   "Não chegou ao bot": { es: "No llegó al bot" },
-  "Pausada": { es: "Pausada" },
   "Não foi possível tirar esta resposta do bot agora. Tente de novo em instantes.": { es: "No fue posible quitar esta respuesta del bot ahora. Inténtalo de nuevo en unos instantes." },
 };
 
