@@ -8134,6 +8134,26 @@ export const DICIONARIO: Traducoes = {
   "Este ponto usa o modelo definido na versão publicada do agente; a escolha do painel não se aplica.": {
     es: "Este punto usa el modelo definido en la versión publicada del agente; la elección del panel no se aplica.",
   },
+  // Gatilhos do bot em Respostas rápidas (migration 0234).
+  "O bot responde sozinho": { es: "El bot responde solo" },
+  "Quando o cliente escrever algo da lista, esta mensagem sai na hora, sem consumir IA.": {
+    es: "Cuando el cliente escriba algo de la lista, este mensaje sale al instante, sin consumir IA.",
+  },
+  Gatilhos: { es: "Disparadores" },
+  "Remover gatilho": { es: "Quitar disparador" },
+  "digite e aperte Enter": { es: "escribe y pulsa Enter" },
+  "O acento e as maiúsculas não importam na comparação.": {
+    es: "El acento y las mayúsculas no importan en la comparación.",
+  },
+  "Quando pode disparar": { es: "Cuándo puede dispararse" },
+  "Em qualquer momento": { es: "En cualquier momento" },
+  "Só na primeira mensagem": { es: "Solo en el primer mensaje" },
+  "Tamanho máximo da mensagem": { es: "Tamaño máximo del mensaje" },
+  "Evite gatilhos abertos: um gatilho como preço faria o bot responder sempre um texto fixo e parar de calcular o valor de verdade.": {
+    es: "Evita disparadores abiertos: uno como precio haría que el bot respondiera siempre un texto fijo y dejara de calcular el valor real.",
+  },
+  "O bot responde": { es: "El bot responde" },
+  "Vezes usada": { es: "Veces usada" },
 };
 
 /**

@@ -18,7 +18,11 @@ import { createClient } from "@/lib/supabase/server";
 import { traduzir } from "@/lib/i18n/dicionario";
 
 export const dynamic = "force-dynamic";
-const COLS = "id, organization_id, owner_user_id, title, body, shortcut, created_by_user_id, created_at, updated_at";
+// `bot_*` e `usage_count` entram na MESMA listagem de propósito: é por este GET
+// que o bot (n8n) sincroniza os gatilhos, com um token de `api_tokens`. Uma
+// rota separada duplicaria a regra de visibilidade da RLS.
+const COLS =
+  "id, organization_id, owner_user_id, title, body, shortcut, bot_triggers, bot_context, bot_max_chars, bot_enabled, usage_count, last_used_at, created_by_user_id, created_at, updated_at";
 
 export async function GET(_req: NextRequest): Promise<Response> {
   const requestId = randomUUID();
@@ -55,7 +59,8 @@ export async function POST(req: NextRequest): Promise<Response> {
       details: parsed.error.flatten().fieldErrors as Record<string, unknown>,
     });
   }
-  const { title, body, shortcut, shared } = parsed.data;
+  const { title, body, shortcut, shared, bot_triggers, bot_context, bot_max_chars, bot_enabled } =
+    parsed.data;
   // Compartilhado exige manager+. requireRole já resolveu o role efetivo do
   // banco em org.role — reusar em vez de uma 2ª chamada/RPC. A RLS with_check
   // barra de qualquer forma; isto só dá um erro claro antes do insert.
@@ -71,6 +76,13 @@ export async function POST(req: NextRequest): Promise<Response> {
       title,
       body,
       shortcut: shortcut ?? null,
+      // Omitidos, os `bot_*` caem no default do banco: sem gatilho e desligado,
+      // ou seja, o template continua sendo só o atalho do atendente. Quem não
+      // conhece o recurso nunca liga o bot sem querer.
+      bot_triggers: bot_triggers ?? [],
+      bot_context: bot_context ?? "any",
+      ...(bot_max_chars === undefined ? {} : { bot_max_chars }),
+      bot_enabled: bot_enabled ?? false,
       created_by_user_id: user.id,
     })
     .select(COLS)

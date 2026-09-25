@@ -86,13 +86,23 @@ export function TemplatesClient({ canShare, currentUserId }: Props) {
                 className="flex items-start justify-between gap-4 rounded-md border bg-card p-4"
               >
                 <div className="min-w-0 space-y-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{template.title}</span>
                     <Badge variant={template.owner_user_id ? "neutral" : "default"}>
                       {t(template.owner_user_id ? "Pessoal" : "Compartilhado")}
                     </Badge>
+                    {/* Sem esta etiqueta, as duas naturezas ficam iguais na lista
+                        e ninguém sabe qual resposta o bot está usando sozinho. */}
+                    {template.bot_enabled && (
+                      <Badge variant="default">{t("O bot responde")}</Badge>
+                    )}
                   </div>
                   <p className="line-clamp-2 text-sm text-muted-foreground">{template.body}</p>
+                  {template.usage_count > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {t("Vezes usada")}: {template.usage_count}
+                    </p>
+                  )}
                 </div>
                 {canModify && (
                   <div className="flex shrink-0 gap-1">

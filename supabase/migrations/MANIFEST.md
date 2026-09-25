@@ -288,3 +288,5 @@ To re-apply on a fresh Supabase project, replay the migrations in version order 
 | `20260909180000` | `0232_waha_session_name_dentro_do_limite` | `waha_session_name` gerado com 69 caracteres estourava o limite de 54 do WAHA (`waha_create_400`) — toda instalação nova batia nisso ao conectar o 1º WhatsApp. Encurtado para 33 caracteres; auto-cura remove sessões de onboarding presas por este bug. |
 
 | `20260921120000` | `0233_tarefas_de_venda_do_treenity_bot` | `crm_tasks.external_ref` + índice único parcial (org, ref): tarefas criadas por integração, idempotentes. Baseline idempotente. |
+
+| `20260923120000` | `0234_gatilhos_do_bot_em_message_templates` | `message_templates` ganha `bot_triggers`/`bot_context`/`bot_max_chars`/`bot_enabled` + `usage_count`/`last_used_at`: a mesma resposta salva serve ao atalho `/` do atendente e, com gatilho, ao bot respondendo sozinho. CHECK impede ligado-sem-gatilho (resposta automatica que nunca dispara). Baseline idempotente. |

@@ -1,6 +1,9 @@
 import { requireSupportWrite } from "@/lib/impersonate/support";
 /**
- * PATCH  /api/v1/message-templates/[id] — atualiza título/corpo/atalho.
+ * PATCH  /api/v1/message-templates/[id] — atualiza título/corpo/atalho e os
+ *        gatilhos do bot (`bot_*`). O update espalha `parsed.data`, então um
+ *        campo só entra quando veio no corpo: o schema é quem decide o que é
+ *        aceito, e um PATCH parcial nunca zera o que não foi mandado.
  * DELETE /api/v1/message-templates/[id] — remove o template.
  *
  * O `.eq("organization_id", org.orgId)` é defesa extra, não substitui a RLS
@@ -18,7 +21,8 @@ import { createClient } from "@/lib/supabase/server";
 import { traduzir } from "@/lib/i18n/dicionario";
 
 export const dynamic = "force-dynamic";
-const COLS = "id, organization_id, owner_user_id, title, body, shortcut, created_by_user_id, created_at, updated_at";
+const COLS =
+  "id, organization_id, owner_user_id, title, body, shortcut, bot_triggers, bot_context, bot_max_chars, bot_enabled, usage_count, last_used_at, created_by_user_id, created_at, updated_at";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
