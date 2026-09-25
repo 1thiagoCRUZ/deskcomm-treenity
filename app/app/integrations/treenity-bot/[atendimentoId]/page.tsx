@@ -17,7 +17,7 @@
 
 import Link from "next/link";
 import { format, isToday, isYesterday } from "date-fns";
-import { CaretLeft, ChatCircle, Robot, Warning } from "@/lib/ui/icons";
+import { CaretLeft, ChatCircle, Microphone, Robot, Warning } from "@/lib/ui/icons";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { loadAuthUser } from "@/lib/auth/server";
@@ -45,6 +45,42 @@ interface GrupoDeDia {
   chave: string;
   rotulo: string;
   mensagens: MensagemAtendimento[];
+}
+
+/**
+ * O bot ainda não persiste o arquivo de áudio em lugar nenhum (só a
+ * transcrição) — ver n8n/README.md § "Mídia não aparece na conversa
+ * espelhada" no api-treenity-bot. `formato: 'imagem'/'video'` já é
+ * renderizado de verdade; fica pronto assim que o n8n passar a gravar o link
+ * nessas mensagens (hoje não grava nenhuma).
+ */
+function ConteudoDaMensagem({ mensagem, idioma }: { mensagem: MensagemAtendimento; idioma: Idioma }) {
+  if (mensagem.formato === "imagem") {
+    // eslint-disable-next-line @next/next/no-img-element -- vem de URL externa (Storage do bot), não do domínio do Next
+    return <img src={mensagem.conteudo} alt="" className="max-w-full rounded-lg" loading="lazy" />;
+  }
+
+  if (mensagem.formato === "video") {
+    return (
+      <video src={mensagem.conteudo} controls preload="metadata" className="max-w-full rounded-lg">
+        <track kind="captions" />
+      </video>
+    );
+  }
+
+  if (mensagem.formato === "audio") {
+    return (
+      <>
+        <div className="mb-1 flex items-center gap-1 text-[11px] font-semibold opacity-80">
+          <Microphone size={11} weight="duotone" aria-hidden />
+          {traduzir("Mensagem de voz (transcrita)", idioma)}
+        </div>
+        <p className="whitespace-pre-wrap break-words leading-relaxed">{mensagem.conteudo}</p>
+      </>
+    );
+  }
+
+  return <p className="whitespace-pre-wrap break-words leading-relaxed">{mensagem.conteudo}</p>;
 }
 
 function agruparPorDia(mensagens: MensagemAtendimento[], idioma: Idioma): GrupoDeDia[] {
@@ -167,7 +203,7 @@ export default async function TreenityBotConversaPage({ params }: Props) {
                                   IA
                                 </div>
                               ) : null}
-                              <p className="whitespace-pre-wrap break-words leading-relaxed">{mensagem.conteudo}</p>
+                              <ConteudoDaMensagem mensagem={mensagem} idioma={idioma} />
                               <div
                                 className={cn(
                                   "mt-1 text-right text-[11px]",

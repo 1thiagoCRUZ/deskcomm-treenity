@@ -278,8 +278,14 @@ export function AtendimentosPainel({ inicial }: { inicial: PaginaDeAtendimentos 
               <TableBody>
                 {itens.map((a) => {
                   const ultima = a.ultimaMensagem;
+                  // Imagem/vídeo guardam o LINK do arquivo em `conteudo` — mostrar a URL
+                  // crua na prévia não ajuda ninguém, por isso o rótulo vem antes do texto.
                   const previa =
-                    ultima?.conteudo || (ultima?.formato === "audio" ? `(${t("áudio")})` : "");
+                    ultima?.formato === "imagem"
+                      ? `(${t("imagem")})`
+                      : ultima?.formato === "video"
+                        ? `(${t("vídeo")})`
+                        : ultima?.conteudo || (ultima?.formato === "audio" ? `(${t("áudio")})` : "");
                   return (
                     <TableRow
                       key={a.id}
