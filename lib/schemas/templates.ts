@@ -107,7 +107,7 @@ export const updateTemplateSchema = z
     },
   )
   // Como acima, só quando o próprio PATCH traz os dois campos (a tela sempre
-  // manda). Se escapar, o espelho manda a resposta ao bot DESLIGADA.
+  // manda). Se escapar, `paraBot` grava a resposta no bot DESLIGADA.
   .refine((d) => !(d.bot_enabled === true && d.body !== undefined && temVariavelDoAtendente(d.body)), {
     message: MSG_VARIAVEL_NO_BOT,
     path: ["body"],

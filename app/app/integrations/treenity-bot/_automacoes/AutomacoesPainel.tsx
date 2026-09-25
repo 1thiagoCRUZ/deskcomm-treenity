@@ -25,8 +25,6 @@ interface ConfigDoTreenityBot {
   tarefas: { ativo: boolean; desde: string | null };
   funil: { ativo: boolean; desde: string | null; perdidoDias: number };
   respostas: { ativo: boolean };
-  /** Só vem quando o PATCH ligou/desligou as respostas: o resultado do reenvio. */
-  espelho?: { enviadas: number; falharam: number };
 }
 
 async function buscarConfig(): Promise<ConfigDoTreenityBot | null> {
@@ -112,16 +110,10 @@ export function AutomacoesPainel() {
     setSalvandoRespostas(false);
     if (!novo) return toast.error(t("Não foi possível salvar."));
     setConfig(novo);
-    if (novo.espelho && novo.espelho.falharam > 0) {
-      toast.warning(
-        `${t("Salvo, mas algumas respostas não chegaram ao bot")}: ${novo.espelho.falharam}. ${t("Salve cada uma de novo em Respostas rápidas para reenviar.")}`,
-      );
-      return;
-    }
     toast.success(
       ativo
-        ? t("Respostas no bot ligadas — as que têm gatilho já valem na próxima mensagem.")
-        : t("Respostas no bot desligadas — o bot parou de usar as respostas salvas."),
+        ? t("Respostas rápidas no bot ligadas — a lista agora é a do bot, e as com gatilho já valem na próxima mensagem.")
+        : t("Respostas rápidas no bot desligadas — a lista voltou a ser só da equipe."),
     );
   }
 
@@ -238,16 +230,16 @@ export function AutomacoesPainel() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{t("Respostas salvas no bot")}</CardTitle>
+          <CardTitle>{t("Respostas rápidas no bot")}</CardTitle>
           <CardDescription>
             {t(
-              "Uma resposta compartilhada com gatilhos passa a ser enviada pelo bot sozinho, na hora e sem consumir IA, quando o cliente escreve uma das frases. As mesmas respostas continuam no / do Inbox para a equipe.",
+              "Um cadastro só para a equipe e para o bot. A equipe usa a resposta pelo / do Inbox, e o bot manda o texto sozinho, na hora e sem consumir IA, quando o cliente escreve um dos gatilhos. Ligado, as respostas passam a ser guardadas no bot, e as que já existiam aqui deixam de aparecer.",
             )}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-between gap-4">
           <div className="space-y-1">
-            <Label htmlFor="respostas-ativo">{t("O bot usa as respostas salvas")}</Label>
+            <Label htmlFor="respostas-ativo">{t("Guardar as respostas rápidas no bot")}</Label>
             <p className="text-xs text-muted-foreground">
               {t("Os gatilhos são cadastrados em")}{" "}
               <Link href="/app/templates" className="underline underline-offset-2">

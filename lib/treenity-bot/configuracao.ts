@@ -29,10 +29,11 @@ export interface ConfigDeFunil {
 }
 
 /**
- * Respostas salvas espelhadas no bot. Ligado, cada resposta COMPARTILHADA com
- * gatilho vai para a tabela que o bot lê, a cada salvamento. Por organização
+ * Respostas rápidas guardadas no Treenity Bot. Ligado, a tela de Respostas
+ * rápidas e o `/` do Inbox leem e gravam na tabela que o bot lê, e
+ * `message_templates` deixa de ser usada por esta organização. Por organização
  * porque a API do bot é uma só para a instalação inteira: sem este interruptor,
- * os gatilhos de qualquer organização iriam parar no mesmo bot.
+ * todas as organizações veriam e editariam as respostas do mesmo bot.
  */
 export interface ConfigDeRespostas {
   ativo: boolean;

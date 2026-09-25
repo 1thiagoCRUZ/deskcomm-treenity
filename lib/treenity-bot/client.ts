@@ -8,7 +8,7 @@
  *
  * Quase tudo aqui é leitura. As escritas nos dados do bot são
  * `definirPagamentoDaVenda` (admin conclui a tarefa "Conferir pagamento PIX") e
- * o espelho das respostas salvas (`espelharRespostaNoBot` / `removerRespostaDoBot`).
+ * as respostas rápidas (`criarRespostaNoBot` e vizinhas), que moram só lá.
  */
 
 import { getConfig } from "./config";
@@ -377,9 +377,8 @@ export async function listarVendasAguardandoPagamento(
 }
 
 /**
- * Marca a venda como paga (ou desfaz). É a ÚNICA escrita do deskcomm nos dados do
- * bot: só chame depois de confirmar, no servidor, que quem concluiu a tarefa é
- * admin. Idempotente no bot. Devolve `false` se o bot não confirmou (fora do ar,
+ * Marca a venda como paga (ou desfaz). Só chame depois de confirmar, no
+ * servidor, que quem concluiu a tarefa é admin. Idempotente no bot. Devolve `false` se o bot não confirmou (fora do ar,
  * venda inexistente…) — quem chama decide se tenta de novo.
  */
 export async function definirPagamentoDaVenda(
@@ -406,61 +405,92 @@ export async function definirPagamentoDaVenda(
 
 /**
  * A API do bot roda no Render gratuito, que "dorme" sem uso e leva dezenas de
- * segundos para acordar. Sem teto, o salvamento de uma resposta ficaria
- * pendurado esse tempo todo; com ele, falha rápido, fica anotado na resposta
- * (`bot_sync_error`) e salvar de novo reenvia.
+ * segundos para acordar. Sem teto, abrir ou salvar uma resposta rápida ficaria
+ * pendurado esse tempo todo; com ele, falha rápido e a tela avisa.
  */
-const TEMPO_MAXIMO_DO_ESPELHO_MS = 20_000;
+const TEMPO_MAXIMO_DAS_RESPOSTAS_MS = 20_000;
 
-/** O que o bot recebe de uma resposta salva — o formato da API dele. */
-export interface RespostaParaOBot {
+/** Uma linha de `respostas_rapidas`, no formato da API do bot. */
+export interface RespostaDoBot {
+  id: number;
   titulo: string;
   corpo: string;
+  /** O que a equipe digita depois da barra no Inbox. Sem a barra. */
+  atalho: string | null;
+  gatilhos: string[];
+  contexto: "abertura" | "qualquer";
+  max_chars_msg: number;
+  /** O bot responde sozinho quando a mensagem do cliente contém um gatilho. */
+  ativo: boolean;
+  criado_em: string;
+  atualizado_em: string;
+}
+
+/** Os campos que o deskcomm grava. Numa edição, campo ausente não muda. */
+export interface CamposDaRespostaNoBot {
+  titulo: string;
+  corpo: string;
+  atalho: string | null;
   gatilhos: string[];
   contexto: "abertura" | "qualquer";
   max_chars_msg: number;
   ativo: boolean;
 }
 
+export type ResultadoNoBot<T> =
+  | { ok: true; dados: T }
+  /** `status` é o HTTP da API do bot; 0 = não respondeu (fora do ar, tempo esgotado). */
+  | { ok: false; status: number; erro: string | null };
+
 /**
- * Cria ou substitui, no bot, a resposta de id `origemId` (o id do
- * `message_templates`). Idempotente: repetir não duplica. Devolve `false` se o
- * bot não confirmou.
+ * Uma chamada às rotas `/api/respostas-rapidas` do bot. É a tabela que o n8n
+ * lê: o deskcomm não guarda cópia nenhuma, então tudo o que a tela mostra ou
+ * grava passa por aqui.
  */
-export async function espelharRespostaNoBot(origemId: string, resposta: RespostaParaOBot): Promise<boolean> {
+async function chamarRespostas<T>(
+  metodo: "GET" | "POST" | "PATCH" | "DELETE",
+  caminho: string,
+  corpo?: unknown,
+): Promise<ResultadoNoBot<T>> {
   const config = getConfig();
-  if (!config) return false;
+  if (!config) return { ok: false, status: 0, erro: null };
   try {
-    const res = await fetch(`${config.apiUrl}/api/respostas-rapidas/origem/${encodeURIComponent(origemId)}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", "X-SSO-Secret": config.ssoSecret },
-      body: JSON.stringify(resposta),
+    const res = await fetch(`${config.apiUrl}/api/respostas-rapidas${caminho}`, {
+      method: metodo,
+      headers: {
+        "X-SSO-Secret": config.ssoSecret,
+        ...(corpo === undefined ? {} : { "Content-Type": "application/json" }),
+      },
+      body: corpo === undefined ? undefined : JSON.stringify(corpo),
       cache: "no-store",
-      signal: AbortSignal.timeout(TEMPO_MAXIMO_DO_ESPELHO_MS),
+      signal: AbortSignal.timeout(TEMPO_MAXIMO_DAS_RESPOSTAS_MS),
     });
-    if (!res.ok) return false;
-    return (await res.json())?.success === true;
+    if (res.status === 204) return { ok: true, dados: undefined as T };
+    const json = await res.json().catch(() => null);
+    if (!res.ok || json?.success !== true) {
+      return { ok: false, status: res.status, erro: typeof json?.error === "string" ? json.error : null };
+    }
+    return { ok: true, dados: json.data as T };
   } catch {
-    return false;
+    return { ok: false, status: 0, erro: null };
   }
 }
 
-/**
- * Tira do bot a resposta de id `origemId`. "Já não estava lá" (404) conta como
- * sucesso: o estado que se queria é o mesmo.
- */
-export async function removerRespostaDoBot(origemId: string): Promise<boolean> {
-  const config = getConfig();
-  if (!config) return false;
-  try {
-    const res = await fetch(`${config.apiUrl}/api/respostas-rapidas/origem/${encodeURIComponent(origemId)}`, {
-      method: "DELETE",
-      headers: { "X-SSO-Secret": config.ssoSecret },
-      cache: "no-store",
-      signal: AbortSignal.timeout(TEMPO_MAXIMO_DO_ESPELHO_MS),
-    });
-    return res.status === 204 || res.status === 404;
-  } catch {
-    return false;
-  }
+export function listarRespostasDoBot(): Promise<ResultadoNoBot<RespostaDoBot[]>> {
+  return chamarRespostas("GET", "");
+}
+
+export function criarRespostaNoBot(campos: CamposDaRespostaNoBot): Promise<ResultadoNoBot<RespostaDoBot>> {
+  return chamarRespostas("POST", "", campos);
+}
+
+export function atualizarRespostaNoBot(
+  id: number,
+  campos: Partial<CamposDaRespostaNoBot>,
+): Promise<ResultadoNoBot<RespostaDoBot>> {
+  return chamarRespostas("PATCH", `/${id}`, campos);
+}
+
+export function apagarRespostaDoBot(id: number): Promise<ResultadoNoBot<void>> {
+  return chamarRespostas("DELETE", `/${id}`);
 }
