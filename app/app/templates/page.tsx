@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { ROLE_RANK } from "@/lib/auth/types";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { espelhoLigado } from "@/lib/treenity-bot/respostas-salvas";
 import { TemplatesClient } from "./_components/TemplatesClient";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +13,9 @@ export default async function TemplatesPage() {
   const activeOrg = await resolveActiveOrg(user);
   if (!activeOrg) redirect("/app/inbox");
   const canShare = ROLE_RANK[activeOrg.role] >= ROLE_RANK.manager;
+  // Os campos do bot só aparecem onde o bot de fato vai usá-los: organização
+  // com "O bot usa as respostas salvas" ligado (Integrações › Treenity Bot).
+  const botDisponivel = await espelhoLigado(createAdminClient(), activeOrg.orgId);
   // `t` local em vez do hook: esta página é componente de SERVIDOR, e lá o
   // idioma vem resolvido em `user.idioma` (a cadeia pessoa → organização →
   // padrão vive em `lib/auth/server.ts`), sem reler o `locale` cru.
@@ -25,11 +30,15 @@ export default async function TemplatesPage() {
             Meta (HSM), em Canais, onde é o termo técnico correto. Duas telas com
             o mesmo nome e propósitos opostos confundiam. A URL não muda. */}
         <h1 className="text-2xl font-semibold tracking-tight">{t("Respostas rápidas")}</h1>
-        <p className="text-sm text-muted-foreground">
-          {t("Scripts salvos para responder mais rápido; pessoais ou compartilhados com a equipe.")}
+        <p className="max-w-3xl text-sm text-muted-foreground">
+          {botDisponivel
+            ? t(
+                "O que a sua loja fala. A equipe usa digitando / na conversa, e o bot usa sozinho quando a resposta tem gatilhos.",
+              )
+            : t("Scripts salvos para responder mais rápido; pessoais ou compartilhados com a equipe.")}
         </p>
       </header>
-      <TemplatesClient canShare={canShare} currentUserId={user.id} />
+      <TemplatesClient canShare={canShare} currentUserId={user.id} botDisponivel={botDisponivel} />
     </div>
   );
 }

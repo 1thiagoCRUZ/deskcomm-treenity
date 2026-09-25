@@ -23357,3 +23357,42 @@ alter table public.crm_tasks add column if not exists external_ref text;
 create unique index if not exists crm_tasks_org_external_ref_uidx
   on public.crm_tasks (organization_id, external_ref)
   where external_ref is not null;
+
+-- 0234 — gatilhos do bot em message_templates: a mesma resposta salva passa a
+-- poder ser usada pelo bot sozinho, quando tem gatilho. Sem gatilho continua
+-- sendo so o atalho `/` do atendente. Baseline idempotente.
+alter table public.message_templates
+  add column if not exists bot_triggers  text[]      not null default '{}'::text[],
+  add column if not exists bot_context   text        not null default 'any',
+  add column if not exists bot_max_chars integer     not null default 60,
+  add column if not exists bot_enabled   boolean     not null default false,
+  add column if not exists usage_count   integer     not null default 0,
+  add column if not exists last_used_at  timestamptz;
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'message_templates_bot_context_check') then
+    alter table public.message_templates
+      add constraint message_templates_bot_context_check check (bot_context in ('any', 'opening'));
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'message_templates_bot_max_chars_check') then
+    alter table public.message_templates
+      add constraint message_templates_bot_max_chars_check check (bot_max_chars between 10 and 400);
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'message_templates_bot_enabled_precisa_gatilho') then
+    alter table public.message_templates
+      add constraint message_templates_bot_enabled_precisa_gatilho
+      check (not bot_enabled or coalesce(array_length(bot_triggers, 1), 0) >= 1);
+  end if;
+end $$;
+
+create index if not exists message_templates_bot_triggers_gin
+  on public.message_templates using gin (bot_triggers)
+  where bot_enabled;
+
+-- ---- Espelho das respostas salvas no Treenity Bot (migration 0235) ----
+-- Laço de retorno do envio ao bot: último envio confirmado e motivo da última
+-- falha. Baseline idempotente.
+alter table public.message_templates
+  add column if not exists bot_synced_at  timestamptz,
+  add column if not exists bot_sync_error text;

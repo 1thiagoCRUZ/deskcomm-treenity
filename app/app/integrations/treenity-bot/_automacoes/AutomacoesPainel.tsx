@@ -2,7 +2,7 @@
 
 /**
  * Liga/desliga as automações do Treenity Bot (tarefas de "Conferir pagamento
- * PIX" e o funil de leads) — decisão do cliente, guardada no banco
+ * PIX", o funil de leads e as respostas salvas no bot) — decisão do cliente, guardada no banco
  * (`organizations.settings.treenity_bot`), nunca variável de ambiente: mudar
  * isso não pode depender de alguém mexer no deploy.
  *
@@ -17,12 +17,16 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import { useT } from "@/hooks/i18n/useT";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 
 interface ConfigDoTreenityBot {
   tarefas: { ativo: boolean; desde: string | null };
   funil: { ativo: boolean; desde: string | null; perdidoDias: number };
+  respostas: { ativo: boolean };
+  /** Só vem quando o PATCH ligou/desligou as respostas: o resultado do reenvio. */
+  espelho?: { enviadas: number; falharam: number };
 }
 
 async function buscarConfig(): Promise<ConfigDoTreenityBot | null> {
@@ -36,7 +40,11 @@ async function buscarConfig(): Promise<ConfigDoTreenityBot | null> {
 }
 
 async function salvarConfig(
-  patch: Partial<{ tarefas: { ativo?: boolean }; funil: { ativo?: boolean; perdido_dias?: number } }>,
+  patch: Partial<{
+    tarefas: { ativo?: boolean };
+    funil: { ativo?: boolean; perdido_dias?: number };
+    respostas: { ativo?: boolean };
+  }>,
 ): Promise<ConfigDoTreenityBot | null> {
   try {
     const res = await fetch("/api/treenity-bot/configuracoes", {
@@ -58,6 +66,7 @@ export function AutomacoesPainel() {
   const [carregando, setCarregando] = useState(true);
   const [salvandoTarefas, setSalvandoTarefas] = useState(false);
   const [salvandoFunil, setSalvandoFunil] = useState(false);
+  const [salvandoRespostas, setSalvandoRespostas] = useState(false);
   const [perdidoDiasRascunho, setPerdidoDiasRascunho] = useState("7");
 
   useEffect(() => {
@@ -94,6 +103,25 @@ export function AutomacoesPainel() {
       ativo
         ? t("Funil de leads ligado — negociações novas a partir de agora entram no Kanban.")
         : t("Funil de leads desligado."),
+    );
+  }
+
+  async function alternarRespostas(ativo: boolean) {
+    setSalvandoRespostas(true);
+    const novo = await salvarConfig({ respostas: { ativo } });
+    setSalvandoRespostas(false);
+    if (!novo) return toast.error(t("Não foi possível salvar."));
+    setConfig(novo);
+    if (novo.espelho && novo.espelho.falharam > 0) {
+      toast.warning(
+        `${t("Salvo, mas algumas respostas não chegaram ao bot")}: ${novo.espelho.falharam}. ${t("Salve cada uma de novo em Respostas rápidas para reenviar.")}`,
+      );
+      return;
+    }
+    toast.success(
+      ativo
+        ? t("Respostas no bot ligadas — as que têm gatilho já valem na próxima mensagem.")
+        : t("Respostas no bot desligadas — o bot parou de usar as respostas salvas."),
     );
   }
 
@@ -205,6 +233,35 @@ export function AutomacoesPainel() {
               </Button>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("Respostas salvas no bot")}</CardTitle>
+          <CardDescription>
+            {t(
+              "Uma resposta compartilhada com gatilhos passa a ser enviada pelo bot sozinho, na hora e sem consumir IA, quando o cliente escreve uma das frases. As mesmas respostas continuam no / do Inbox para a equipe.",
+            )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between gap-4">
+          <div className="space-y-1">
+            <Label htmlFor="respostas-ativo">{t("O bot usa as respostas salvas")}</Label>
+            <p className="text-xs text-muted-foreground">
+              {t("Os gatilhos são cadastrados em")}{" "}
+              <Link href="/app/templates" className="underline underline-offset-2">
+                {t("Respostas rápidas")}
+              </Link>
+              .
+            </p>
+          </div>
+          <Switch
+            id="respostas-ativo"
+            checked={config.respostas.ativo}
+            disabled={salvandoRespostas}
+            onCheckedChange={(v) => void alternarRespostas(v)}
+          />
         </CardContent>
       </Card>
     </div>

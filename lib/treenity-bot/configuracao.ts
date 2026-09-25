@@ -28,9 +28,20 @@ export interface ConfigDeFunil {
   perdidoDias: number;
 }
 
+/**
+ * Respostas salvas espelhadas no bot. Ligado, cada resposta COMPARTILHADA com
+ * gatilho vai para a tabela que o bot lê, a cada salvamento. Por organização
+ * porque a API do bot é uma só para a instalação inteira: sem este interruptor,
+ * os gatilhos de qualquer organização iriam parar no mesmo bot.
+ */
+export interface ConfigDeRespostas {
+  ativo: boolean;
+}
+
 export interface ConfigDoTreenityBot {
   tarefas: ConfigDeTarefas;
   funil: ConfigDeFunil;
+  respostas: ConfigDeRespostas;
 }
 
 const PERDIDO_DIAS_PADRAO = 7;
@@ -51,6 +62,7 @@ export function lerConfigDoTreenityBot(settingsBruto: unknown): ConfigDoTreenity
   const bruto = raiz && typeof raiz === "object" && !Array.isArray(raiz) ? (raiz as Record<string, unknown>) : {};
   const tarefas = (bruto.tarefas ?? {}) as Record<string, unknown>;
   const funil = (bruto.funil ?? {}) as Record<string, unknown>;
+  const respostas = (bruto.respostas ?? {}) as Record<string, unknown>;
 
   return {
     tarefas: { ativo: tarefas.ativo === true, desde: textoOuNulo(tarefas.desde) },
@@ -59,6 +71,7 @@ export function lerConfigDoTreenityBot(settingsBruto: unknown): ConfigDoTreenity
       desde: textoOuNulo(funil.desde),
       perdidoDias: numeroPositivo(funil.perdido_dias, PERDIDO_DIAS_PADRAO),
     },
+    respostas: { ativo: respostas.ativo === true },
   };
 }
 
