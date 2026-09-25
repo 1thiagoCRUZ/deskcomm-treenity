@@ -282,7 +282,8 @@ export function TemplateFormDialog({ open, onOpenChange, canShare, botDisponivel
           title,
           body,
           shortcut: shortcut.trim() || undefined,
-          shared: canShare ? shared : false,
+          // No bot toda resposta é da loja: vai como compartilhada.
+          shared: botDisponivel || (canShare ? shared : false),
           ...camposDoBot(),
         });
         avisarResultado(t("Resposta criada."));
