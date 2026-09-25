@@ -6,8 +6,9 @@
  * novo — ver `n8n/README.md` e a seção "Integração externa (SSO)" do
  * `README.md` no repo do api-treenity-bot para o desenho completo.
  *
- * Quase tudo aqui é leitura. A única escrita nos dados do bot é
- * `definirPagamentoDaVenda` (admin conclui a tarefa "Conferir pagamento PIX").
+ * Quase tudo aqui é leitura. As escritas nos dados do bot são
+ * `definirPagamentoDaVenda` (admin conclui a tarefa "Conferir pagamento PIX") e
+ * o espelho das respostas salvas (`espelharRespostaNoBot` / `removerRespostaDoBot`).
  */
 
 import { getConfig } from "./config";
@@ -398,6 +399,67 @@ export async function definirPagamentoDaVenda(
     });
     if (!res.ok) return false;
     return (await res.json())?.success === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * A API do bot roda no Render gratuito, que "dorme" sem uso e leva dezenas de
+ * segundos para acordar. Sem teto, o salvamento de uma resposta ficaria
+ * pendurado esse tempo todo; com ele, falha rápido, fica anotado na resposta
+ * (`bot_sync_error`) e salvar de novo reenvia.
+ */
+const TEMPO_MAXIMO_DO_ESPELHO_MS = 20_000;
+
+/** O que o bot recebe de uma resposta salva — o formato da API dele. */
+export interface RespostaParaOBot {
+  titulo: string;
+  corpo: string;
+  gatilhos: string[];
+  contexto: "abertura" | "qualquer";
+  max_chars_msg: number;
+  ativo: boolean;
+}
+
+/**
+ * Cria ou substitui, no bot, a resposta de id `origemId` (o id do
+ * `message_templates`). Idempotente: repetir não duplica. Devolve `false` se o
+ * bot não confirmou.
+ */
+export async function espelharRespostaNoBot(origemId: string, resposta: RespostaParaOBot): Promise<boolean> {
+  const config = getConfig();
+  if (!config) return false;
+  try {
+    const res = await fetch(`${config.apiUrl}/api/respostas-rapidas/origem/${encodeURIComponent(origemId)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "X-SSO-Secret": config.ssoSecret },
+      body: JSON.stringify(resposta),
+      cache: "no-store",
+      signal: AbortSignal.timeout(TEMPO_MAXIMO_DO_ESPELHO_MS),
+    });
+    if (!res.ok) return false;
+    return (await res.json())?.success === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Tira do bot a resposta de id `origemId`. "Já não estava lá" (404) conta como
+ * sucesso: o estado que se queria é o mesmo.
+ */
+export async function removerRespostaDoBot(origemId: string): Promise<boolean> {
+  const config = getConfig();
+  if (!config) return false;
+  try {
+    const res = await fetch(`${config.apiUrl}/api/respostas-rapidas/origem/${encodeURIComponent(origemId)}`, {
+      method: "DELETE",
+      headers: { "X-SSO-Secret": config.ssoSecret },
+      cache: "no-store",
+      signal: AbortSignal.timeout(TEMPO_MAXIMO_DO_ESPELHO_MS),
+    });
+    return res.status === 204 || res.status === 404;
   } catch {
     return false;
   }

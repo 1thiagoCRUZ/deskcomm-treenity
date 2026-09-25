@@ -23389,3 +23389,10 @@ end $$;
 create index if not exists message_templates_bot_triggers_gin
   on public.message_templates using gin (bot_triggers)
   where bot_enabled;
+
+-- ---- Espelho das respostas salvas no Treenity Bot (migration 0235) ----
+-- Laço de retorno do envio ao bot: último envio confirmado e motivo da última
+-- falha. Baseline idempotente.
+alter table public.message_templates
+  add column if not exists bot_synced_at  timestamptz,
+  add column if not exists bot_sync_error text;

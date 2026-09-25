@@ -12,12 +12,16 @@ export interface MessageTemplate {
   /**
    * Gatilhos do bot, já normalizados. Vazio = só o atendente usa esta resposta,
    * pelo `/` do composer. Com gatilho, o bot responde sozinho — ver a migration
-   * 0234 e `lib/schemas/templates.ts`.
+   * 0234, `lib/schemas/templates.ts` e `lib/treenity-bot/respostas-salvas.ts`.
    */
   bot_triggers: string[];
   bot_context: "any" | "opening";
   bot_max_chars: number;
   bot_enabled: boolean;
+  /** Último envio confirmado ao Treenity Bot. `null` = não está no bot (migration 0235). */
+  bot_synced_at: string | null;
+  /** Por que o último envio ao bot falhou. `null` = em dia. */
+  bot_sync_error: string | null;
   usage_count: number;
   last_used_at: string | null;
 }

@@ -15,14 +15,15 @@ import { requireRole } from "@/lib/auth/require-role";
 import { roleAtLeast } from "@/lib/auth/types";
 import { createTemplateSchema } from "@/lib/schemas/templates";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { traduzir } from "@/lib/i18n/dicionario";
+import { espelharResposta, type RespostaSalva } from "@/lib/treenity-bot/respostas-salvas";
 
 export const dynamic = "force-dynamic";
-// `bot_*` e `usage_count` entram na MESMA listagem de propósito: é por este GET
-// que o bot (n8n) sincroniza os gatilhos, com um token de `api_tokens`. Uma
-// rota separada duplicaria a regra de visibilidade da RLS.
+// `bot_synced_at`/`bot_sync_error` dizem se a resposta chegou ao Treenity Bot
+// (migration 0235): a lista avisa quando o último envio falhou.
 const COLS =
-  "id, organization_id, owner_user_id, title, body, shortcut, bot_triggers, bot_context, bot_max_chars, bot_enabled, usage_count, last_used_at, created_by_user_id, created_at, updated_at";
+  "id, organization_id, owner_user_id, title, body, shortcut, bot_triggers, bot_context, bot_max_chars, bot_enabled, bot_synced_at, bot_sync_error, usage_count, last_used_at, created_by_user_id, created_at, updated_at";
 
 export async function GET(_req: NextRequest): Promise<Response> {
   const requestId = randomUUID();
@@ -98,5 +99,11 @@ export async function POST(req: NextRequest): Promise<Response> {
     requestId,
     metadata: { shared, title },
   });
-  return ok(data, { requestId, status: 201 });
+
+  // Com gatilho, a resposta vai para o bot agora. O resultado fica na linha
+  // (bot_sync_error) e volta na resposta, para a tela avisar se não chegou.
+  const noBot = await espelharResposta(createAdminClient(), org.orgId, data as RespostaSalva);
+  if (noBot === "nada") return ok(data, { requestId, status: 201 });
+  const { data: atualizada } = await supabase.from("message_templates").select(COLS).eq("id", data.id).single();
+  return ok(atualizada ?? data, { requestId, status: 201 });
 }
