@@ -17,8 +17,6 @@ vi.mock("@/hooks/inbox/useMessageTemplates", () => ({
         bot_triggers: ["quanto tempo", "demora quanto"],
         bot_context: "any",
         bot_enabled: true,
-        bot_synced_at: "2026-09-25T00:00:00Z",
-        bot_sync_error: null,
       },
       {
         id: "5",
@@ -28,9 +26,7 @@ vi.mock("@/hooks/inbox/useMessageTemplates", () => ({
         owner_user_id: null,
         bot_triggers: ["qual o frete"],
         bot_context: "any",
-        bot_enabled: true,
-        bot_synced_at: null,
-        bot_sync_error: "O bot não confirmou o recebimento.",
+        bot_enabled: false,
       },
     ],
     isLoading: false,
@@ -74,13 +70,24 @@ describe("TemplatesClient", () => {
     expect(screen.queryByText("quanto tempo")).not.toBeInTheDocument();
   });
 
-  it("com o bot ligado, mostra gatilhos e o estado de cada resposta — inclusive a que não chegou", () => {
+  it("com o bot ligado, mostra gatilhos e o estado de cada resposta — inclusive a pausada", () => {
     render(wrap(<TemplatesClient canShare={true} currentUserId="u1" botDisponivel />));
     expect(screen.getByText("quanto tempo")).toBeInTheDocument();
     // Filtro "O bot responde · 2" também usa o rótulo; a etiqueta da linha é a outra.
     expect(screen.getAllByText("O bot responde").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("Não chegou ao bot")).toBeInTheDocument();
+    expect(screen.getByText("Pausada")).toBeInTheDocument();
     expect(screen.getAllByText("só o atendente usa")).toHaveLength(3);
+  });
+
+  it("com o bot ligado, toda resposta é da loja: sem selo Pessoal/Compartilhado", () => {
+    render(wrap(<TemplatesClient canShare={true} currentUserId="u1" botDisponivel />));
+    expect(screen.queryByText("Pessoal")).not.toBeInTheDocument();
+    expect(screen.queryByText("Compartilhado")).not.toBeInTheDocument();
+  });
+
+  it("com o bot ligado, agent não cria resposta (só manager+ fala pela loja)", () => {
+    render(wrap(<TemplatesClient canShare={false} currentUserId="u1" botDisponivel />));
+    expect(screen.queryByRole("button", { name: /nova resposta/i })).not.toBeInTheDocument();
   });
 
   it("filtra só as que o bot responde e busca por gatilho", () => {

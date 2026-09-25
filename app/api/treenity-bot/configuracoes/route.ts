@@ -18,7 +18,6 @@ import { requireRole } from "@/lib/auth/require-role";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { lerConfigDoTreenityBot, type ConfigDoTreenityBot } from "@/lib/treenity-bot/configuracao";
-import { espelharTodas } from "@/lib/treenity-bot/respostas-salvas";
 
 export const dynamic = "force-dynamic";
 
@@ -127,13 +126,6 @@ export async function PATCH(req: NextRequest): Promise<Response> {
     .eq("id", authz.org.orgId);
   if (updErr) {
     return fail("internal_error", t("Erro ao salvar a configuração."), 500, { requestId });
-  }
-
-  // Ligou: as respostas com gatilho que já existiam vão para o bot agora.
-  // Desligou: saem de lá. Sem isto, só as salvas DEPOIS da mudança seguiriam.
-  if (novo.respostas.ativo !== atual.respostas.ativo) {
-    const espelho = await espelharTodas(admin, authz.org.orgId);
-    return ok({ ...novo, espelho }, { requestId });
   }
 
   return ok(novo, { requestId });

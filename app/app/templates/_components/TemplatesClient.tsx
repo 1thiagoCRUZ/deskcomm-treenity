@@ -31,35 +31,29 @@ const TEMPLATES_KEY = ["message-templates"];
 interface Props {
   canShare: boolean;
   currentUserId: string;
-  /** A organização ligou "O bot usa as respostas salvas": mostra gatilhos e estado do bot. */
+  /** A organização guarda as respostas rápidas no Treenity Bot: mostra gatilhos e estado do bot. */
   botDisponivel?: boolean;
 }
 
 type Filtro = "todas" | "bot" | "atendente";
 
-type Estado = "bot" | "nao_chegou" | "pausada" | "atendente";
+type Estado = "bot" | "pausada" | "atendente";
 
-/**
- * Estado de uma resposta do ponto de vista do bot. "Não chegou" vem antes de
- * tudo: é o único que pede ação de alguém (salvar de novo reenvia).
- */
+/** Estado de uma resposta do ponto de vista do bot. */
 function estadoDa(template: MessageTemplate): Estado {
   const gatilhos = template.bot_triggers ?? [];
   if (template.owner_user_id !== null || gatilhos.length === 0) return "atendente";
-  if (template.bot_sync_error) return "nao_chegou";
   return template.bot_enabled ? "bot" : "pausada";
 }
 
 const ROTULO_DO_ESTADO: Record<Estado, string> = {
   bot: "O bot responde",
-  nao_chegou: "Não chegou ao bot",
   pausada: "Pausada",
   atendente: "Só atendente",
 };
 
-const VARIANTE_DO_ESTADO: Record<Estado, "success" | "warning" | "neutral"> = {
+const VARIANTE_DO_ESTADO: Record<Estado, "success" | "neutral"> = {
   bot: "success",
-  nao_chegou: "warning",
   pausada: "neutral",
   atendente: "neutral",
 };
@@ -137,9 +131,12 @@ export function TemplatesClient({ canShare, currentUserId, botDisponivel = false
             className="pl-9"
           />
         </div>
-        <Button type="button" onClick={openNew} className="w-full sm:w-auto">
-          <Plus /> {t("Nova resposta")}
-        </Button>
+        {/* No Treenity Bot toda resposta é da loja, e só manager+ cria. */}
+        {(canShare || !botDisponivel) && (
+          <Button type="button" onClick={openNew} className="w-full sm:w-auto">
+            <Plus /> {t("Nova resposta")}
+          </Button>
+        )}
       </div>
 
       {botDisponivel && (
@@ -195,9 +192,12 @@ export function TemplatesClient({ canShare, currentUserId, botDisponivel = false
                     <td className="max-w-xs px-4 py-3">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-medium">{template.title}</span>
-                        <Badge variant={template.owner_user_id ? "neutral" : "default"}>
-                          {t(template.owner_user_id ? "Pessoal" : "Compartilhado")}
-                        </Badge>
+                        {/* No Treenity Bot toda resposta é da loja: o selo não diria nada. */}
+                        {!botDisponivel && (
+                          <Badge variant={template.owner_user_id ? "neutral" : "default"}>
+                            {t(template.owner_user_id ? "Pessoal" : "Compartilhado")}
+                          </Badge>
+                        )}
                       </div>
                       <p className="mt-1 line-clamp-2 text-muted-foreground">{template.body}</p>
                     </td>
@@ -236,12 +236,7 @@ export function TemplatesClient({ canShare, currentUserId, botDisponivel = false
                     <td className="px-3 py-3 text-right tabular-nums">{template.usage_count ?? 0}</td>
                     {botDisponivel && (
                       <td className="px-3 py-3 text-right">
-                        <Badge
-                          variant={VARIANTE_DO_ESTADO[estado]}
-                          title={estado === "nao_chegou" ? t("Salve de novo para reenviar ao bot.") : undefined}
-                        >
-                          {t(ROTULO_DO_ESTADO[estado])}
-                        </Badge>
+                        <Badge variant={VARIANTE_DO_ESTADO[estado]}>{t(ROTULO_DO_ESTADO[estado])}</Badge>
                       </td>
                     )}
                     <td className="px-4 py-2">

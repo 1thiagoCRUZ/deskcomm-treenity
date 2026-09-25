@@ -36,7 +36,9 @@ function SeletorDeModelo({
   permiteVazio: boolean;
 }) {
   const t = useT();
-  const { data: modelos, isLoading, isError } = useMessageTemplates();
+  // O follow-up guarda o id do template e o carrega de `message_templates`:
+  // mostrar aqui uma resposta do Treenity Bot gravaria um id que não existe lá.
+  const { data: modelos, isLoading, isError } = useMessageTemplates({ soDoCrm: true });
 
   if (isLoading) return <p className="text-xs text-text-muted">{t("Carregando seus modelos…")}</p>;
   if (isError) {

@@ -5,6 +5,11 @@ import { requireSupportWrite } from "@/lib/impersonate/support";
  * POST /api/v1/message-templates — cria um template. `shared=true` grava owner_user_id
  *      null (compartilhado) e exige role manager+; `shared=false` (default) grava
  *      owner_user_id = user.id (pessoal, role agent+ já garantido pelo requireRole).
+ *
+ * Organização com as respostas no Treenity Bot: as duas rotas leem e gravam na
+ * tabela do bot, pela API dele, e aqui não fica cópia — ver
+ * `lib/treenity-bot/respostas-salvas.ts`. `?origem=crm` força a tabela daqui:
+ * os follow-ups guardam o id de um `message_templates` e não entendem o do bot.
  */
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
@@ -17,19 +22,32 @@ import { createTemplateSchema } from "@/lib/schemas/templates";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { traduzir } from "@/lib/i18n/dicionario";
-import { espelharResposta, type RespostaSalva } from "@/lib/treenity-bot/respostas-salvas";
+import { criarRespostaNoBot, listarRespostasDoBot } from "@/lib/treenity-bot/client";
+import { erroDoBot, paraBotNovo, paraTemplate, respostasNoBot } from "@/lib/treenity-bot/respostas-salvas";
 
 export const dynamic = "force-dynamic";
-// `bot_synced_at`/`bot_sync_error` dizem se a resposta chegou ao Treenity Bot
-// (migration 0235): a lista avisa quando o último envio falhou.
 const COLS =
-  "id, organization_id, owner_user_id, title, body, shortcut, bot_triggers, bot_context, bot_max_chars, bot_enabled, bot_synced_at, bot_sync_error, usage_count, last_used_at, created_by_user_id, created_at, updated_at";
+  "id, organization_id, owner_user_id, title, body, shortcut, bot_triggers, bot_context, bot_max_chars, bot_enabled, usage_count, last_used_at, created_by_user_id, created_at, updated_at";
 
-export async function GET(_req: NextRequest): Promise<Response> {
+export async function GET(req: NextRequest): Promise<Response> {
   const requestId = randomUUID();
   const authz = await requireRole("agent", { requestId, resource: "message_templates" });
   if (!authz.ok) return authz.response;
   const { org } = authz;
+
+  const soDoCrm = req.nextUrl.searchParams.get("origem") === "crm";
+  if (!soDoCrm && (await respostasNoBot(createAdminClient(), org.orgId))) {
+    const t = (texto: string) => traduzir(texto, authz.user.idioma);
+    const resultado = await listarRespostasDoBot();
+    if (!resultado.ok) {
+      const erro = erroDoBot(resultado);
+      return fail(erro.code, t(erro.mensagem), erro.status, { requestId });
+    }
+    return ok(
+      resultado.dados.map((linha) => paraTemplate(linha, org.orgId)),
+      { requestId },
+    );
+  }
 
   const supabase = await createClient();
   // RLS já limita a compartilhados + próprios da org ativa.
@@ -62,6 +80,30 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
   const { title, body, shortcut, shared, bot_triggers, bot_context, bot_max_chars, bot_enabled } =
     parsed.data;
+
+  // No bot, toda resposta é da loja — a mesma regra do compartilhado: manager+.
+  if (await respostasNoBot(createAdminClient(), org.orgId)) {
+    if (!roleAtLeast(org.role, "manager")) {
+      return fail("forbidden", t("Só manager+ cria resposta da loja."), 403, { requestId });
+    }
+    const resultado = await criarRespostaNoBot(paraBotNovo(parsed.data));
+    if (!resultado.ok) {
+      const erro = erroDoBot(resultado);
+      return fail(erro.code, t(erro.mensagem), erro.status, { requestId });
+    }
+    void audit({
+      action: "template.created",
+      actorUserId: user.id,
+      organizationId: org.orgId,
+      resourceType: "message_template",
+      // `resource_id` é uuid e o id do bot é numérico: vai no metadata.
+      resourceId: null,
+      requestId,
+      metadata: { title, onde: "treenity_bot", resposta_id: resultado.dados.id },
+    });
+    return ok(paraTemplate(resultado.dados, org.orgId), { requestId, status: 201 });
+  }
+
   // Compartilhado exige manager+. requireRole já resolveu o role efetivo do
   // banco em org.role — reusar em vez de uma 2ª chamada/RPC. A RLS with_check
   // barra de qualquer forma; isto só dá um erro claro antes do insert.
@@ -100,10 +142,5 @@ export async function POST(req: NextRequest): Promise<Response> {
     metadata: { shared, title },
   });
 
-  // Com gatilho, a resposta vai para o bot agora. O resultado fica na linha
-  // (bot_sync_error) e volta na resposta, para a tela avisar se não chegou.
-  const noBot = await espelharResposta(createAdminClient(), org.orgId, data as RespostaSalva);
-  if (noBot === "nada") return ok(data, { requestId, status: 201 });
-  const { data: atualizada } = await supabase.from("message_templates").select(COLS).eq("id", data.id).single();
-  return ok(atualizada ?? data, { requestId, status: 201 });
+  return ok(data, { requestId, status: 201 });
 }

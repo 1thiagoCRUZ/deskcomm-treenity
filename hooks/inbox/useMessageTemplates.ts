@@ -11,28 +11,33 @@ export interface MessageTemplate {
   owner_user_id: string | null;
   /**
    * Gatilhos do bot, já normalizados. Vazio = só o atendente usa esta resposta,
-   * pelo `/` do composer. Com gatilho, o bot responde sozinho — ver a migration
-   * 0234, `lib/schemas/templates.ts` e `lib/treenity-bot/respostas-salvas.ts`.
+   * pelo `/` do composer. Com gatilho, o bot responde sozinho. Com a integração
+   * ligada, a resposta mora na tabela do bot — ver `lib/treenity-bot/respostas-salvas.ts`.
    */
   bot_triggers: string[];
   bot_context: "any" | "opening";
   bot_max_chars: number;
   bot_enabled: boolean;
-  /** Último envio confirmado ao Treenity Bot. `null` = não está no bot (migration 0235). */
-  bot_synced_at: string | null;
-  /** Por que o último envio ao bot falhou. `null` = em dia. */
-  bot_sync_error: string | null;
   usage_count: number;
   last_used_at: string | null;
 }
 
-/** Onda 5: templates de script (pessoais + compartilhados) para o slash-menu do composer. */
-export function useMessageTemplates() {
+/**
+ * Onda 5: templates de script (pessoais + compartilhados) para o slash-menu do composer.
+ *
+ * `soDoCrm`: só os de `message_templates`, mesmo com as respostas no Treenity
+ * Bot. É para quem guarda o id do template (os follow-ups): o id do bot não
+ * existe aqui.
+ */
+export function useMessageTemplates({ soDoCrm = false }: { soDoCrm?: boolean } = {}) {
   const podeConsultar = usePermission("message-templates.view");
   return useQuery({
     enabled: podeConsultar,
-    queryKey: ["message-templates"],
-    queryFn: async () => apiClient.get<{ data: MessageTemplate[] }>("/api/v1/message-templates"),
+    queryKey: soDoCrm ? ["message-templates", "crm"] : ["message-templates"],
+    queryFn: async () =>
+      apiClient.get<{ data: MessageTemplate[] }>(
+        soDoCrm ? "/api/v1/message-templates?origem=crm" : "/api/v1/message-templates",
+      ),
     staleTime: 60_000,
     select: (res) => res.data,
   });

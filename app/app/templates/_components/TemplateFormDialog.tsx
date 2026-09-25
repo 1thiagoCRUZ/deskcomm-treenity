@@ -38,7 +38,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   canShare: boolean;
-  /** A organização ligou "O bot usa as respostas salvas". */
+  /** A organização guarda as respostas rápidas no Treenity Bot (toda resposta é da loja). */
   botDisponivel?: boolean;
   template?: MessageTemplate | null;
 }
@@ -222,10 +222,11 @@ export function TemplateFormDialog({ open, onOpenChange, canShare, botDisponivel
     setMaxChars(String(template?.bot_max_chars ?? MAX_CHARS_PADRAO));
   }, [open, template]);
 
-  // O bot só usa resposta compartilhada: a pessoal é atalho de um atendente.
-  // Criar compartilhada exige manager+ (canShare); editar mantém o que já é.
-  const compartilhada = isEdit ? template.owner_user_id === null : canShare && shared;
-  const mostraBot = botDisponivel && compartilhada && (isEdit ? canShare : true);
+  // Com as respostas no Treenity Bot, toda resposta é da loja: não existe
+  // pessoal, e só manager+ (canShare) cria ou edita. Sem o bot, o bot só usaria
+  // resposta compartilhada, e editar mantém o que já é.
+  const compartilhada = botDisponivel || (isEdit ? template.owner_user_id === null : canShare && shared);
+  const mostraBot = botDisponivel && canShare;
   const variavelNoBot = mostraBot && botEnabled && temVariavelDoAtendente(body);
 
   /**
@@ -256,10 +257,8 @@ export function TemplateFormDialog({ open, onOpenChange, canShare, botDisponivel
     });
   };
 
-  const avisarResultado = (salva: MessageTemplate | undefined, mensagemDeSucesso: string) => {
-    if (salva?.bot_sync_error) {
-      toast.warning(t("Salvo, mas não chegou ao bot. Salve de novo em instantes para reenviar."));
-    } else if (mostraBot && botEnabled && gatilhos.length > 0) {
+  const avisarResultado = (mensagemDeSucesso: string) => {
+    if (mostraBot && botEnabled && gatilhos.length > 0) {
       toast.success(t("Salvo. O bot já usa esta resposta na próxima mensagem."));
     } else {
       toast.success(mensagemDeSucesso);
@@ -270,23 +269,23 @@ export function TemplateFormDialog({ open, onOpenChange, canShare, botDisponivel
     e.preventDefault();
     try {
       if (isEdit) {
-        const res = await update.mutateAsync({
+        await update.mutateAsync({
           id: template.id,
           title,
           body,
           shortcut: shortcut.trim() || null,
           ...camposDoBot(),
         });
-        avisarResultado(res?.data, t("Resposta atualizada."));
+        avisarResultado(t("Resposta atualizada."));
       } else {
-        const res = await create.mutateAsync({
+        await create.mutateAsync({
           title,
           body,
           shortcut: shortcut.trim() || undefined,
           shared: canShare ? shared : false,
           ...camposDoBot(),
         });
-        avisarResultado(res?.data, t("Resposta criada."));
+        avisarResultado(t("Resposta criada."));
       }
       onOpenChange(false);
     } catch {
@@ -376,7 +375,7 @@ export function TemplateFormDialog({ open, onOpenChange, canShare, botDisponivel
                 </div>
                 <p className="text-xs text-muted-foreground">{t("O que a equipe digita no Inbox para colar este texto.")}</p>
               </div>
-              {canShare && (
+              {canShare && !botDisponivel && (
                 <div className="flex items-center gap-2">
                   <Switch
                     id="tpl-shared"

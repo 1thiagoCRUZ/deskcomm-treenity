@@ -3,7 +3,7 @@ import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { ROLE_RANK } from "@/lib/auth/types";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { espelhoLigado } from "@/lib/treenity-bot/respostas-salvas";
+import { respostasNoBot } from "@/lib/treenity-bot/respostas-salvas";
 import { TemplatesClient } from "./_components/TemplatesClient";
 
 export const dynamic = "force-dynamic";
@@ -13,9 +13,9 @@ export default async function TemplatesPage() {
   const activeOrg = await resolveActiveOrg(user);
   if (!activeOrg) redirect("/app/inbox");
   const canShare = ROLE_RANK[activeOrg.role] >= ROLE_RANK.manager;
-  // Os campos do bot só aparecem onde o bot de fato vai usá-los: organização
-  // com "O bot usa as respostas salvas" ligado (Integrações › Treenity Bot).
-  const botDisponivel = await espelhoLigado(createAdminClient(), activeOrg.orgId);
+  // Organização com as respostas no Treenity Bot (Integrações › Treenity Bot):
+  // a lista vem da tabela do bot e o formulário mostra os gatilhos.
+  const botDisponivel = await respostasNoBot(createAdminClient(), activeOrg.orgId);
   // `t` local em vez do hook: esta página é componente de SERVIDOR, e lá o
   // idioma vem resolvido em `user.idioma` (a cadeia pessoa → organização →
   // padrão vive em `lib/auth/server.ts`), sem reler o `locale` cru.
