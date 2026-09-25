@@ -70,8 +70,14 @@ export async function POST(req: NextRequest): Promise<Response> {
   const t = (texto: string) => traduzir(texto, authz.user.idioma);
   const { user, org } = authz;
 
+  // No bot, toda resposta é da loja: vale como compartilhada, seja qual for o
+  // `shared` que chegou. Sem isto, a regra "o bot só usa compartilhada" do
+  // schema recusava toda resposta com gatilho, porque a tela nem mostra a opção.
+  const noBot = await respostasNoBot(createAdminClient(), org.orgId);
   const raw = await req.json().catch(() => null);
-  const parsed = createTemplateSchema.safeParse(raw);
+  const parsed = createTemplateSchema.safeParse(
+    noBot && raw && typeof raw === "object" ? { ...raw, shared: true } : raw,
+  );
   if (!parsed.success) {
     return fail("validation_failed", t("Dados inválidos."), 422, {
       requestId,
@@ -81,8 +87,8 @@ export async function POST(req: NextRequest): Promise<Response> {
   const { title, body, shortcut, shared, bot_triggers, bot_context, bot_max_chars, bot_enabled } =
     parsed.data;
 
-  // No bot, toda resposta é da loja — a mesma regra do compartilhado: manager+.
-  if (await respostasNoBot(createAdminClient(), org.orgId)) {
+  // No bot, só manager+ cria — a mesma regra do compartilhado daqui.
+  if (noBot) {
     if (!roleAtLeast(org.role, "manager")) {
       return fail("forbidden", t("Só manager+ cria resposta da loja."), 403, { requestId });
     }
