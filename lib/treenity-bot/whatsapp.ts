@@ -40,6 +40,7 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { encontrarContatoPorTelefone } from "@/lib/channels/contato-por-telefone";
 import { logger } from "@/lib/logger";
 
 export interface ConfigDoWhatsApp {
@@ -290,4 +291,89 @@ export function previaDaMensagem(m: MensagemDoBot): string {
   if (m.type === "video") return "🎬 Vídeo";
   if (m.type === "document") return "📎 Documento";
   return m.body ?? "[modelo]";
+}
+
+// ─── Quem chama de fora (n8n, API do bot) ───────────────────────────────────
+
+/**
+ * Organização dona da chave do cabeçalho `Authorization`, ou `null` quando a
+ * chave falta, tem outro formato ou não confere com o hash guardado. É a única
+ * porta das rotas que o n8n e a API do bot chamam sem sessão.
+ */
+export async function organizacaoPelaChave(
+  admin: SupabaseClient,
+  authorization: string | null,
+): Promise<{ organizationId: string; config: ConfigDoWhatsApp } | null> {
+  const chave = chaveDoCabecalho(authorization);
+  const organizationId = chave ? organizacaoDaChave(chave) : null;
+  if (!chave || !organizationId) return null;
+  const { data: org } = await admin
+    .from("organizations")
+    .select("settings")
+    .eq("id", organizationId)
+    .maybeSingle();
+  const settings = (org?.settings ?? null) as Record<string, unknown> | null;
+  const config = lerConfigDoWhatsApp(settings?.treenity_bot ?? null);
+  return chaveConfere(chave, config.chaveHash) ? { organizationId, config } : null;
+}
+
+/**
+ * O CADU atende pelo Inbox desta organização? Conta como "atendimento
+ * automático" para a tela: sem isto, uma organização que usa só o bot (nenhum
+ * agente próprio do DeskComm) veria as conversas do bot como "ninguém
+ * atendendo", e a Fila juntaria conversas que o bot está respondendo.
+ */
+export function botDoTreenityAtende(settings: unknown): boolean {
+  const s = settings && typeof settings === "object" && !Array.isArray(settings)
+    ? (settings as Record<string, unknown>)
+    : null;
+  return lerConfigDoWhatsApp(s?.treenity_bot ?? null).ativo;
+}
+
+// ─── O bot chamou o especialista ────────────────────────────────────────────
+
+export type DesfechoDoPedidoDeAjuda = "marcada" | "sem_contato" | "sem_conversa";
+
+/** Quanto do motivo do bot cabe no campo (ele aparece na tela). */
+const TAMANHO_DO_MOTIVO = 300;
+
+/**
+ * Leva ao Inbox o "chamar especialista" do bot: a conversa do cliente fica com
+ * o automático calado (`bot_silenced_until = infinity`, o mesmo literal de
+ * Assumir) e sem dono — é o estado "aguardando", que é a Fila. Quem assumir ou
+ * clicar em "Reativar bot" decide dali em diante.
+ *
+ * O `id_face` é o número como a Meta o manda (sem `+`, às vezes sem o nono
+ * dígito); a busca do contato já cobre as duas grafias.
+ */
+export async function marcarPediuAjuda(
+  admin: SupabaseClient,
+  pedido: { organizationId: string; idFace: string; motivo: string },
+): Promise<DesfechoDoPedidoDeAjuda> {
+  const contato = await encontrarContatoPorTelefone(admin, pedido.organizationId, pedido.idFace);
+  if (!contato) return "sem_contato";
+
+  const { data: conversa, error } = await admin
+    .from("conversations")
+    .select("id")
+    .eq("organization_id", pedido.organizationId)
+    .eq("contact_id", contato.id)
+    .eq("is_group", false)
+    .order("last_message_at", { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`conversa: ${error.message}`);
+  if (!conversa) return "sem_conversa";
+
+  const { error: erroUpdate } = await admin
+    .from("conversations")
+    .update({
+      bot_silenced_until: "infinity",
+      last_handoff_at: new Date().toISOString(),
+      last_handoff_reason: `O bot chamou o especialista: ${pedido.motivo}`.slice(0, TAMANHO_DO_MOTIVO),
+    })
+    .eq("organization_id", pedido.organizationId)
+    .eq("id", (conversa as { id: string }).id);
+  if (erroUpdate) throw new Error(`marcar: ${erroUpdate.message}`);
+  return "marcada";
 }

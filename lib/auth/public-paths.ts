@@ -41,6 +41,9 @@ export const PUBLIC_PATHS: RegExp[] = [
   // Bearer, conferida contra o hash da organização DENTRO da rota. Ancorado no
   // formato exato da Graph API para nenhum sub-path nascer público de carona.
   /^\/api\/treenity-bot\/whatsapp\/v\d+\.\d+\/\d+\/messages$/,
+  // O aviso "o bot chamou o especialista", que a API do bot manda sem cookie.
+  // Mesma chave `tbw_`, conferida dentro da rota.
+  /^\/api\/treenity-bot\/whatsapp\/pediu-ajuda$/,
   /^\/api\/internal\//,
   /^\/api\/mcp(\/.*)?$/,
   /^\/_next\//,
