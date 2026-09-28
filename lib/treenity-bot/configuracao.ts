@@ -16,6 +16,8 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { lerConfigDoWhatsApp } from "./whatsapp";
+
 export interface ConfigDeTarefas {
   ativo: boolean;
   /** ISO — null enquanto nunca foi ligado. */
@@ -39,10 +41,22 @@ export interface ConfigDeRespostas {
   ativo: boolean;
 }
 
+/**
+ * WhatsApp passando pelo DeskComm (ver `whatsapp.ts`). O que vai para a tela:
+ * o hash da chave fica no servidor, a tela só sabe se existe uma.
+ */
+export interface ConfigDoWhatsAppNaTela {
+  ativo: boolean;
+  urlN8n: string | null;
+  temChave: boolean;
+  chaveCriadaEm: string | null;
+}
+
 export interface ConfigDoTreenityBot {
   tarefas: ConfigDeTarefas;
   funil: ConfigDeFunil;
   respostas: ConfigDeRespostas;
+  whatsapp: ConfigDoWhatsAppNaTela;
 }
 
 const PERDIDO_DIAS_PADRAO = 7;
@@ -73,6 +87,10 @@ export function lerConfigDoTreenityBot(settingsBruto: unknown): ConfigDoTreenity
       perdidoDias: numeroPositivo(funil.perdido_dias, PERDIDO_DIAS_PADRAO),
     },
     respostas: { ativo: respostas.ativo === true },
+    whatsapp: (() => {
+      const w = lerConfigDoWhatsApp(bruto);
+      return { ativo: w.ativo, urlN8n: w.urlN8n, temChave: w.chaveHash !== null, chaveCriadaEm: w.chaveCriadaEm };
+    })(),
   };
 }
 

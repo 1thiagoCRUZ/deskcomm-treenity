@@ -37,6 +37,10 @@ export const PUBLIC_PATHS: RegExp[] = [
   // qualquer sub-path futuro nascer público de carona.
   /^\/api\/v1\/agenda\/google\/callback$/,
   /^\/api\/v1\/integrations\/nuvemshop\/callback$/,
+  // Envio do Treenity Bot: o n8n chama sem cookie. Auth é a chave `tbw_` no
+  // Bearer, conferida contra o hash da organização DENTRO da rota. Ancorado no
+  // formato exato da Graph API para nenhum sub-path nascer público de carona.
+  /^\/api\/treenity-bot\/whatsapp\/v\d+\.\d+\/\d+\/messages$/,
   /^\/api\/internal\//,
   /^\/api\/mcp(\/.*)?$/,
   /^\/_next\//,

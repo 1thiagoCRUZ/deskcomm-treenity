@@ -26,6 +26,7 @@ import { ingestMetaInbound } from "@/lib/channels/meta/ingest";
 import { metaSessionByWebhookToken } from "@/lib/channels/meta/session";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { repassarAoBot } from "@/lib/treenity-bot/whatsapp";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -103,6 +104,12 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<NextRespons
    * indistinguível de "não chegou". Custou uma hora de diagnóstico no lugar errado.
    */
   const desfechos: string[] = [];
+  /**
+   * Conversa de cada mensagem de cliente, para o repasse ao Treenity Bot
+   * (ver lib/treenity-bot/whatsapp.ts). `null` = não gravou, e vai ao bot
+   * mesmo assim; reentrega (`duplicate`) fica de fora — o bot já recebeu.
+   */
+  const conversasDoRepasse: (string | null)[] = [];
 
   for (const e of eventos) {
     // O evento chega carimbado com a WABA; se não for a desta sessão, ignoramos.
@@ -120,6 +127,8 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<NextRespons
       // as duas, com 200 na resposta (issue #236).
       const r = await ingestMetaInbound(admin, e, { organizationId: session.organizationId });
       desfechos.push(r.status);
+      if (r.status === "ingested") conversasDoRepasse.push(r.conversationId);
+      else if (r.status !== "duplicate") conversasDoRepasse.push(null);
       if (r.status === "failed" || r.status === "no_session") {
         // 2xx continua (a Meta re-entregaria em loop), mas a falha NÃO fica muda:
         // vai ao log estruturado e ao corpo da resposta.
@@ -150,13 +159,23 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<NextRespons
     }
   }
 
+  // Depois de gravar, e antes de responder: na Vercel o trabalho depois da
+  // resposta não tem garantia, e o bot só responde se isto chegar ao n8n.
+  // Nunca lança, e desligado para a organização é uma leitura só.
+  const repasse = await repassarAoBot(admin, {
+    organizationId: session.organizationId,
+    corpoBruto: rawBody,
+    assinatura: req.headers.get("x-hub-signature-256"),
+    conversas: conversasDoRepasse,
+  });
+
   // 200 SEMPRE que a assinatura confere, inclusive para evento que não nos
   // interessa: a Meta re-entrega tudo que não recebe 2xx, e recusar o que
   // ignoramos vira re-tentativa em backoff por horas.
   // `outcomes` no corpo: quem depura vê o que aconteceu com cada evento em vez de
   // ler um contador que não distingue sucesso de falha.
   return NextResponse.json(
-    { received: eventos.length, outcomes: desfechos },
+    { received: eventos.length, outcomes: desfechos, repasse },
     { status: 200 },
   );
 }

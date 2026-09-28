@@ -20,11 +20,13 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useT } from "@/hooks/i18n/useT";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
+import { copyToClipboard } from "@/lib/clipboard";
 
 interface ConfigDoTreenityBot {
   tarefas: { ativo: boolean; desde: string | null };
   funil: { ativo: boolean; desde: string | null; perdidoDias: number };
   respostas: { ativo: boolean };
+  whatsapp: { ativo: boolean; urlN8n: string | null; temChave: boolean; chaveCriadaEm: string | null };
 }
 
 async function buscarConfig(): Promise<ConfigDoTreenityBot | null> {
@@ -42,6 +44,7 @@ async function salvarConfig(
     tarefas: { ativo?: boolean };
     funil: { ativo?: boolean; perdido_dias?: number };
     respostas: { ativo?: boolean };
+    whatsapp: { ativo?: boolean; url_n8n?: string | null };
   }>,
 ): Promise<ConfigDoTreenityBot | null> {
   try {
@@ -57,6 +60,16 @@ async function salvarConfig(
   }
 }
 
+async function gerarChaveDoWhatsApp(): Promise<string | null> {
+  try {
+    const res = await fetch("/api/treenity-bot/configuracoes/chave-whatsapp", { method: "POST" });
+    if (!res.ok) return null;
+    return ((await res.json()).data as { chave: string }).chave;
+  } catch {
+    return null;
+  }
+}
+
 export function AutomacoesPainel() {
   const t = useT();
   const tag = useTagDeIdioma();
@@ -66,11 +79,19 @@ export function AutomacoesPainel() {
   const [salvandoFunil, setSalvandoFunil] = useState(false);
   const [salvandoRespostas, setSalvandoRespostas] = useState(false);
   const [perdidoDiasRascunho, setPerdidoDiasRascunho] = useState("7");
+  const [salvandoWhatsApp, setSalvandoWhatsApp] = useState(false);
+  const [urlN8nRascunho, setUrlN8nRascunho] = useState("");
+  const [chaveNova, setChaveNova] = useState<string | null>(null);
+  // Lido depois de montar: no servidor não há `window`, e ler durante o render
+  // daria HTML diferente entre servidor e navegador.
+  const [origem, setOrigem] = useState("");
 
   useEffect(() => {
     void buscarConfig().then((c) => {
+      setOrigem(window.location.origin);
       setConfig(c);
       if (c) setPerdidoDiasRascunho(String(c.funil.perdidoDias));
+      if (c) setUrlN8nRascunho(c.whatsapp.urlN8n ?? "");
       setCarregando(false);
     });
   }, []);
@@ -117,6 +138,48 @@ export function AutomacoesPainel() {
     );
   }
 
+  async function salvarUrlN8n() {
+    const url = urlN8nRascunho.trim();
+    if (url && !url.startsWith("https://")) {
+      toast.error(t("O endereço do n8n precisa começar com https://"));
+      return;
+    }
+    setSalvandoWhatsApp(true);
+    const novo = await salvarConfig({ whatsapp: { url_n8n: url || null, ...(url ? {} : { ativo: false }) } });
+    setSalvandoWhatsApp(false);
+    if (!novo) return toast.error(t("Não foi possível salvar."));
+    setConfig(novo);
+    toast.success(t("Endereço do n8n salvo."));
+  }
+
+  async function alternarWhatsApp(ativo: boolean) {
+    setSalvandoWhatsApp(true);
+    const novo = await salvarConfig({ whatsapp: { ativo } });
+    setSalvandoWhatsApp(false);
+    if (!novo) return toast.error(t("Não foi possível salvar."));
+    setConfig(novo);
+    toast.success(
+      ativo
+        ? t("Repasse ligado — as mensagens que chegarem no Inbox vão para o bot na hora.")
+        : t("Repasse desligado — as mensagens entram no Inbox, mas o bot não recebe."),
+    );
+  }
+
+  async function gerarChave() {
+    setSalvandoWhatsApp(true);
+    const chave = await gerarChaveDoWhatsApp();
+    setSalvandoWhatsApp(false);
+    if (!chave) return toast.error(t("Não foi possível gerar a chave."));
+    setChaveNova(chave);
+    const atualizado = await buscarConfig();
+    if (atualizado) setConfig(atualizado);
+  }
+
+  async function copiar(texto: string) {
+    if (await copyToClipboard(texto)) toast.success(t("Copiado."));
+    else toast.error(t("Não foi possível copiar."));
+  }
+
   async function salvarPerdidoDias() {
     const dias = Number(perdidoDiasRascunho);
     if (!Number.isFinite(dias) || dias < 1 || dias > 90) {
@@ -138,8 +201,102 @@ export function AutomacoesPainel() {
     return <p className="text-sm text-muted-foreground">{t("Não foi possível carregar as automações agora.")}</p>;
   }
 
+  const enderecoDeEnvio = `${origem}/api/treenity-bot/whatsapp/`;
+
   return (
     <div className="max-w-2xl space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("WhatsApp no Inbox")}</CardTitle>
+          <CardDescription>
+            {t(
+              "As conversas do WhatsApp passam pelo DeskComm e aparecem no Inbox, e o bot continua respondendo. Quando alguém da equipe assume a conversa, o bot fica quieto até ser reativado.",
+            )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="space-y-1.5">
+            <Label htmlFor="url-n8n">{t("Endereço do webhook do WhatsApp no n8n")}</Label>
+            <p className="text-xs text-muted-foreground">
+              {t("Cada mensagem que chega é repassada para este endereço na hora, do jeito que a Meta mandou.")}
+            </p>
+            <div className="flex items-center gap-2 pt-1">
+              <Input
+                id="url-n8n"
+                placeholder="https://…/webhook/whatsapp"
+                value={urlN8nRascunho}
+                onChange={(e) => setUrlN8nRascunho(e.target.value)}
+                disabled={salvandoWhatsApp}
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={salvandoWhatsApp || urlN8nRascunho.trim() === (config.whatsapp.urlN8n ?? "")}
+                onClick={() => void salvarUrlN8n()}
+              >
+                {t("Salvar")}
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-4 border-t border-border pt-5">
+            <div className="space-y-1">
+              <Label htmlFor="whatsapp-ativo">{t("Repassar as mensagens ao bot")}</Label>
+              <p className="text-xs text-muted-foreground">
+                {config.whatsapp.urlN8n
+                  ? t("Ligue só depois de o webhook da Meta apontar para o DeskComm (em Conexões).")
+                  : t("Salve o endereço do n8n para poder ligar.")}
+              </p>
+            </div>
+            <Switch
+              id="whatsapp-ativo"
+              checked={config.whatsapp.ativo}
+              disabled={salvandoWhatsApp || !config.whatsapp.urlN8n}
+              onCheckedChange={(v) => void alternarWhatsApp(v)}
+            />
+          </div>
+
+          <div className="space-y-2 border-t border-border pt-5">
+            <Label>{t("Envio das respostas do bot")}</Label>
+            <p className="text-xs text-muted-foreground">
+              {t(
+                "Nos nós do n8n que enviam mensagem, troque o começo do endereço e use a chave como credencial (cabeçalho Authorization: Bearer). O resto do nó fica igual.",
+              )}
+            </p>
+            <div className="space-y-1 rounded-md bg-muted p-3 font-mono text-xs break-all">
+              <p>
+                <span className="text-muted-foreground">{t("Antes:")}</span> https://graph.facebook.com/
+              </p>
+              <p>
+                <span className="text-muted-foreground">{t("Depois:")}</span> {enderecoDeEnvio}
+              </p>
+            </div>
+            {chaveNova ? (
+              <div className="space-y-2 rounded-md border border-border p-3">
+                <p className="text-xs font-medium">
+                  {t("Copie a chave agora. Ela não aparece de novo.")}
+                </p>
+                <p className="font-mono text-xs break-all">{chaveNova}</p>
+                <Button size="sm" variant="secondary" onClick={() => void copiar(`Bearer ${chaveNova}`)}>
+                  {t("Copiar para o n8n")}
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-4">
+                <p className="text-xs text-muted-foreground">
+                  {config.whatsapp.temChave && config.whatsapp.chaveCriadaEm
+                    ? `${t("Chave criada em")} ${formatarDesde(config.whatsapp.chaveCriadaEm)}. ${t("Gerar outra invalida a atual.")}`
+                    : t("Nenhuma chave gerada ainda.")}
+                </p>
+                <Button size="sm" variant="secondary" disabled={salvandoWhatsApp} onClick={() => void gerarChave()}>
+                  {config.whatsapp.temChave ? t("Gerar outra chave") : t("Gerar chave")}
+                </Button>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>{t("Conferir pagamento PIX")}</CardTitle>
