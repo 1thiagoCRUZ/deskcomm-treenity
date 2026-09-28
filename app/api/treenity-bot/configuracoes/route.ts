@@ -18,6 +18,7 @@ import { requireRole } from "@/lib/auth/require-role";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { lerConfigDoTreenityBot, type ConfigDoTreenityBot } from "@/lib/treenity-bot/configuracao";
+import { gravarConfigDoWhatsApp, lerConfigDoWhatsApp } from "@/lib/treenity-bot/whatsapp";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,13 @@ const patchSchema = z.object({
     })
     .optional(),
   respostas: z.object({ ativo: z.boolean().optional() }).optional(),
+  whatsapp: z
+    .object({
+      ativo: z.boolean().optional(),
+      // O servidor faz POST neste endereço a cada mensagem: só https.
+      url_n8n: z.string().trim().url().startsWith("https://").max(500).nullable().optional(),
+    })
+    .optional(),
 });
 
 export async function GET(): Promise<Response> {
@@ -81,6 +89,22 @@ export async function PATCH(req: NextRequest): Promise<Response> {
   }
 
   const atual = lerConfigDoTreenityBot(orgAtual.settings);
+  const treenityBotAnterior = (() => {
+    const s = orgAtual.settings as Record<string, unknown> | null;
+    const tb = s && typeof s === "object" ? s.treenity_bot : null;
+    return tb && typeof tb === "object" && !Array.isArray(tb) ? (tb as Record<string, unknown>) : {};
+  })();
+  // O `whatsapp` guarda o hash da chave, que a tela não conhece: parte do
+  // gravado, não do que a tela mandou.
+  const whatsappAnterior = lerConfigDoWhatsApp(treenityBotAnterior);
+  const whatsappNovo = {
+    ...whatsappAnterior,
+    ativo: parsed.data.whatsapp?.ativo ?? whatsappAnterior.ativo,
+    urlN8n: parsed.data.whatsapp?.url_n8n !== undefined ? parsed.data.whatsapp.url_n8n : whatsappAnterior.urlN8n,
+  };
+  if (whatsappNovo.ativo && !whatsappNovo.urlN8n) {
+    return fail("validation_failed", t("Informe o endereço do n8n antes de ligar."), 422, { requestId });
+  }
   const agora = new Date().toISOString();
   const novo: ConfigDoTreenityBot = {
     tarefas: {
@@ -104,6 +128,12 @@ export async function PATCH(req: NextRequest): Promise<Response> {
       perdidoDias: parsed.data.funil?.perdido_dias ?? atual.funil.perdidoDias,
     },
     respostas: { ativo: parsed.data.respostas?.ativo ?? atual.respostas.ativo },
+    whatsapp: {
+      ativo: whatsappNovo.ativo,
+      urlN8n: whatsappNovo.urlN8n,
+      temChave: whatsappNovo.chaveHash !== null,
+      chaveCriadaEm: whatsappNovo.chaveCriadaEm,
+    },
   };
 
   const settingsAnterior =
@@ -120,6 +150,7 @@ export async function PATCH(req: NextRequest): Promise<Response> {
           tarefas: { ativo: novo.tarefas.ativo, desde: novo.tarefas.desde },
           funil: { ativo: novo.funil.ativo, desde: novo.funil.desde, perdido_dias: novo.funil.perdidoDias },
           respostas: { ativo: novo.respostas.ativo },
+          whatsapp: gravarConfigDoWhatsApp(whatsappNovo),
         },
       },
     })
