@@ -19,6 +19,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { agenteAtende } from "@/lib/ai/agents/no-ar";
+import { botDoTreenityAtende } from "@/lib/treenity-bot/whatsapp";
 
 export async function orgTemAutomatico(
   supabase: SupabaseClient,
@@ -34,5 +35,15 @@ export async function orgTemAutomatico(
     .is("archived_at", null);
 
   if (error) return undefined;
-  return (data ?? []).some(agenteAtende);
+  if ((data ?? []).some(agenteAtende)) return true;
+
+  // O automático também pode ser EXTERNO: o Treenity Bot (n8n) atendendo pelo
+  // Inbox, sem agente próprio aqui. Ver `lib/treenity-bot/whatsapp.ts`.
+  const { data: org, error: erroOrg } = await supabase
+    .from("organizations")
+    .select("settings")
+    .eq("id", organizationId)
+    .maybeSingle();
+  if (erroOrg) return undefined;
+  return botDoTreenityAtende(org?.settings ?? null);
 }

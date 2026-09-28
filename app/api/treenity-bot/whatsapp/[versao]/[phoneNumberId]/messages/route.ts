@@ -23,14 +23,7 @@ import { encontrarContatoPorTelefone } from "@/lib/channels/contato-por-telefone
 import { metaCredsForPhoneNumberId } from "@/lib/channels/meta/credentials";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
-import {
-  chaveConfere,
-  chaveDoCabecalho,
-  lerConfigDoWhatsApp,
-  mensagemDoCorpo,
-  organizacaoDaChave,
-  previaDaMensagem,
-} from "@/lib/treenity-bot/whatsapp";
+import { mensagemDoCorpo, organizacaoPelaChave, previaDaMensagem } from "@/lib/treenity-bot/whatsapp";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -50,19 +43,10 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<NextRespons
     return erro(404, "Endereço inválido.", "not_found");
   }
 
-  const chave = chaveDoCabecalho(req.headers.get("authorization"));
-  const organizationId = chave ? organizacaoDaChave(chave) : null;
-  if (!chave || !organizationId) return erro(401, "Chave ausente ou inválida.", "unauthorized");
-
   const admin = createAdminClient();
-  const { data: org } = await admin
-    .from("organizations")
-    .select("settings")
-    .eq("id", organizationId)
-    .maybeSingle();
-  const settings = (org?.settings ?? null) as Record<string, unknown> | null;
-  const config = lerConfigDoWhatsApp(settings?.treenity_bot ?? null);
-  if (!chaveConfere(chave, config.chaveHash)) return erro(401, "Chave ausente ou inválida.", "unauthorized");
+  const dono = await organizacaoPelaChave(admin, req.headers.get("authorization"));
+  if (!dono) return erro(401, "Chave ausente ou inválida.", "unauthorized");
+  const { organizationId } = dono;
 
   const texto = await req.text();
   let corpo: Record<string, unknown>;

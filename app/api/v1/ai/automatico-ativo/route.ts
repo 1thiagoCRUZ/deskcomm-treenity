@@ -31,7 +31,7 @@ import type { NextRequest } from "next/server";
 
 import { ok, fail } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
-import { agenteAtende } from "@/lib/ai/agents/no-ar";
+import { orgTemAutomatico } from "@/lib/ai/agents/org-tem-automatico";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -42,16 +42,13 @@ export async function GET(_req: NextRequest): Promise<Response> {
   if (!authz.ok) return authz.response;
 
   const supabase = await createClient();
-  // `head: true` + `count` não serve mais: a régua olha quatro colunas por
-  // linha, e uma contagem no banco não sabe respondê-la sem duplicar a regra em
-  // SQL — que é como ela se desencontrou da primeira vez.
-  const { data, error } = await supabase
-    .from("ai_agents")
-    .select("kind, is_active, paused_at, published_version_id, archived_at")
-    .eq("organization_id", authz.org.orgId)
-    .is("archived_at", null);
+  // A régua mora em `orgTemAutomatico` (agente próprio no ar OU o Treenity Bot
+  // atendendo pelo Inbox) — uma regra, um lugar, para a Fila e o rótulo não
+  // se desencontrarem.
+  const ativo = await orgTemAutomatico(supabase, authz.org.orgId);
+  if (ativo === undefined) {
+    return fail("internal_error", "Não foi possível ler o atendimento automático.", 500, { requestId });
+  }
 
-  if (error) return fail("internal_error", error.message, 500, { requestId });
-
-  return ok({ ativo: (data ?? []).some(agenteAtende) }, { requestId });
+  return ok({ ativo }, { requestId });
 }

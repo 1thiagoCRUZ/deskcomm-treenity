@@ -204,3 +204,94 @@ describe("rota de envio é pública só no formato da Graph API", () => {
     expect(isPublicPath("/api/treenity-bot/configuracoes/chave-whatsapp")).toBe(false);
   });
 });
+
+// ─── Fase 2: pediu ajuda, automático externo e devolver ao bot ──────────────
+
+import { botDoTreenityAtende, marcarPediuAjuda } from "@/lib/treenity-bot/whatsapp";
+import { idsFaceDoTelefone } from "@/lib/treenity-bot/devolver-ao-bot";
+
+/** Client falso para `marcarPediuAjuda`: um contato, uma conversa, e grava o update. */
+function adminDaAjuda(opcoes: { contato?: boolean; conversa?: boolean }) {
+  const updates: Record<string, unknown>[] = [];
+  const admin = {
+    updates,
+    from(tabela: string) {
+      if (tabela === "contacts") {
+        const linhas = opcoes.contato
+          ? [{ id: "ct1", phone_number: "+5514997317147", created_at: "2026-01-01", is_merged_into: null }]
+          : [];
+        const c = {
+          select: () => c,
+          eq: () => c,
+          in: () => c,
+          is: () => c,
+          order: () => c,
+          limit: async () => ({ data: linhas, error: null }),
+          then: (r: (v: unknown) => void) => r({ data: linhas, error: null }),
+        };
+        return c;
+      }
+      const c = {
+        select: () => c,
+        eq: () => c,
+        order: () => c,
+        limit: () => c,
+        maybeSingle: async () => ({ data: opcoes.conversa ? { id: "cv1" } : null, error: null }),
+        update: (v: Record<string, unknown>) => {
+          updates.push(v);
+          const u = { eq: () => u, then: (r: (v: unknown) => void) => r({ error: null }) };
+          return u;
+        },
+      };
+      return c;
+    },
+  };
+  return admin;
+}
+
+describe("o bot chamou o especialista", () => {
+  it("cala o bot na conversa e deixa sem dono (vai para a Fila), com o motivo", async () => {
+    const admin = adminDaAjuda({ contato: true, conversa: true });
+    const r = await marcarPediuAjuda(admin as never, {
+      organizationId: ORG,
+      idFace: "551497317147",
+      motivo: "pediu desconto 3 vezes",
+    });
+    expect(r).toBe("marcada");
+    expect(admin.updates[0]).toMatchObject({ bot_silenced_until: "infinity" });
+    expect(String(admin.updates[0].last_handoff_reason)).toContain("pediu desconto 3 vezes");
+    expect(admin.updates[0]).not.toHaveProperty("assigned_to_user_id");
+  });
+
+  it("cliente que não passou pelo Inbox não é erro", async () => {
+    expect(
+      await marcarPediuAjuda(adminDaAjuda({ contato: false }) as never, { organizationId: ORG, idFace: "1", motivo: "x" }),
+    ).toBe("sem_contato");
+    expect(
+      await marcarPediuAjuda(adminDaAjuda({ contato: true, conversa: false }) as never, {
+        organizationId: ORG,
+        idFace: "551497317147",
+        motivo: "x",
+      }),
+    ).toBe("sem_conversa");
+  });
+
+  it("a rota do aviso é pública só no caminho exato", () => {
+    expect(isPublicPath("/api/treenity-bot/whatsapp/pediu-ajuda")).toBe(true);
+    expect(isPublicPath("/api/treenity-bot/whatsapp/pediu-ajuda/x")).toBe(false);
+  });
+});
+
+describe("o Treenity Bot conta como atendimento automático", () => {
+  it("só com o WhatsApp no Inbox ligado", () => {
+    expect(botDoTreenityAtende({ treenity_bot: { whatsapp: { ativo: true } } })).toBe(true);
+    expect(botDoTreenityAtende({ treenity_bot: { whatsapp: { ativo: false } } })).toBe(false);
+    expect(botDoTreenityAtende(null)).toBe(false);
+  });
+});
+
+describe("devolver ao bot", () => {
+  it("manda ao bot as duas grafias do número, como a Meta manda (só dígitos)", () => {
+    expect(idsFaceDoTelefone("+5514997317147").sort()).toEqual(["551497317147", "5514997317147"]);
+  });
+});

@@ -24,6 +24,7 @@ import type { NextRequest } from "next/server";
 import { ok, fail } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { devolverAtendimentoAoAgente } from "@/lib/escalacao/retomada";
+import { liberarTravaDoBot } from "@/lib/treenity-bot/devolver-ao-bot";
 import { createClient } from "@/lib/supabase/server";
 import { traduzir } from "@/lib/i18n/dicionario";
 
@@ -79,9 +80,18 @@ export async function POST(_req: NextRequest, ctx: RouteCtx): Promise<Response> 
     );
   }
 
+  // Organização com o Treenity Bot no Inbox: a trava do lado do bot
+  // (`precisa_atencao_humana`) também sai, senão o n8n seguiria calado.
+  const botTreenity = await liberarTravaDoBot(supabase, {
+    organizationId: activeOrg.orgId,
+    conversationId: id,
+    usuario: { email: authUser.email, nome: authUser.full_name ?? authUser.email },
+  });
+
   return ok(
     {
       reactivated: true,
+      bot_treenity: botTreenity,
       // O que a pessoa fez vai junto: quem chamou consegue mostrar na tela que o
       // agente não voltou cego.
       continuidade: {
