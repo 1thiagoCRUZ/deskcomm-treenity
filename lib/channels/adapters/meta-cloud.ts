@@ -97,28 +97,25 @@ export const metaCloudAdapter: ChannelAdapter = {
   },
 
   /**
-   * DÍVIDA CONHECIDA, deixada de propósito — não é descuido.
+   * SEMPRE `true` — o mesmo conserto que o canal intermediado já tinha (ver
+   * `adapters/zernio.ts`), e pelo mesmo motivo.
    *
-   * A credencial deste canal também pode viver na SESSÃO (a tela de "Conectar
-   * canal oficial" grava `meta_token_encrypted` desde a 0118), e `isConfigured`
-   * é síncrono: não consulta o banco. Numa instalação que conectou pela tela e
-   * não escreveu `.env`, isto devolve `false`, e o handler (`_handler.ts:370`)
-   * grava `queued` com `queued_reason: meta_not_configured` sem nunca chamar
-   * `send` — mensagem parada no inbox, sem erro, com o canal conectado.
+   * A credencial deste canal vive na SESSÃO (a tela de "Conectar canal
+   * oficial" grava `meta_token_encrypted` desde a 0118), e `isConfigured` é
+   * síncrono: não consulta o banco. Olhando só o env, ele respondia "não
+   * configurado" para toda instalação que conectou pela tela — e o handler
+   * gravava `queued` com `queued_reason: meta_not_configured` sem nunca chamar
+   * `send`. Medido em produção (Treenity, 29/09): canal WORKING, respostas do
+   * bot saindo pela sessão, e toda mensagem da EQUIPE parada no Inbox sem ✓ e
+   * sem erro.
    *
-   * O canal intermediado JÁ passou por isso e resolveu devolvendo `true` e
-   * fazendo o `send` lançar (ver `adapters/zernio.ts`). O mesmo conserto cabe
-   * aqui, mas ele muda um contrato com dois testes explícitos
-   * (`tests/unit/channel-adapter-meta.test.ts`) cuja justificativa escrita é
-   * "mesmo contrato do outro canal" — justificativa que o fork já não sustenta.
-   *
-   * Trocar contrato testado exige uma mudança própria, com os testes revistos de
-   * propósito e não de passagem. Fica registrado aqui para quem for fazê-la.
+   * O par `isConfigured() === true ⟹ há credencial` continua fechado, só que
+   * em outro lugar: `send()` LANÇA `meta_not_configured` quando não acha
+   * credencial nem na sessão nem no env, e o handler grava `failed` com motivo
+   * em vez de um `sent` sem id.
    */
   isConfigured(): boolean {
-    // Síncrono por contrato. Com credencial na sessão, quem confirma é o `send`
-    // (async) — ver o comentário acima.
-    return metaCredsFromEnv() !== null;
+    return true;
   },
 
   /**
@@ -192,9 +189,12 @@ export const metaCloudAdapter: ChannelAdapter = {
       organizationId: envelope.organizationId,
       phoneNumberId: envelope.sessionRef,
     });
-    // Mesmo contrato do outro canal: sem credencial é NOOP, não exceção. A UI mostra
-    // o banner de "canal não conectado"; transformar em erro mudaria comportamento.
-    if (!creds) return { externalId: null };
+    // LANÇA, não devolve null: com `isConfigured` sempre true, quem desiste é
+    // este ponto — e `{externalId: null}` faria o handler gravar `sent` sem id,
+    // dizendo "enviado" para algo que nunca saiu.
+    if (!creds) {
+      throw new Error("meta_not_configured: nenhuma credencial para este número (Conexões nem ambiente).");
+    }
 
     const corpo =
       contactPayload(envelope) ??

@@ -93,23 +93,22 @@ describe("adapter meta_cloud — endereçamento", () => {
 });
 
 describe("adapter meta_cloud — configuração", () => {
-  it("sem credencial NÃO está configurado", () => {
+  it("está sempre configurado: a credencial pode estar na SESSÃO, que o método síncrono não enxerga", () => {
+    // Olhar só o env deixava parada em `queued` toda mensagem da equipe de um
+    // canal conectado pela tela (medido em produção). Quem decide é o `send`.
     vi.stubEnv("META_PHONE_NUMBER_ID", "");
     vi.stubEnv("META_SYSTEM_USER_TOKEN", "");
-    expect(a().isConfigured()).toBe(false);
-  });
-
-  it("com credencial está configurado", () => {
+    expect(a().isConfigured()).toBe(true);
     configurar();
     expect(a().isConfigured()).toBe(true);
   });
 
-  it("não configurado é NOOP no envio, nunca exceção", async () => {
-    // Mesmo contrato do outro canal: a UI mostra banner, o handler grava `queued`.
+  it("sem credencial nenhuma, o envio LANÇA com motivo — nunca um `sent` sem id", async () => {
     vi.stubEnv("META_PHONE_NUMBER_ID", "");
     vi.stubEnv("META_SYSTEM_USER_TOKEN", "");
-    const r = await a().send({ organizationId: ORG, sessionRef: "x", to: "5531999", kind: "text", body: "oi" });
-    expect(r).toEqual({ externalId: null });
+    await expect(
+      a().send({ organizationId: ORG, sessionRef: "x", to: "5531999", kind: "text", body: "oi" }),
+    ).rejects.toThrow(/meta_not_configured/);
   });
 
   it("os códigos carregam o nome do provider — por isso vivem no adapter", () => {
