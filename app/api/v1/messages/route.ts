@@ -10,6 +10,7 @@ import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { sendMessageSchema, validateRequest, type SendMessageInput } from "@/lib/schemas";
 import { createClient } from "@/lib/supabase/server";
+import { assumirAoResponder } from "@/lib/treenity-bot/responder-assume";
 
 import { sendMessageHandler } from "./_handler";
 
@@ -52,6 +53,13 @@ export async function POST(req: NextRequest): Promise<Response> {
       },
       input as SendMessageInput,
     );
+    // Treenity Bot no Inbox: quem responde assume (ver `responder-assume.ts`).
+    // Nas demais organizações é um `select` e volta sem mudar nada.
+    await assumirAoResponder(supabase, {
+      organizationId: activeOrg.orgId,
+      conversationId: (input as SendMessageInput).conversation_id,
+      actor: { type: "user", id: user.id, role: activeOrg.role },
+    });
     return ok(message, { status: 201, requestId });
   } catch (err) {
     if (err instanceof ApiError) {

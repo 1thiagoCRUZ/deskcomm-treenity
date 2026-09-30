@@ -16,6 +16,8 @@ import { useAutomaticoAtivo } from "@/hooks/ai/useAutomaticoAtivo";
 import { OwnerBadge } from "@/components/kanban/OwnerBadge";
 import { comandoDaConversa, ROTULO_DO_MOTIVO } from "@/lib/inbox/comando-da-conversa";
 import { ReassignDialog } from "@/components/inbox/ReassignDialog";
+import { FecharComoTerminou } from "@/components/inbox/FecharComoTerminou";
+import { useTreenityBotNoInbox } from "@/hooks/inbox/useFecharComoTerminou";
 import { SnoozeButton } from "@/components/inbox/SnoozeButton";
 import type { ConversationWithContact } from "@/hooks/inbox/useConversationsRealtime";
 import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
@@ -57,6 +59,8 @@ export function ConversationHeader({ conversation }: Props) {
   const claim = useClaimConversation();
   const release = useReleaseConversation();
   const close = useCloseConversation();
+  // Treenity Bot no Inbox: o "Fechar" pergunta como terminou (venda ou não).
+  const { data: treenityBotNoInbox } = useTreenityBotNoInbox();
   const reopen = useReopenConversation();
   const retomar = useResumeAiAttendance();
   const pausar = usePauseAiAttendance();
@@ -290,7 +294,8 @@ export function ConversationHeader({ conversation }: Props) {
             snoozeUntil={conversation.snooze_until ?? null}
           />
         )}
-        {!encerrada && (
+        {!encerrada && treenityBotNoInbox && <FecharComoTerminou conversationId={conversation.id} />}
+        {!encerrada && !treenityBotNoInbox && (
           <Button
             size="sm"
             variant="outline"
