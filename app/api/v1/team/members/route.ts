@@ -73,7 +73,7 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   const userId = created.user.id;
   const { data: membership, error: membershipError } = await admin.rpc("fn_accept_team_invite", {
-    p_interface_settings: INTERFACE_COMPLETA,
+    p_interface_settings: input.interface_settings ?? INTERFACE_COMPLETA,
     p_user: userId,
     p_org: activeOrg.orgId,
     p_role: input.role,

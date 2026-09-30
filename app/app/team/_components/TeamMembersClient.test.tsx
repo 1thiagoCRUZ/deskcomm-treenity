@@ -1,9 +1,9 @@
 /**
- * G2-02 — seletor de papel por membro na página de team.
+ * Seletor de TIPO DE ACESSO por membro (papéis do produto, lib/treenity/papeis.ts).
  *
- * Cobre: seleção dispara PATCH /api/v1/team/[user_id]; estado otimista
- * (role muda na UI antes da resposta) com rollback + toast em erro;
- * seletor ausente para não-admin (canManage=false).
+ * Cobre: o rótulo Dono / Funcionário / Personalizado; escolher um papel chama
+ * as duas rotas que já existem (papel, depois menu); papel recusado não mexe
+ * no menu; seletor ausente para quem não administra.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
@@ -86,63 +86,51 @@ beforeEach(() => {
   vi.mocked(apiClient.get).mockResolvedValue({ data: members() });
 });
 
-describe("TeamMembersClient — seletor de papel (G2-02)", () => {
-  it("não-admin não vê seletor de papel (só badge)", async () => {
+describe("TeamMembersClient — tipo de acesso do produto (Dono / Funcionário)", () => {
+  it("quem não administra vê só o rótulo; papel ou menu mexidos à mão aparecem como Personalizado", async () => {
     const rows = members();
     rows[1]!.interface_settings = { preset: "completa", destinos: ["/app/tasks"] };
     vi.mocked(apiClient.get).mockResolvedValue({ data: rows });
     renderClient({ canManage: false });
     expect(await screen.findByText("agente@example.com")).toBeInTheDocument();
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
-    expect(screen.getByText("agent")).toBeInTheDocument();
-    expect(screen.getByText("Personalizada")).toBeInTheDocument();
+    // admin com o menu completo = Dono; agent com uma tela escolhida à mão = Personalizado.
+    expect(screen.getByText("Dono")).toBeInTheDocument();
+    expect(screen.getAllByText("Personalizado").length).toBeGreaterThan(0);
   });
 
-  it("admin seleciona novo papel → PATCH /api/v1/team/[user_id] com estado otimista", async () => {
-    let resolvePatch!: (v: unknown) => void;
-    vi.mocked(apiClient.patch).mockImplementation(
-      () => new Promise((resolve) => (resolvePatch = resolve)),
-    );
-
+  it("escolher Funcionário aplica o papel E o menu padrão, pelas duas rotas que já existem", async () => {
+    vi.mocked(apiClient.patch).mockResolvedValue({ data: {} });
     const user = userEvent.setup();
     renderClient();
 
-    const trigger = await screen.findByRole("combobox", { name: /Papel de Agente/i });
-    expect(trigger).toHaveTextContent("agent");
+    const trigger = await screen.findByRole("combobox", { name: /Tipo de acesso de Agente/i });
     await user.click(trigger);
-    await user.click(await screen.findByRole("option", { name: "manager" }));
+    await user.click(await screen.findByRole("option", { name: "Funcionário" }));
 
-    // Otimista: UI já mostra o novo papel ANTES da resposta do PATCH.
-    await waitFor(() => expect(trigger).toHaveTextContent("manager"));
-    expect(apiClient.patch).toHaveBeenCalledWith(`/api/v1/team/${AGENT_ID}`, {
-      role: "manager",
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Tipo de acesso atualizado."));
+    expect(apiClient.patch).toHaveBeenNthCalledWith(1, `/api/v1/team/${AGENT_ID}`, { role: "agent" });
+    expect(apiClient.patch).toHaveBeenNthCalledWith(2, `/api/v1/team/${AGENT_ID}/interface`, {
+      interface_settings: {
+        preset: "simplificada",
+        destinos: ["/app/inbox", "/app/templates", "/app/contacts", "/app/tasks"],
+      },
     });
-
-    resolvePatch({ data: { user_id: AGENT_ID, role: "manager" } });
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Papel atualizado."));
   });
 
-  it("erro no PATCH → rollback do papel e toast de erro", async () => {
+  it("se o papel é recusado (ex.: último dono), o menu não é mexido e aparece o erro", async () => {
     vi.mocked(apiClient.patch).mockRejectedValue(
-      new ApiError(
-        409,
-        "state_conflict",
-        undefined,
-        "req-1",
-        "Não é possível rebaixar o último admin do tenant.",
-      ),
+      new ApiError(409, "state_conflict", undefined, "req-1", "Não é possível rebaixar o último admin do tenant."),
     );
-
     const user = userEvent.setup();
     renderClient();
 
-    const trigger = await screen.findByRole("combobox", { name: /Papel de Agente/i });
+    const trigger = await screen.findByRole("combobox", { name: /Tipo de acesso de Agente/i });
     await user.click(trigger);
-    await user.click(await screen.findByRole("option", { name: "viewer" }));
+    await user.click(await screen.findByRole("option", { name: "Dono" }));
 
-    // Rollback: volta ao papel original após o erro.
-    await waitFor(() => expect(trigger).toHaveTextContent("agent"));
     await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    expect(apiClient.patch).toHaveBeenCalledTimes(1);
     expect(toast.success).not.toHaveBeenCalled();
   });
 });

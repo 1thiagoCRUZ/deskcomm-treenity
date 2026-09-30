@@ -1,10 +1,6 @@
 "use client";
-import { InterfaceEditor } from "@/components/team/InterfaceEditor";
-import {
-  INTERFACE_COMPLETA,
-  interfaceSettingsSchema,
-  interfaceTemDestino,
-} from "@/lib/navigation/interface";
+import { acessoDoPapel, TipoDeAcesso } from "@/components/team/TipoDeAcesso";
+import { interfaceSettingsSchema, interfaceTemDestino } from "@/lib/navigation/interface";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -13,14 +9,6 @@ import { useInviteMembers } from "@/hooks/team/useInviteMembers";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ROLES, type Role } from "@/lib/schemas/team";
 import { descreverMotivoDaFalha } from "./motivo-da-falha";
 
 interface ResultState {
@@ -31,8 +19,9 @@ interface ResultState {
 export function InviteForm() {
   const t = useT();
   const [emailsRaw, setEmailsRaw] = useState("");
-  const [settings, setSettings] = useState(INTERFACE_COMPLETA);
-  const [role, setRole] = useState<Role>("agent");
+  // Padrão: funcionário, que é quem o dono mais convida.
+  const [acesso, setAcesso] = useState(acessoDoPapel("funcionario"));
+  const { role, settings } = acesso;
   const [result, setResult] = useState<ResultState | null>(null);
   const invite = useInviteMembers();
 
@@ -80,27 +69,7 @@ export function InviteForm() {
             placeholder={"alice@empresa.com\nbob@empresa.com"}
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="role">Role</Label>
-          <Select value={role} onValueChange={(v) => setRole(v as Role)}>
-            <SelectTrigger id="role">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {ROLES.map((r) => (
-                <SelectItem key={r} value={r}>
-                  {r}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <InterfaceEditor
-          value={settings}
-          onChange={setSettings}
-          role={role}
-          disabled={invite.isPending}
-        />
+        <TipoDeAcesso value={acesso} onChange={setAcesso} disabled={invite.isPending} />
         <Button
           type="submit"
           disabled={
