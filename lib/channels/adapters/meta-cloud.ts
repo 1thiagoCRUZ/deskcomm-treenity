@@ -29,6 +29,18 @@ import type {
   OutboundEnvelope,
   RecipientInput,
 } from "../types";
+import type { FetchedMedia } from "@/lib/messaging/media/types";
+import { META_MEDIA_PREFIX } from "../meta/media-ref";
+
+/** O token do número só viaja para host da Meta (lookaside.fbsbx.com e afins). */
+function hostDaMeta(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.protocol === "https:" && /(^|\.)(fbsbx\.com|facebook\.com|fbcdn\.net|whatsapp\.net)$/i.test(u.hostname);
+  } catch {
+    return false;
+  }
+}
 
 /** Só dígitos. `+55 (31) 99896-6398` → `5531998966398`. */
 function toE164Digits(raw: string): string {
@@ -174,6 +186,54 @@ export const metaCloudAdapter: ChannelAdapter = {
       const detail = err instanceof Error ? err.message : "erro_desconhecido";
       return { reachable: false, status: null, detail: detail.slice(0, 200) };
     }
+  },
+
+  /**
+   * Baixa o anexo que o cliente mandou (áudio, imagem, vídeo, documento).
+   *
+   * Sem este método a mídia recebida pelo canal oficial NUNCA virava arquivo:
+   * a ingestão guardava só o id da Meta em `metadata.meta_media_id`, e o Inbox
+   * mostrava o balão vazio (medido em 30/09: nota de voz do cliente sem
+   * player, enquanto o áudio do bot tocava).
+   *
+   * A Meta entrega em dois passos, os dois com o token do número:
+   *   1. `GET /{media_id}` → `{ url, mime_type }` (a URL vale ~5 minutos);
+   *   2. `GET url` → os bytes.
+   * `url` aqui é a referência gravada pela ingestão, `meta-media:<id>`
+   * (`META_MEDIA_PREFIX`). A URL do passo 2 vem da PRÓPRIA Graph, não do
+   * payload — mesmo assim o token só vai para host da Meta.
+   */
+  async fetchInboundMedia(input: ChannelTenantScope & {
+    sessionRef: string;
+    url: string;
+    hintMime?: string | null;
+  }): Promise<FetchedMedia> {
+    const mediaId = input.url.startsWith(META_MEDIA_PREFIX) ? input.url.slice(META_MEDIA_PREFIX.length) : "";
+    if (!/^\d+$/.test(mediaId)) throw new Error("meta_media_ref_invalida: referência de mídia fora do formato.");
+
+    const creds = await resolveMetaCreds(createAdminClient(), {
+      organizationId: input.organizationId,
+      phoneNumberId: input.sessionRef,
+    });
+    if (!creds) throw new Error("meta_not_configured: sem credencial para baixar a mídia.");
+    const auth = { Authorization: `Bearer ${creds.token}` };
+
+    const info = await fetch(`https://graph.facebook.com/${creds.graphVersion}/${mediaId}`, {
+      headers: auth,
+      signal: AbortSignal.timeout(15_000),
+    });
+    const corpo = (await info.json().catch(() => ({}))) as { url?: string; mime_type?: string; error?: { message?: string } };
+    // A Meta descarta a mídia depois de ~30 dias: aí o passo 1 já responde erro.
+    if (!info.ok || !corpo.url) {
+      throw new Error(`meta_media_failed: ${info.status} ${corpo.error?.message ?? ""}`.trim());
+    }
+    if (!hostDaMeta(corpo.url)) throw new Error("meta_media_host_inesperado: a Graph devolveu URL fora da Meta.");
+
+    const arquivo = await fetch(corpo.url, { headers: auth, signal: AbortSignal.timeout(30_000) });
+    if (!arquivo.ok) throw new Error(`meta_media_download_failed: ${arquivo.status}`);
+    const buffer = Buffer.from(await arquivo.arrayBuffer());
+    const mime = corpo.mime_type?.split(";")[0]?.trim() || input.hintMime || "application/octet-stream";
+    return { buffer, mime };
   },
 
   codes: {

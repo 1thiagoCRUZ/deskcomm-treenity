@@ -29,6 +29,7 @@ import { encontrarContatoPorTelefone } from "../contato-por-telefone";
 import { canonicalPhoneBR, phoneLookupVariants } from "../phone-variants";
 import type { ChannelTenantScope } from "../types";
 import type { InboundMessageEvent } from "./webhook";
+import { referenciaDaMidiaMeta } from "./media-ref";
 
 type Admin = SupabaseClient;
 
@@ -180,6 +181,10 @@ export async function ingestMetaInbound(
       type: e.type === "text" ? "text" : e.type,
       body: e.type === "contact" ? (e.sharedContact?.name ?? e.text) : e.text,
       external_id: e.externalId,
+      // Referência, não link: a rota de mídia a troca pelos bytes na Meta
+      // (`fetchInboundMedia`) e guarda uma cópia no storage na primeira vez.
+      // Sem ela o Inbox desenhava o balão da nota de voz vazio.
+      media_url: e.media?.id ? referenciaDaMidiaMeta(e.media.id) : null,
       media_mime: e.media?.mime ?? null,
       sent_at: e.sentAt.toISOString(),
       metadata: {
