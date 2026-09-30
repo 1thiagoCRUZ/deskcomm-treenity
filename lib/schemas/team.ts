@@ -31,12 +31,20 @@ export const inviteMemberSchema = z.object({
 export type InviteMemberInput = z.infer<typeof inviteMemberSchema>;
 
 /** Cadastro direto pelo admin: a conta já nasce confirmada e com senha definida por ele. */
-export const createMemberSchema = z.object({
-  full_name: z.string().trim().min(2).max(100),
-  email: z.string().trim().email(),
-  password: z.string().min(8).max(72),
-  role: z.enum(ROLES),
-});
+export const createMemberSchema = z
+  .object({
+    full_name: z.string().trim().min(2).max(100),
+    email: z.string().trim().email(),
+    password: z.string().min(8).max(72),
+    role: z.enum(ROLES),
+    // Mesmo contrato do convite: sem ele, quem é cadastrado direto nascia com a
+    // interface completa — um funcionário criado aqui via o menu do dono.
+    interface_settings: interfaceSettingsSchema.optional(),
+  })
+  .refine((v) => !v.interface_settings || interfaceTemDestino(v.interface_settings, v.role), {
+    message: "Selecione ao menos uma área permitida ao papel.",
+    path: ["interface_settings"],
+  });
 export type CreateMemberInput = z.infer<typeof createMemberSchema>;
 
 export const acceptInviteSchema = z.object({

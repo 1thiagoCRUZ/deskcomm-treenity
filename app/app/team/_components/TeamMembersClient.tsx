@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 import { useT } from "@/hooks/i18n/useT";
 import { useTeamMembers, type TeamMember } from "@/hooks/team/useTeamMembers";
-import { useChangeRole } from "@/hooks/team/useChangeRole";
+import { useChangePapel } from "@/hooks/team/useChangePapel";
 import { useRevokeMember } from "@/hooks/team/useRevokeMember";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,7 +40,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ROLES, type Role } from "@/lib/schemas/team";
+import {
+  ORDEM_DOS_PAPEIS,
+  PAPEIS_DO_CLIENTE,
+  papelDoVinculo,
+  type PapelDoCliente,
+} from "@/lib/treenity/papeis";
 import { DotsThree } from "@/lib/ui/icons";
 
 interface Props {
@@ -52,10 +57,20 @@ export function TeamMembersClient({ currentUserId, canManage }: Props) {
   const tagDoIdioma = useTagDeIdioma();
   const t = useT();
   const { data, isLoading, isError } = useTeamMembers();
-  const changeRole = useChangeRole();
+  const changePapel = useChangePapel();
   const revoke = useRevokeMember();
 
   const [interfaceMember, setInterfaceMember] = useState<TeamMember | null>(null);
+
+  /** "Padrão" quando o menu é o do papel; senão o que o DeskComm chama a interface. */
+  const rotuloDoMenu = (m: TeamMember) => {
+    if (papelDoVinculo(m.role, m.interface_settings) !== "personalizado") return t("Padrão");
+    return m.interface_settings?.destinos
+      ? t("Personalizado")
+      : m.interface_settings?.preset === "simplificada"
+        ? t("Simplificada")
+        : t("Completa");
+  };
   const [revokeDialog, setRevokeDialog] = useState<TeamMember | null>(null);
 
   if (isLoading) {
@@ -76,8 +91,8 @@ export function TeamMembersClient({ currentUserId, canManage }: Props) {
           <TableHeader>
             <TableRow>
               <TableHead>{t("Membro")}</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>{t("Interface")}</TableHead>
+              <TableHead>{t("Tipo de acesso")}</TableHead>
+              <TableHead>{t("Menu")}</TableHead>
               <TableHead>{t("Status")}</TableHead>
               <TableHead>{t("Última atividade")}</TableHead>
               {canManage ? <TableHead className="w-[80px]" /> : null}
@@ -93,30 +108,34 @@ export function TeamMembersClient({ currentUserId, canManage }: Props) {
                   {m.email ? <div className="text-xs text-muted-foreground">{m.email}</div> : null}
                 </TableCell>
                 <TableCell>
-                  {canManage && m.user_id !== currentUserId ? (
-                    <Select
-                      value={m.role}
-                      onValueChange={(v) =>
-                        changeRole.mutate({ userId: m.user_id, role: v as Role })
-                      }
-                    >
-                      <SelectTrigger
-                        className="w-[130px]"
-                        aria-label={`${t("Papel de")} ${m.full_name ?? m.email ?? m.user_id}`}
+                  {(() => {
+                    // Dono / Funcionário vêm de `lib/treenity/papeis.ts`; papel ou
+                    // menu mexidos à mão aparecem como "Personalizado".
+                    const papel = papelDoVinculo(m.role, m.interface_settings);
+                    const rotulo = papel === "personalizado" ? t("Personalizado") : t(PAPEIS_DO_CLIENTE[papel].rotulo);
+                    if (!canManage || m.user_id === currentUserId) return <Badge variant="secondary">{rotulo}</Badge>;
+                    return (
+                      <Select
+                        value={papel}
+                        disabled={changePapel.isPending}
+                        onValueChange={(v) => changePapel.mutate({ userId: m.user_id, papel: v as PapelDoCliente })}
                       >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ROLES.map((r) => (
-                          <SelectItem key={r} value={r}>
-                            {r}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Badge variant="secondary">{m.role}</Badge>
-                  )}
+                        <SelectTrigger
+                          className="w-[150px]"
+                          aria-label={`${t("Tipo de acesso de")} ${m.full_name ?? m.email ?? m.user_id}`}
+                        >
+                          <SelectValue>{rotulo}</SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ORDEM_DOS_PAPEIS.map((p) => (
+                            <SelectItem key={p} value={p}>
+                              {t(PAPEIS_DO_CLIENTE[p].rotulo)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    );
+                  })()}
                 </TableCell>
                 <TableCell>
                   {canManage ? (
@@ -126,20 +145,10 @@ export function TeamMembersClient({ currentUserId, canManage }: Props) {
                       aria-label={`${t("Interface de")} ${m.full_name ?? m.email ?? m.user_id}`}
                       onClick={() => setInterfaceMember(m)}
                     >
-                      {m.interface_settings?.destinos
-                        ? t("Personalizada")
-                        : m.interface_settings?.preset === "simplificada"
-                          ? t("Simplificada")
-                          : t("Completa")}
+                      {rotuloDoMenu(m)}
                     </Button>
                   ) : (
-                    <span>
-                      {m.interface_settings?.destinos
-                        ? t("Personalizada")
-                        : m.interface_settings?.preset === "simplificada"
-                          ? t("Simplificada")
-                          : t("Completa")}
-                    </span>
+                    <span>{rotuloDoMenu(m)}</span>
                   )}
                 </TableCell>
                 <TableCell>

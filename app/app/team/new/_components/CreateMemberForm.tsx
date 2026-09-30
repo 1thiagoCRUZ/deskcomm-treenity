@@ -6,18 +6,21 @@ import { useT } from "@/hooks/i18n/useT";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ROLES, type Role } from "@/lib/schemas/team";
+import { acessoDoPapel, TipoDeAcesso } from "@/components/team/TipoDeAcesso";
+import { interfaceTemDestino, type InterfaceSettings } from "@/lib/navigation/interface";
+import type { Role } from "@/lib/schemas/team";
+import { PAPEIS_DO_CLIENTE, papelDoVinculo } from "@/lib/treenity/papeis";
 
 interface Criado {
   email: string;
   role: Role;
+  interface: InterfaceSettings;
+}
+
+/** "Dono", "Funcionário" ou "Acesso personalizado" — nunca o termo técnico. */
+function rotuloDoAcesso(role: Role, settings: InterfaceSettings): string {
+  const papel = papelDoVinculo(role, settings);
+  return papel === "personalizado" ? "Acesso personalizado" : PAPEIS_DO_CLIENTE[papel].rotulo;
 }
 
 export function CreateMemberForm() {
@@ -25,7 +28,7 @@ export function CreateMemberForm() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<Role>("agent");
+  const [acesso, setAcesso] = useState(acessoDoPapel("funcionario"));
   const [pending, setPending] = useState(false);
   const [criado, setCriado] = useState<Criado | null>(null);
 
@@ -36,14 +39,20 @@ export function CreateMemberForm() {
       const res = await fetch("/api/v1/team/members", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ full_name: fullName, email, password, role }),
+        body: JSON.stringify({
+          full_name: fullName,
+          email,
+          password,
+          role: acesso.role,
+          interface_settings: acesso.settings,
+        }),
       });
       const json = await res.json().catch(() => null);
       if (!res.ok) {
         toast.error(json?.error?.message ?? t("Não foi possível cadastrar agora."));
         return;
       }
-      setCriado({ email: json.data.email, role: json.data.role });
+      setCriado({ email: json.data.email, role: json.data.role, interface: acesso.settings });
       setFullName("");
       setEmail("");
       setPassword("");
@@ -95,22 +104,11 @@ export function CreateMemberForm() {
             {t("Mínimo de 8 caracteres. Passe para a pessoa por um canal seguro.")}
           </p>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="role">Role</Label>
-          <Select value={role} onValueChange={(v) => setRole(v as Role)}>
-            <SelectTrigger id="role">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {ROLES.map((r) => (
-                <SelectItem key={r} value={r}>
-                  {r}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <Button type="submit" disabled={pending}>
+        <TipoDeAcesso value={acesso} onChange={setAcesso} disabled={pending} />
+        <Button
+          type="submit"
+          disabled={pending || !interfaceTemDestino(acesso.settings, acesso.role)}
+        >
           {pending ? t("Cadastrando…") : t("Cadastrar membro")}
         </Button>
       </form>
@@ -120,7 +118,8 @@ export function CreateMemberForm() {
           <div className="rounded-md border p-4 text-sm">
             <div className="font-medium">{criado.email}</div>
             <p className="mt-1 text-muted-foreground">
-              {t("Conta criada como")} <strong>{criado.role}</strong>. {t("A pessoa entra em")}{" "}
+              {t("Conta criada como")} <strong>{t(rotuloDoAcesso(criado.role, criado.interface))}</strong>.{" "}
+              {t("A pessoa entra em")}{" "}
               <code className="break-all">{`${window.location.origin}/login`}</code>{" "}
               {t("com este e-mail e a senha que você definiu.")}
             </p>
