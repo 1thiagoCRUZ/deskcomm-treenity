@@ -2,9 +2,9 @@
  * POST /api/treenity-bot/whatsapp/{versao}/{phone_number_id}/messages — o n8n
  * envia as respostas do bot por aqui, e elas aparecem no Inbox.
  *
- * O caminho e o corpo são OS MESMOS da Graph API
- * (`https://graph.facebook.com/{versao}/{phone_number_id}/messages`), e a
- * resposta volta sem mudança (status e JSON da Meta). Assim, no n8n, cada nó de
+ * O caminho e o corpo são OS MESMOS da API oficial do WhatsApp
+ * (`{versao}/{phone_number_id}/messages`, ver `lib/channels/meta/repasse-de-envio.ts`),
+ * e a resposta volta sem mudança (status e JSON da Meta). Assim, no n8n, cada nó de
  * envio muda só o começo do endereço e a credencial — o corpo, os
  * `messages[0].id` que os nós seguintes leem e o tratamento de erro ficam iguais.
  *
@@ -21,6 +21,7 @@ import { after, type NextRequest, NextResponse } from "next/server";
 import { ARCHIVED_AT, queryTolerantToMissingArchived } from "@/lib/channels/archived";
 import { encontrarContatoPorTelefone } from "@/lib/channels/contato-por-telefone";
 import { metaCredsForPhoneNumberId } from "@/lib/channels/meta/credentials";
+import { repassarEnvioOficial } from "@/lib/channels/meta/repasse-de-envio";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mensagemDoCorpo, organizacaoPelaChave, previaDaMensagem } from "@/lib/treenity-bot/whatsapp";
@@ -74,12 +75,7 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<NextRespons
 
   let respostaMeta: Response;
   try {
-    respostaMeta = await fetch(`https://graph.facebook.com/${versao}/${phoneNumberId}/messages`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${creds.token}`, "Content-Type": "application/json" },
-      body: texto,
-      signal: AbortSignal.timeout(20_000),
-    });
+    respostaMeta = await repassarEnvioOficial({ versao, phoneNumberId, token: creds.token, corpo: texto });
   } catch (err) {
     logger.error("[treenity-bot.whatsapp] Meta não respondeu", {
       organization_id: organizationId,

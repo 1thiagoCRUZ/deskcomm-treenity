@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useT } from "@/hooks/i18n/useT";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
+import { ENDERECO_DA_API_OFICIAL } from "@/lib/channels/meta/endereco-oficial";
 import { copyToClipboard } from "@/lib/clipboard";
 
 interface ConfigDoTreenityBot {
@@ -265,7 +266,7 @@ export function AutomacoesPainel() {
             </p>
             <div className="space-y-1 rounded-md bg-muted p-3 font-mono text-xs break-all">
               <p>
-                <span className="text-muted-foreground">{t("Antes:")}</span> https://graph.facebook.com/
+                <span className="text-muted-foreground">{t("Antes:")}</span> {ENDERECO_DA_API_OFICIAL}
               </p>
               <p>
                 <span className="text-muted-foreground">{t("Depois:")}</span> {enderecoDeEnvio}

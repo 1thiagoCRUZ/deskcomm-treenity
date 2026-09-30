@@ -21,6 +21,7 @@ import { useCreateNote } from "@/hooks/inbox/useCreateNote";
 import { useMessageTemplates, type MessageTemplate } from "@/hooks/inbox/useMessageTemplates";
 import { X } from "lucide-react";
 import { useSendMessage } from "@/hooks/inbox/useSendMessage";
+import { useTreenityBotNoInbox } from "@/hooks/inbox/useFecharComoTerminou";
 import { useUploadMedia } from "@/hooks/inbox/useUploadMedia";
 import { imagemDoClipboard } from "@/lib/inbox/clipboard-image";
 import { interpolateTemplate } from "@/lib/inbox/template-vars";
@@ -74,6 +75,10 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   ref,
 ) {
   const t = useT();
+  // Com o Treenity Bot no Inbox, quem atende é o CADU (n8n). A "Assistência do
+  // agente" sugere resposta com a IA PRÓPRIA do DeskComm, que essa organização
+  // não usa — o botão só levaria a erro ou a uma segunda IA falando outra coisa.
+  const { data: treenityBotNoInbox } = useTreenityBotNoInbox();
   const [text, setText] = useState("");
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [contactPickerOpen, setContactPickerOpen] = useState(false);
@@ -204,7 +209,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           mode === "note" && "border-warning/40 bg-warning-bg",
         )}
       >
-        {mode === "reply" && (
+        {mode === "reply" && !treenityBotNoInbox && (
           <ReplyReviewPanel conversationId={conversationId} disabled={isDisabled} />
         )}
         <TemplateMenu

@@ -20,6 +20,8 @@ import {
   type ChannelProvider,
   type ChannelSessionRef,
 } from "@/lib/channels";
+import { META_MEDIA_PREFIX } from "@/lib/channels/meta/media-ref";
+import { storagePathFor } from "@/lib/messaging/media/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -54,7 +56,7 @@ export async function GET(_req: NextRequest, ctx: RouteCtx): Promise<Response> {
   // Filtro explícito de organization_id por doutrina (defense-in-depth).
   const { data: msg, error } = await supabase
     .from("messages")
-    .select("id, media_url, media_mime, media_storage_path, channel_session_id, direction, metadata")
+    .select("id, conversation_id, media_url, media_mime, media_storage_path, channel_session_id, direction, metadata")
     .eq("id", messageId)
     .eq("organization_id", activeOrg.orgId)
     .maybeSingle();
@@ -136,6 +138,26 @@ export async function GET(_req: NextRequest, ctx: RouteCtx): Promise<Response> {
         url: msg.media_url,
         hintMime: msg.media_mime,
       });
+
+      // Mídia do canal oficial: a Meta descarta o arquivo em ~30 dias e a URL
+      // dela vale minutos. Guardar a cópia AGORA, na primeira vez que alguém
+      // abre, é o que mantém o histórico de pé — nas próximas, o ramo do
+      // storage lá em cima responde. Falhar aqui não impede de servir.
+      if (msg.media_url.startsWith(META_MEDIA_PREFIX)) {
+        const path = storagePathFor(activeOrg.orgId, msg.conversation_id, msg.id, media.mime);
+        const admin = createAdminClient();
+        const { error: upErr } = await admin.storage
+          .from("whatsapp-media")
+          .upload(path, media.buffer, { contentType: media.mime, upsert: true });
+        if (!upErr) {
+          await admin
+            .from("messages")
+            .update({ media_storage_path: path, media_mime: media.mime, media_size_bytes: media.buffer.byteLength })
+            .eq("organization_id", activeOrg.orgId)
+            .eq("id", msg.id);
+        }
+      }
+
       return new Response(new Uint8Array(media.buffer), {
         status: 200,
         headers: {

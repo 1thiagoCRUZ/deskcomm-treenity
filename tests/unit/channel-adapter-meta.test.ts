@@ -242,3 +242,50 @@ describe("credencial por sessão — o que destrava multi-tenant", () => {
     expect((init.headers as Record<string, string>).Authorization).toBe("Bearer tok");
   });
 });
+
+describe("adapter meta_cloud — mídia que o cliente mandou", () => {
+  /** A Graph responde em dois passos: metadados (com a URL) e depois os bytes. */
+  function stubMidia(urlDoArquivo = "https://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=1") {
+    const chamadas: { url: string; auth: string | null }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) => {
+        chamadas.push({ url, auth: (init?.headers as Record<string, string>)?.Authorization ?? null });
+        if (url.includes("graph.facebook.com")) {
+          return new Response(JSON.stringify({ url: urlDoArquivo, mime_type: "audio/ogg; codecs=opus" }), { status: 200 });
+        }
+        return new Response(new Uint8Array([1, 2, 3]), { status: 200 });
+      }),
+    );
+    return chamadas;
+  }
+
+  it("troca a referência meta-media:<id> pelos bytes, com o token do número", async () => {
+    configurar();
+    const chamadas = stubMidia();
+    const m = await a().fetchInboundMedia!({ organizationId: ORG, sessionRef: "1103328999528818", url: "meta-media:98765" });
+
+    expect(m.mime).toBe("audio/ogg");
+    expect([...m.buffer]).toEqual([1, 2, 3]);
+    expect(chamadas[0]!.url).toBe("https://graph.facebook.com/v22.0/98765");
+    expect(chamadas[0]!.auth).toBe("Bearer tok");
+    expect(chamadas[1]!.url).toContain("lookaside.fbsbx.com");
+  });
+
+  it("não aceita referência fora do formato (nada de URL vinda de fora)", async () => {
+    configurar();
+    stubMidia();
+    await expect(
+      a().fetchInboundMedia!({ organizationId: ORG, sessionRef: "x", url: "https://evil.example/x" }),
+    ).rejects.toThrow(/meta_media_ref_invalida/);
+  });
+
+  it("o token nunca vai para host que não é da Meta, mesmo que a Graph devolva um", async () => {
+    configurar();
+    const chamadas = stubMidia("https://evil.example/arquivo");
+    await expect(
+      a().fetchInboundMedia!({ organizationId: ORG, sessionRef: "x", url: "meta-media:1" }),
+    ).rejects.toThrow(/meta_media_host_inesperado/);
+    expect(chamadas).toHaveLength(1);
+  });
+});
