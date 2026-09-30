@@ -7495,6 +7495,8 @@ export const DICIONARIO: Traducoes = {
   "Assumiu a conversa e pausou o atendimento automático": { es: "Asumió la conversación y pausó la atención automática" },
   "Assumiu o atendimento desta conversa": { es: "Asumió la atención de esta conversación" },
   "Assumiu ao responder o cliente": { es: "Asumió al responder al cliente" },
+  "Conferir pagamento": { es: "Verificar pago" },
+  "O sistema não confirma pagamento sozinho: o bot só manda a chave PIX, e cartão e boleto são fechados pelo time. Com isto ligado, cada venda nova \"Aguardando Pagamento\" — do bot ou fechada pela equipe no Inbox — vira uma tarefa lembrando um admin de conferir.": { es: "El sistema no confirma el pago por sí solo: el bot solo envía la clave PIX, y la tarjeta y el boleto los cierra el equipo. Con esto activado, cada venta nueva \"Esperando pago\" —del bot o cerrada por el equipo en el Inbox— se convierte en una tarea que recuerda a un admin verificarla." },
   "Venda registrada e conversa fechada.": { es: "Venta registrada y conversación cerrada." },
   "Conversa fechada sem venda.": { es: "Conversación cerrada sin venta." },
   "Como terminou?": { es: "¿Cómo terminó?" },
