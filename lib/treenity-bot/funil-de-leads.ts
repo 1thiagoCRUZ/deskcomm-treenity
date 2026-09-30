@@ -184,6 +184,19 @@ export async function contatoDoAtendimento(
   return contato?.id ?? null;
 }
 
+/**
+ * "Fechada", no bot, é ATENDIMENTO ENCERRADO — com ou sem venda (o `/encerrar`
+ * e o fechar pelo Inbox também gravam "Fechada"). Só é ganho quando há venda;
+ * sem venda, o card vai para perdido (motivo canônico `other` — o banco só
+ * aceita os de `CANONICAL_LOST_REASONS`). Antes todo "Fechada" virava ganho, e um
+ * atendimento encerrado sem compra entrava no funil como venda.
+ */
+export function desfechoDoFechamento(
+  a: Pick<AtendimentoPainel, "venda">,
+): { desfecho: "won" } | { desfecho: "lost"; motivo: string } {
+  return a.venda ? { desfecho: "won" } : { desfecho: "lost", motivo: "other" };
+}
+
 function tituloDoLead(a: AtendimentoPainel): string {
   const nome = a.cliente?.nome || "Cliente";
   return `${nome}${a.canal ? ` (${a.canal})` : ""}`.slice(0, 200);
@@ -233,7 +246,7 @@ async function sincronizarOrg(
         });
         criados++;
         if (etapa === "Fechada") {
-          await encerraDemanda(admin, ctx, { leadId: (lead as { id: string }).id, desfecho: "won" });
+          await encerraDemanda(admin, ctx, { leadId: (lead as { id: string }).id, ...desfechoDoFechamento(atendimento) });
           fechados++;
         }
         continue;
@@ -255,7 +268,7 @@ async function sincronizarOrg(
       }
 
       if (etapa === "Fechada") {
-        await encerraDemanda(admin, ctx, { leadId: lead.id, desfecho: "won" });
+        await encerraDemanda(admin, ctx, { leadId: lead.id, ...desfechoDoFechamento(atendimento) });
         fechados++;
       } else if (lead.stage_id !== stageAlvo) {
         // `MoveLeadAdminInput` (chamada direta ao handler) não tem
