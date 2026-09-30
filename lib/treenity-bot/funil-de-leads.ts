@@ -36,6 +36,7 @@ import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { orgsComFunilAtivo, type OrgComFunilAtivo } from "./configuracao";
 import { carregarAtendimentosTreenityBot, type AtendimentoPainel } from "./client";
+import { encontrarContatoPorTelefone } from "@/lib/channels/contato-por-telefone";
 
 const SOURCE = "treenity_bot";
 const SLUG_DO_FUNIL = "treenity-bot";
@@ -166,6 +167,23 @@ function etapaConhecida(statusFunil: string | null): Etapa {
   return (ETAPAS as readonly string[]).includes(statusFunil ?? "") ? (statusFunil as Etapa) : "Em Negociacao";
 }
 
+/**
+ * O contato do Inbox deste atendimento, para o card do funil aparecer na
+ * conversa (painel "Leads recentes"). Só WhatsApp: é o único canal em que o
+ * `idFace` do bot é um número de telefone que o Inbox também conhece. Sem
+ * contato (cliente que nunca passou pelo Inbox), o card nasce sem vínculo,
+ * como sempre nasceu.
+ */
+export async function contatoDoAtendimento(
+  admin: ReturnType<typeof createAdminClient>,
+  orgId: string,
+  a: AtendimentoPainel,
+): Promise<string | null> {
+  if (!/whatsapp/i.test(a.canal ?? "") || !a.cliente?.idFace) return null;
+  const contato = await encontrarContatoPorTelefone(admin, orgId, a.cliente.idFace).catch(() => null);
+  return contato?.id ?? null;
+}
+
 function tituloDoLead(a: AtendimentoPainel): string {
   const nome = a.cliente?.nome || "Cliente";
   return `${nome}${a.canal ? ` (${a.canal})` : ""}`.slice(0, 200);
@@ -199,8 +217,10 @@ async function sincronizarOrg(
       .maybeSingle();
 
     try {
+      const contactId = await contatoDoAtendimento(admin, org.orgId, atendimento);
       if (!existente) {
         const lead = await createLeadHandler(admin, ctx, {
+          contact_id: contactId,
           pipeline_id: funil.pipelineId,
           stage_id: stageAlvo,
           title: tituloDoLead(atendimento),
@@ -225,8 +245,14 @@ async function sincronizarOrg(
         stage_id: string;
         updated_at: string;
         value_cents: number | null;
+        contact_id: string | null;
       };
       if (lead.status !== "open") continue; // já fechado (ganho ou perdido) — encerrar é definitivo
+
+      // Card criado antes de o cliente passar pelo Inbox: liga agora.
+      if (!lead.contact_id && contactId) {
+        await updateLeadHandler(admin, ctx, lead.id, { contact_id: contactId });
+      }
 
       if (etapa === "Fechada") {
         await encerraDemanda(admin, ctx, { leadId: lead.id, desfecho: "won" });

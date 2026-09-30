@@ -46,6 +46,7 @@ import { logger } from "@/lib/logger";
 import { ehIdentificadorTecnico, rotuloDoContato, SEM_NOME } from "@/lib/contacts/rotulo-do-contato";
 
 import { emitLeadActivity } from "./activity-emitter";
+import { botDoTreenityAtende } from "@/lib/treenity-bot/whatsapp";
 
 /**
  * O rótulo que aparece no card do funil quando o lead nasceu de um clique em
@@ -69,6 +70,7 @@ export type MotivoSemLead =
   | "contato_bloqueado" // pediu para sair; criar oportunidade seria desrespeito registrado
   | "sem_funil_de_entrada" // a organização não tem funil padrão — falha de configuração, visível
   | "sem_etapa" // o funil existe e não tem etapa utilizável
+  | "funil_do_treenity_bot" // quem abre o card é o sincronismo do Treenity Bot, no funil dele
   | "erro"; // qualquer falha de escrita
 
 export type NascimentoDoLead =
@@ -151,6 +153,17 @@ export async function garantirLeadDaConversa(
     .maybeSingle();
 
   if (contato?.is_blocked === true) return { criado: false, motivo: "contato_bloqueado" };
+
+  // 1b · organização com o Treenity Bot atendendo pelo Inbox: o card da venda
+  // nasce no funil "Treenity Bot", pelo sincronismo (`lib/treenity-bot/
+  // funil-de-leads.ts`), com a etapa real do atendimento. Abrir outro aqui, no
+  // funil padrão, deixava o mesmo cliente em dois funis.
+  const { data: org } = await db
+    .from("organizations")
+    .select("settings")
+    .eq("id", organizationId)
+    .maybeSingle();
+  if (botDoTreenityAtende(org?.settings ?? null)) return { criado: false, motivo: "funil_do_treenity_bot" };
 
   // 2 · já existe demanda aberta?
   const { data: existente } = await db
