@@ -1,9 +1,10 @@
 /**
  * Tarefas automáticas de venda do Treenity Bot.
  *
- * Quando o bot fecha uma venda por PIX ele só envia a chave — ninguém valida o
- * pagamento. Cada venda nova "Aguardando Pagamento" vira UMA tarefa "Conferir
- * pagamento PIX" para os admins, sem prazo (é só o lembrete: o pedido só é
+ * Ninguém valida pagamento sozinho: o bot só manda a chave PIX, e cartão e
+ * boleto são fechados pelo time. Cada venda nova "Aguardando Pagamento" (do
+ * CADU ou do "Fechar → Teve venda" do Inbox) vira UMA tarefa "Conferir
+ * pagamento" para os admins, sem prazo (é só o lembrete: o pedido só é
  * montado depois de pago, então demorar não é problema). Concluir a tarefa marca
  * a venda como paga no bot (ver `app/api/v1/tasks/[id]/route.ts`).
  *
@@ -56,13 +57,16 @@ function montarTarefa(venda: VendaPainel) {
     `Total a conferir: ${brl(venda.total)}`,
     venda.atendimento_detalhes.id ? `Conversa: /app/integrations/treenity-bot/${venda.atendimento_detalhes.id}` : null,
     "",
-    "A API não valida o pagamento. Confira o PIX e conclua esta tarefa para marcar a venda como paga.",
+    "O sistema não confirma pagamento sozinho. Confira se o pagamento entrou e conclua esta tarefa para marcar a venda como paga.",
   ]
     .filter((linha) => linha !== null)
     .join("\n");
 
   return {
-    title: `Conferir pagamento PIX — ${brl(venda.total)} — ${venda.cliente}`.slice(0, 255),
+    // Sem "PIX" no título: desde 30/09 a venda nasce na escolha da forma de
+    // pagamento (PIX, cartão ou boleto) e também no "Fechar → Teve venda" do
+    // Inbox — "Conferir pagamento PIX" numa venda no cartão confundiria o time.
+    title: `Conferir pagamento — ${brl(venda.total)} — ${venda.cliente}`.slice(0, 255),
     description: descricao,
   };
 }

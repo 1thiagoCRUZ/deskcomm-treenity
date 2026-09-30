@@ -300,10 +300,10 @@ export function AutomacoesPainel() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{t("Conferir pagamento PIX")}</CardTitle>
+          <CardTitle>{t("Conferir pagamento")}</CardTitle>
           <CardDescription>
             {t(
-              'Quando o bot fecha uma venda por PIX, ele só envia a chave — a API não valida o pagamento. Com isto ligado, cada venda nova "Aguardando Pagamento" vira uma tarefa lembrando um admin de conferir.',
+              'O sistema não confirma pagamento sozinho: o bot só manda a chave PIX, e cartão e boleto são fechados pelo time. Com isto ligado, cada venda nova "Aguardando Pagamento" — do bot ou fechada pela equipe no Inbox — vira uma tarefa lembrando um admin de conferir.',
             )}
           </CardDescription>
         </CardHeader>
