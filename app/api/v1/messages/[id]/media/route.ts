@@ -54,7 +54,7 @@ export async function GET(_req: NextRequest, ctx: RouteCtx): Promise<Response> {
   // Filtro explícito de organization_id por doutrina (defense-in-depth).
   const { data: msg, error } = await supabase
     .from("messages")
-    .select("id, media_url, media_mime, media_storage_path, channel_session_id")
+    .select("id, media_url, media_mime, media_storage_path, channel_session_id, direction, metadata")
     .eq("id", messageId)
     .eq("organization_id", activeOrg.orgId)
     .maybeSingle();
@@ -78,6 +78,26 @@ export async function GET(_req: NextRequest, ctx: RouteCtx): Promise<Response> {
     if (signErr) {
       console.error("[messages.media] createSignedUrl failed", signErr.message);
     }
+  }
+
+  // ── Mídia que o Treenity Bot enviou ─────────────────────────────────────────
+  //
+  // O n8n manda vídeo, imagem e áudio por LINK público (armazenamento do bot,
+  // com assinatura de longa duração), e a rota de envio grava esse link em
+  // `media_url` (`app/api/treenity-bot/whatsapp/.../messages`). Não é um
+  // anexo da Meta: o fallback abaixo pedia o arquivo à Meta com o token do
+  // número, falhava, e a tela dizia "Mídia indisponível" para um vídeo que o
+  // cliente recebeu normalmente. O link já é o arquivo — redireciona.
+  const meta = (msg.metadata ?? {}) as Record<string, unknown>;
+  if (
+    msg.media_url &&
+    msg.direction === "outbound" &&
+    meta.origem === "treenity_bot" &&
+    /^https:\/\//i.test(msg.media_url)
+  ) {
+    const response = NextResponse.redirect(msg.media_url, 302);
+    response.headers.set("X-Request-Id", requestId);
+    return response;
   }
 
   // ── Fallback: o worker ainda não persistiu ──────────────────────────────────
