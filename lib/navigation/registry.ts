@@ -49,6 +49,7 @@ import {
   type NavGroupId,
 } from "./catalogo";
 import { destinosDaInterface, type InterfaceSettings } from "./interface";
+import { GRUPOS_FORA_DO_MENU } from "@/lib/treenity/menu";
 export { NAV_GROUPS, GRUPO_NO_RODAPE } from "./catalogo";
 export type { NavGroup, NavGroupId } from "./catalogo";
 const ICONS = {
@@ -115,7 +116,7 @@ export function sidebarGroups(
   const visible = new Set<string>(
     destinosDaInterface(settings, isPlatformAdmin, role).map((d) => d.href),
   );
-  return NAV_GROUPS.map((group) => ({
+  return NAV_GROUPS.filter((group) => !GRUPOS_FORA_DO_MENU.includes(group.id)).map((group) => ({
     group,
     items: NAV_DESTINATIONS.filter(
       (d) => d.group === group.id && (d.sidebar || (!group.hub && !!settings?.destinos)) && visible.has(d.href),

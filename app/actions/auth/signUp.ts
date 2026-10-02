@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   signupSchema,
   signupComConviteSchema,
@@ -117,6 +118,14 @@ export async function signUp(
     },
   });
 
+  if (error && convite && cadastroFechado(error)) {
+    return criarContaDoConvidado(supabase, parsed.data.email, parsed.data.password, convite, {
+      requestId,
+      ip,
+      userAgent,
+    });
+  }
+
   if (error) {
     if (error.status === 429) return { ok: false, error: "rate_limited" };
     await audit({
@@ -145,4 +154,58 @@ export async function signUp(
   // e-mail nenhum: ele vem preenchido exatamente quando a confirmação está
   // desligada (ou já resolvida) e o GoTrue devolveu tokens junto do usuário.
   return { ok: true, sessao_ativa: data.session !== null };
+}
+
+/**
+ * "Allow new users to sign up" DESLIGADO no provedor de auth — a Treenity deixa
+ * assim para ninguém abrir empresa pela tela pública. O efeito colateral era o
+ * convite: quem é convidado e ainda não tem conta caía em "Signups not allowed
+ * for this instance" (medido em 2026-10-02 no `api_audit_log`).
+ */
+function cadastroFechado(error: { code?: string; message?: string }): boolean {
+  return error.code === "signup_disabled" || /signups not allowed/i.test(error.message ?? "");
+}
+
+/**
+ * Cria a conta do CONVIDADO por dentro, com a chave de serviço. Só chega aqui
+ * quem passou pela verificação do token acima: assinatura válida E e-mail do
+ * token igual ao digitado. O convite é a prova de que a pessoa foi chamada para
+ * aquela empresa; por isso a conta já nasce confirmada e a sessão é aberta na
+ * hora — a tela segue para `/team/accept-invite/<token>`, que cria o vínculo.
+ * Cadastro sem convite continua fechado.
+ */
+async function criarContaDoConvidado(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  email: string,
+  password: string,
+  convite: string,
+  ctx: { requestId: string | null; ip: string | null; userAgent: string | null },
+): Promise<SignUpResult> {
+  const { data, error } = await createAdminClient().auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { invite_token: convite },
+  });
+  if (error || !data.user) {
+    await audit({
+      action: "auth.signup_failed",
+      metadata: { email_hash: hashEmail(email), reason: error?.message ?? "sem usuário", via: "convite" },
+      requestId: ctx.requestId,
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+    });
+    // Conta que já existe cai aqui: a saída é "Entrar", que a tela já oferece.
+    return { ok: false, error: "signup_failed" };
+  }
+  await audit({
+    action: "auth.signup_requested",
+    actorUserId: data.user.id,
+    metadata: { email_hash: hashEmail(email), via: "convite" },
+    requestId: ctx.requestId,
+    ip: ctx.ip,
+    userAgent: ctx.userAgent,
+  });
+  const { data: login } = await supabase.auth.signInWithPassword({ email, password });
+  return { ok: true, sessao_ativa: !!login?.session };
 }

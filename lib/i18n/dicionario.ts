@@ -7142,6 +7142,7 @@ export const DICIONARIO: Traducoes = {
   // tela em espanhol com cabeçalho traduzido e conteúdo em português, com o CI
   // verde. Ao mexer nos mapas daqueles arquivos, volte aqui.
   "Meta Ads": { es: "Meta Ads" },
+  "Vendas do bot": { es: "Ventas del bot" },
   "O desempenho das campanhas que estão trazendo gente para cá. Os números vêm da plataforma no momento em que você clica em Atualizar — nada fica guardado aqui.":
     { es: "El rendimiento de las campañas que están trayendo gente hasta aquí. Los números vienen de la plataforma en el momento en que haces clic en Actualizar — nada queda guardado aquí." },
   "Nenhuma conta de anúncios conectada.": { es: "Ninguna cuenta publicitaria conectada." },

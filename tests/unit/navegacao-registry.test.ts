@@ -85,7 +85,7 @@ describe("sidebarGroups", () => {
     const hrefs = sidebarGroups(true, null).flatMap((g) => g.items.map((i) => i.href));
     // Conhecimento existe no registro, mas é do hub — não do sidebar.
     expect(hrefs).not.toContain("/app/ai/knowledge/sources");
-    expect(hrefs).toContain("/app/ai/agents");
+    expect(hrefs).toContain("/app/kanban");
   });
 
   it("Etapas do funil é CRM, não Configurações — o achado que originou esta mudança", () => {
@@ -121,23 +121,28 @@ describe("sidebarGroups", () => {
   });
 
   it("omite o grupo inteiro quando o papel não vê nenhum item dele", () => {
-    // CANAIS é todo manager+/admin: um agent não deve ver o título órfão.
-    const ids = sidebarGroups(AGENT.platform, AGENT.role).map((g) => g.group.id);
+    // CANAIS é todo agent+ (o Treenity Bot é agent): um viewer não deve ver o
+    // título órfão.
+    const ids = sidebarGroups(VIEWER.platform, VIEWER.role).map((g) => g.group.id);
     expect(ids).not.toContain("canais");
     expect(ids).toContain("atendimento");
   });
 
-  it("a ordem dentro do grupo de IA é a do uso real: agentes, follow-ups, roteadores", () => {
-    // Provedores e Execuções NÃO entram aqui, e a razão é medida: pô-las na
-    // sidebar estourou a dobra em 900px (e2e `navegacao.spec.ts`). Elas seguem
-    // o padrão das outras nove telas do grupo — alcançáveis pelo hub "Ver tudo
-    // em IA", que é o desenho existente para tela de configuração.
-    const ia = sidebarGroups(true, null).find((g) => g.group.id === "ia");
-    expect(ia?.items.map((i) => i.href)).toEqual([
-      "/app/ai/agents",
-      "/app/ai/followups",
-      "/app/ai/routers",
-    ]);
+  it("Treenity: o grupo Agente de IA sai do menu, e as telas seguem no hub e no ⌘K", () => {
+    // Na Treenity quem atende é o Treenity Bot (Canais); a IA nativa no menu
+    // confundia o dono. Ver `lib/treenity/menu.ts`.
+    const ids = sidebarGroups(true, null).map((g) => g.group.id);
+    expect(ids).not.toContain("ia");
+    const hub = hubSections("ia", true, null).flatMap((s) => s.items.map((i) => i.href));
+    expect(hub).toContain("/app/ai/agents");
+    expect(searchable(true, null).map((d) => d.href)).toContain("/app/ai/agents");
+  });
+
+  it("Treenity: Webhooks sai do menu e Vendas do bot entra", () => {
+    const hrefs = sidebarGroups(false, "admin").flatMap((g) => g.items.map((i) => i.href));
+    expect(hrefs).not.toContain("/app/webhooks");
+    expect(hrefs).toContain("/app/analise/treenity-bot");
+    expect(dest("/app/analise/treenity-bot").label).toBe("Vendas do bot");
   });
 });
 
