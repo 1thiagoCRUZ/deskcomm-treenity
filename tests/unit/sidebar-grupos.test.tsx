@@ -56,7 +56,8 @@ describe("Sidebar agrupado", () => {
       .filter(Boolean);
     // Organização não tem título aqui: seu hub (Configurações) vive no rodapé
     // fixo, fora da área que rola — medido, ele caía fora da dobra até em 1080px.
-    expect(titulos).toEqual(["Atendimento", "CRM", "Agente de IA", "Canais", "Análise"]);
+    // "Agente de IA" sai do menu na Treenity (`lib/treenity/menu.ts`).
+    expect(titulos).toEqual(["Atendimento", "CRM", "Canais", "Análise"]);
   });
 
   it("leva às Etapas do funil pelo CRM, e não por Configurações", () => {
@@ -122,8 +123,9 @@ describe("Sidebar agrupado", () => {
   });
 
   it("não deixa cabeçalho órfão quando a permissão esvazia o grupo", () => {
-    // CANAIS é todo manager+/admin. Um agent não pode ver o título sozinho.
-    comoPapel("agent");
+    // CANAIS é todo agent+ (o Treenity Bot é agent). Um viewer não pode ver o
+    // título sozinho.
+    comoPapel("viewer");
     render(<Sidebar collapsed={false} />);
     const titulos = screen.getAllByRole("heading").map((el) => el.textContent?.trim());
     expect(titulos).not.toContain("Canais");
@@ -133,7 +135,9 @@ describe("Sidebar agrupado", () => {
   it("oferece o hub dos grupos que têm um", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
-    expect(screen.getByRole("link", { name: /Ver tudo em IA/ })).toHaveAttribute("href", "/app/ai");
+    expect(screen.getByRole("link", { name: /Ver tudo em CRM/ })).toHaveAttribute("href", "/app/crm");
+    // O hub da IA sai junto com o grupo na Treenity; a tela segue no ⌘K.
+    expect(screen.queryByRole("link", { name: /Ver tudo em IA/ })).toBeNull();
   });
 
   it("colapsado esconde os títulos mas mantém os links", () => {

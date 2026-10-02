@@ -199,6 +199,15 @@ export function SidebarContent({
         o PR: cada linha custa 32px (28px de altura + 4px de `space-y-1`), e
         trocar N destinos do menu por um único link de hub devolve (N-1)×32px.
       */}
+      {/* Quem tem uma empresa só não vê o TenantSwitcher (ele se esconde com
+          ≤1 organização); sem esta linha o dono não lê o nome da própria
+          empresa em lugar nenhum. Se a marca da organização já é o nome
+          dela, o cabeçalho acima já diz — não repete. */}
+      {!collapsed && activeOrg?.name && activeOrg.name !== nome && (user?.organizations?.length ?? 0) <= 1 && !user?.is_platform_admin && (
+        <div className="truncate border-b px-4 py-2 text-xs font-medium text-muted-foreground" title={activeOrg.name}>
+          {activeOrg.name}
+        </div>
+      )}
       <nav className="flex-1 space-y-2 overflow-y-auto p-2" aria-label={t("Navegação principal")}>
         {grupos.map(({ group, items }) => {
           const tituloId = `nav-grupo-${group.id}`;

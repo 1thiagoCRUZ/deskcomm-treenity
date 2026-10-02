@@ -76,6 +76,20 @@ where novo.email = 'EMAIL_DA_PESSOA_NOVA'
   and quem.email = 'EMAIL_DE_QUEM_JA_E_ADMIN';
 ```
 
+Ao entrar, a conta da Gestão Treenity que não é membro de nenhuma empresa vai
+direto para o painel da plataforma (`/admin`).
+
+## Convite com o cadastro público fechado
+
+O Supabase do DeskComm fica com "Allow new users to sign up" **desligado**, para
+ninguém abrir empresa pela tela pública. O convite continua funcionando: quem
+abre o link e clica em "Ainda não tenho conta" tem a conta criada por dentro
+(já confirmada) e segue para "Aceitar convite". Sem convite, o cadastro segue
+fechado.
+
+O envio do convite por e-mail depende do Resend; sem ele, a tela da Equipe
+mostra o link para copiar e mandar à pessoa (WhatsApp, por exemplo).
+
 ## Implantar um cliente novo (checklist)
 
 1. **Gestão Treenity → Gerenciar organizações → Nova organização**: nome, e-mail

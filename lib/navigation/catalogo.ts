@@ -477,7 +477,8 @@ export const NAV_CATALOG = [
     icon: "WebhooksLogo",
     group: "canais",
     minRole: "manager",
-    sidebar: true,
+    // Sem `sidebar` na Treenity: integração técnica, não rotina do dono.
+    // Alcançável pelo ⌘K, como Nuvemshop.
   },
 
   // ---- Análise — olhar o sistema funcionando ----
@@ -510,15 +511,15 @@ export const NAV_CATALOG = [
   },
   {
     href: "/app/analise/treenity-bot",
-    label: "Treenity Bot",
+    label: "Vendas do bot",
     description: "Faturamento, clientes e atendimentos do bot de vendas nos últimos 30 dias.",
     icon: "ChartLineUp",
     group: "analise",
     section: "Os números do período",
     minRole: "agent",
-    // Sem `sidebar`: essa dupla (esta + a de Canais) some do menu lateral pra
-    // não repetir "Treenity Bot" duas vezes na barra — continua alcançável
-    // pelo hub /app/analise e pelo link cruzado na tela de Canais.
+    // No menu: é o número que o dono da loja abre todo dia. Rótulo diferente
+    // do "Treenity Bot" de Canais (configuração) para não repetir na barra.
+    sidebar: true,
   },
   {
     // Logo abaixo de Desempenho porque responde a metade da MESMA pergunta: lá
