@@ -26,6 +26,9 @@ import type { Socket } from "socket.io-client";
 import { useT } from "@/hooks/i18n/useT";
 import { buscarSessaoChat, conectarSocketChat } from "@/lib/treenity-bot/chat-client";
 import { definirPainelAoVivo, emitirEventoDoPainel, type EventoDoPainel } from "@/lib/treenity-bot/painel-eventos";
+import { buscarVendaParaAviso, textoDoAvisoDeVenda } from "@/lib/treenity-bot/avisos";
+import { emitNotification } from "@/lib/notifications/emit";
+import { canalLigado } from "@/lib/notifications/prefs";
 
 interface AlertaAtendimentoPayload {
   atendimentoId: string;
@@ -106,23 +109,53 @@ export function TreenityBotAlertProvider() {
         pedirSincronismoDeTarefas(); // pega o que ficou pendente enquanto ninguém estava conectado
         pedirSincronismoDeFunil();
       });
+      // Venda nova gravada pelo CADU => aviso (toast + bandeja). Só INSERT: o
+      // UPDATE de status (pagamento) e o "Fechar" pelo Inbox não repetem o aviso.
+      const avisarVenda = async (id: string) => {
+        const venda = await buscarVendaParaAviso(id);
+        if (cancelado || !venda) return;
+        const { title, body } = textoDoAvisoDeVenda(venda);
+        if (canalLigado("venda_bot", "in_app")) {
+          toast.success(title, {
+            description: body,
+            duration: 15000,
+            action: { label: t("Ver vendas"), onClick: () => router.push("/app/analise/treenity-bot") },
+          });
+        }
+        if (canalLigado("venda_bot", "push")) {
+          emitNotification({ kind: "venda_bot", title, body, tag: id, href: "/app/analise/treenity-bot", force: true });
+        }
+      };
       socket.on("painel_evento", (evento: EventoDoPainel) => {
         emitirEventoDoPainel(evento);
+        if (evento.tipo === "venda" && evento.op === "INSERT" && evento.id) void avisarVenda(evento.id);
         if (evento.tipo === "venda" || evento.tipo === "reconectado") pedirSincronismoDeTarefas();
         if (evento.tipo === "atendimento" || evento.tipo === "venda" || evento.tipo === "reconectado") {
           pedirSincronismoDeFunil();
         }
       });
 
+      // Cliente pediu um especialista (o bot sinalizou) => aviso que leva ao
+      // Inbox, onde a conversa está na Fila para alguém assumir.
       socket.on("atendimento_sinalizado", (alerta: AlertaAtendimentoPayload) => {
-        toast.warning(alerta.clienteNome, {
-          description: alerta.motivo ?? t("Um cliente está precisando de atenção humana."),
-          duration: 15000,
-          action: {
-            label: t("Ver conversa"),
-            onClick: () => router.push(`/app/integrations/treenity-bot/${alerta.atendimentoId}`),
-          },
-        });
+        const descricao = alerta.motivo ?? t("Um cliente está precisando de atenção humana.");
+        if (canalLigado("especialista", "in_app")) {
+          toast.warning(alerta.clienteNome, {
+            description: descricao,
+            duration: 15000,
+            action: { label: t("Abrir Inbox"), onClick: () => router.push("/app/inbox") },
+          });
+        }
+        if (canalLigado("especialista", "push")) {
+          emitNotification({
+            kind: "especialista",
+            title: `${t("Cliente pediu um especialista")}: ${alerta.clienteNome}`,
+            body: descricao,
+            tag: alerta.atendimentoId,
+            href: "/app/inbox",
+            force: true,
+          });
+        }
 
         if (pathnameRef.current.startsWith("/app/integrations/treenity-bot")) {
           router.refresh();
