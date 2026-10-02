@@ -168,6 +168,32 @@ function str(v: unknown): string | null {
  * a Meta re-entrega tudo que não recebe 2xx, então devolver falha para um evento que
  * não nos interessa vira auto-DDoS: ela re-tenta o mesmo payload em backoff por horas.
  */
+/**
+ * Tipos que `messages.type` aceita (CHECK `messages_type_check`). A Meta manda
+ * outros — `button`, `interactive`, `unsupported` (visualização única, enquete,
+ * mensagem apagada…), `order`, `system` — e eles iam para o INSERT como vieram:
+ * o CHECK recusava, a mensagem do cliente sumia e a conversa ficava "o cliente
+ * nunca escreveu", com a janela de 24h fechada para a equipe. Medido em
+ * 2026-10-02: o CADU respondeu "não consegui abrir o que você mandou" e o
+ * Inbox só mostrava a resposta dele.
+ */
+const TIPOS_QUE_O_CRM_GUARDA = new Set([
+  "text", "image", "video", "audio", "document", "sticker", "location", "reaction",
+]);
+
+export const MENSAGEM_SEM_SUPORTE = "[O cliente mandou algo que o WhatsApp não mostra aqui. Peça para ele escrever.]";
+
+/** Clique em botão de modelo (`button`) ou em botão/lista interativa (`interactive`). */
+function textoDeRespostaDeBotao(raw: Record<string, unknown>, tipo: string): string | null {
+  if (tipo === "button") return str((raw.button as Record<string, unknown> | undefined)?.text);
+  if (tipo === "interactive") {
+    const i = (raw.interactive ?? {}) as Record<string, unknown>;
+    const r = (i.button_reply ?? i.list_reply) as Record<string, unknown> | undefined;
+    return str(r?.title);
+  }
+  return null;
+}
+
 export function parseMetaWebhook(envelope: MetaWebhookEnvelope): MetaWebhookEvent[] {
   const out: MetaWebhookEvent[] = [];
   if (envelope?.object !== "whatsapp_business_account") return out;
@@ -207,7 +233,13 @@ export function parseMetaWebhook(envelope: MetaWebhookEnvelope): MetaWebhookEven
           const tipo = str(raw.type) ?? "unknown";
           const corpoMidia = tipo !== "contacts" ? (raw[tipo] as Record<string, unknown> | undefined) : undefined;
           const sharedContact = tipo === "contacts" ? parseMetaInboundContact(raw) : null;
-          const tipoCrm = tipo === "contacts" ? "contact" : tipo;
+          const respostaDeBotao = textoDeRespostaDeBotao(raw, tipo);
+          const tipoCrm =
+            tipo === "contacts"
+              ? "contact"
+              : TIPOS_QUE_O_CRM_GUARDA.has(tipo)
+                ? tipo
+                : "text";
 
           out.push({
             kind: "inbound_message",
@@ -220,9 +252,11 @@ export function parseMetaWebhook(envelope: MetaWebhookEnvelope): MetaWebhookEven
             sentAt: new Date(Number(str(raw.timestamp) ?? "0") * 1000),
             type: tipoCrm,
             text:
-              tipoCrm === "text"
+              tipo === "text"
                 ? str((raw.text as Record<string, unknown>)?.body)
-                : sharedContact?.name ?? null,
+                : tipoCrm === "text"
+                  ? (respostaDeBotao ?? MENSAGEM_SEM_SUPORTE)
+                  : sharedContact?.name ?? null,
             ...(sharedContact ? { sharedContact } : {}),
             media:
               corpoMidia && str(corpoMidia.id)
