@@ -19,7 +19,7 @@ describe("papéis do produto Treenity", () => {
     const def = PAPEIS_DO_CLIENTE.funcionario;
     const menu = destinosDaInterface(def.interface, false, def.role).map((d) => d.href);
     expect(menu).toEqual(
-      expect.arrayContaining(["/app/inbox", "/app/templates", "/app/contacts", "/app/tasks"]),
+      expect.arrayContaining(["/app/inbox", "/app/templates", "/app/integrations/treenity-bot/chat", "/app/contacts", "/app/tasks"]),
     );
     // Nada de configuração, funil, conexões, IA ou relatório.
     for (const fora of ["/app/connections", "/app/kanban", "/app/ai/agents", "/app/webhooks", "/app/metrics", "/app/settings/tenant"]) {
@@ -38,7 +38,7 @@ describe("papéis do produto Treenity", () => {
     expect(papelDoVinculo("agent", PAPEIS_DO_CLIENTE.funcionario.interface)).toBe("funcionario");
     // mesma lista em outra ordem continua sendo funcionário
     expect(
-      papelDoVinculo("agent", { preset: "simplificada", destinos: ["/app/tasks", "/app/inbox", "/app/contacts", "/app/templates"] }),
+      papelDoVinculo("agent", { preset: "simplificada", destinos: ["/app/tasks", "/app/inbox", "/app/integrations/treenity-bot/chat", "/app/contacts", "/app/templates"] }),
     ).toBe("funcionario");
     expect(papelDoVinculo("agent", { preset: "completa" })).toBe("personalizado");
     expect(papelDoVinculo("manager", { preset: "completa" })).toBe("personalizado");

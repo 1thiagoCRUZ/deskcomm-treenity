@@ -118,7 +118,7 @@ export const NAV_CATALOG = [
     description: "Quem esfriou e ainda está aberto — o que corre risco de morrer sem resposta.",
     icon: "ClockCountdown",
     group: "atendimento",
-    sidebar: true,
+    // Sem `sidebar` na Treenity: o Inbox já mostra quem espera resposta (Fila).
   },
   {
     // Entra em "atendimento", e não em "organizacao", porque a Agenda é onde o
@@ -138,7 +138,7 @@ export const NAV_CATALOG = [
     description: "O que está marcado, com quem, e quem atende — seu e da equipe.",
     icon: "CalendarBlank",
     group: "atendimento",
-    sidebar: true,
+    // Sem `sidebar` na Treenity: volta ao menu quando a Agenda estiver pronta.
   },
   {
     // Renomeado de "Templates": estes são scripts do atendente, consumidos pelo
@@ -461,14 +461,14 @@ export const NAV_CATALOG = [
   },
   {
     href: "/app/integrations/treenity-bot/chat",
-    label: "Chat interno (Treenity Bot)",
+    label: "Chat da equipe",
     description: "Conversa em tempo real com a equipe, via API do Treenity Bot.",
     icon: "ChatsCircle",
-    group: "canais",
+    // Atendimento, e não Canais: é onde a equipe passa o dia, ao lado do Inbox.
+    // Saiu de dentro da tela do Treenity Bot para ter item próprio.
+    group: "atendimento",
     minRole: "agent",
-    // Sem `sidebar`: mesma lógica da dupla de Análise logo abaixo — não repete
-    // "Treenity Bot" na barra lateral. Alcançável pelo ⌘K e pelo link cruzado
-    // em app/app/integrations/treenity-bot/page.tsx.
+    sidebar: true,
   },
   {
     href: "/app/webhooks",
@@ -535,7 +535,7 @@ export const NAV_CATALOG = [
     // pessoa — orçamento e criativo são da empresa inteira. Mesmo grau dos
     // outros dois vizinhos do grupo.
     minRole: "manager",
-    sidebar: true,
+    // Sem `sidebar` na Treenity: Meta Ads não é usado por enquanto.
   },
   {
     // Irmã de "Desempenho", não a mesma coisa: lá é DESFECHO (funil agora,

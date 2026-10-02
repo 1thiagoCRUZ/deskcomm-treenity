@@ -34,32 +34,19 @@
 
 import Link from "next/link";
 import { formatDistanceToNowStrict } from "date-fns";
-import { CaretRight, ChartLineUp, ChatCircle, Clock, Robot } from "@/lib/ui/icons";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { ChartLineUp, Robot } from "@/lib/ui/icons";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
 import { roleAtLeast } from "@/lib/auth/types";
 import { isConfigured } from "@/lib/treenity-bot/config";
 import { carregarDadosTreenityBot, carregarPainelAdmin } from "@/lib/treenity-bot/client";
-import { iniciaisDe } from "@/lib/treenity-bot/formatacao";
 import { normalizarIdioma } from "@/lib/i18n/idiomas";
 import { localeDeData } from "@/lib/i18n/datas";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { cn } from "@/lib/utils";
-import ChatInterno from "./chat/chat-interno";
-import { AtendimentosPainel } from "./_painel/AtendimentosPainel";
 import { VendasPainel } from "./_painel/VendasPainel";
 import { AutomacoesPainel } from "./_automacoes/AutomacoesPainel";
-
-/** `border-l-error` (recém sinalizado) → `border-l-warning-fg` (há um tempo) → neutro. */
-function corDeUrgencia(atencaoSinalizadaEm: string | null): string {
-  if (!atencaoSinalizadaEm) return "border-l-border-strong";
-  const minutos = (Date.now() - new Date(atencaoSinalizadaEm).getTime()) / 60_000;
-  if (minutos <= 30) return "border-l-error";
-  if (minutos <= 120) return "border-l-warning-fg";
-  return "border-l-border-strong";
-}
 
 export default async function TreenityBotIntegrationPage() {
   const user = await loadAuthUser();
@@ -139,22 +126,6 @@ export default async function TreenityBotIntegrationPage() {
             <TabsTrigger value="visao-geral" className={tabTriggerClass}>
               {traduzir("Visão geral", idioma)}
             </TabsTrigger>
-            <TabsTrigger value="atencao" className={cn(tabTriggerClass, "gap-2.5")}>
-              {traduzir("Precisando de atenção", idioma)}
-              {dados.sinalizados.length > 0 ? (
-                <Badge variant="destructive" className="text-sm">
-                  {dados.sinalizados.length}
-                </Badge>
-              ) : null}
-            </TabsTrigger>
-            {ehAdmin ? (
-              <TabsTrigger value="atendimentos" className={tabTriggerClass}>
-                {traduzir("Atendimentos", idioma)}
-              </TabsTrigger>
-            ) : null}
-            <TabsTrigger value="chat" className={tabTriggerClass}>
-              {traduzir("Chat interno", idioma)}
-            </TabsTrigger>
             {ehAdmin ? (
               <TabsTrigger value="automacoes" className={tabTriggerClass}>
                 {traduzir("Automações", idioma)}
@@ -230,82 +201,9 @@ export default async function TreenityBotIntegrationPage() {
             {ehAdmin ? <VendasPainel inicial={painel?.vendas ?? null} /> : null}
           </TabsContent>
 
-          <TabsContent value="atencao" className="mt-0 min-h-0 flex-1 overflow-y-auto">
-            <Card className="w-full">
-              <CardHeader>
-                <CardDescription>
-                  {traduzir(
-                    "Conversas em que a IA parou de responder e um humano precisa assumir.",
-                    idioma,
-                  )}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className={dados.sinalizados.length === 0 ? "p-0" : "p-[var(--density-gap)]"}>
-                {dados.sinalizados.length === 0 ? (
-                  <p className="px-6 py-4 text-sm text-muted-foreground">
-                    {traduzir("Nada precisando de atenção agora.", idioma)}
-                  </p>
-                ) : (
-                  <ul className="flex flex-col gap-[var(--density-gap)]">
-                    {dados.sinalizados.map((item) => (
-                      <li key={item.id}>
-                        <Link
-                          href={`/app/integrations/treenity-bot/${item.id}`}
-                          className={cn(
-                            // Borda esquerda mais grossa carrega a urgência (cor de
-                            // `corDeUrgencia`); as outras três lados fecham a pílula
-                            // padrão da listagem — por isso o hover não mexe na borda,
-                            // só no fundo, pra não apagar o sinal de urgência.
-                            "flex items-center gap-4 rounded-md border border-border border-l-2 bg-surface px-6 py-4 transition-colors hover:bg-surface-elevated",
-                            corDeUrgencia(item.atencaoSinalizadaEm),
-                          )}
-                        >
-                          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent-soft text-sm font-semibold text-accent">
-                            {iniciaisDe(item.clienteNome)}
-                          </span>
-                          <div className="min-w-0 flex-1 space-y-1.5">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-base font-semibold">{item.clienteNome}</span>
-                              {item.canal ? (
-                                <Badge variant="secondary" className="gap-1">
-                                  <ChatCircle size={11} />
-                                  {item.canal}
-                                </Badge>
-                              ) : null}
-                            </div>
-                            {item.motivoAtencao ? (
-                              <p className="line-clamp-1 text-sm text-muted-foreground">{item.motivoAtencao}</p>
-                            ) : null}
-                            {item.atencaoSinalizadaEm ? (
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <Clock size={11} />
-                                {formatDistanceToNowStrict(new Date(item.atencaoSinalizadaEm), {
-                                  addSuffix: true,
-                                  locale,
-                                })}
-                              </div>
-                            ) : null}
-                          </div>
-                          <CaretRight size={18} className="shrink-0 text-muted-foreground" />
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {ehAdmin ? (
-            <TabsContent value="atendimentos" className="mt-0 min-h-0 flex-1 overflow-y-auto">
-              <AtendimentosPainel inicial={painel?.atendimentos ?? null} />
-            </TabsContent>
-          ) : null}
-
-          <TabsContent value="chat" className="mt-0 min-h-0 flex-1 overflow-hidden">
-            <ChatInterno />
-          </TabsContent>
-
+          {/* "Precisando de atenção" e "Atendimentos" viraram o Inbox (Fila e
+              Todas) — "um lugar para cada coisa". O Chat interno ganhou item
+              próprio no menu: "Chat da equipe" (/app/integrations/treenity-bot/chat). */}
           {ehAdmin ? (
             <TabsContent value="automacoes" className="mt-0 min-h-0 flex-1 overflow-y-auto">
               <AutomacoesPainel />

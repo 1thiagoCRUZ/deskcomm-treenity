@@ -71,8 +71,9 @@ describe("Sidebar agrupado", () => {
     //
     // O que este teste prende é a porta EXISTIR no grupo certo do sidebar; que
     // ela desemboca na tela é o e2e `navegacao.spec.ts` que percorre, clicando.
-    const hub = screen.getByRole("link", { name: /Ver tudo em CRM/ });
-    expect(hub).toHaveAttribute("href", "/app/crm");
+    // Treenity: o "Ver tudo em CRM" sai do menu (`HUBS_FORA_DO_MENU`); Etapas
+    // do funil segue no grupo CRM do registro e no ⌘K — nunca em Configurações.
+    expect(screen.queryByRole("link", { name: /Ver tudo em CRM/ })).toBeNull();
     expect(screen.queryByRole("link", { name: "Etapas do funil" })).toBeNull();
   });
 
@@ -97,8 +98,9 @@ describe("Sidebar agrupado", () => {
     //
     // Canal oficial não está aqui de propósito: virou aba de Conexões no PR
     // #105, e Conexões é a porta.
-    const hubAnalise = screen.getByRole("link", { name: /Ver tudo em Análise/ });
-    expect(hubAnalise).toHaveAttribute("href", "/app/analise");
+    // Treenity: o "Ver tudo em Análise" sai do menu (`HUBS_FORA_DO_MENU`);
+    // Audit Log segue no ⌘K e na rota, fora de Configurações.
+    expect(screen.queryByRole("link", { name: /Ver tudo em Análise/ })).toBeNull();
     expect(screen.queryByRole("link", { name: /Audit Log/ })).toBeNull();
 
     // NUVEMSHOP SAIU, e esta linha é a reversão explícita de uma decisão que
@@ -135,9 +137,12 @@ describe("Sidebar agrupado", () => {
   it("oferece o hub dos grupos que têm um", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
-    expect(screen.getByRole("link", { name: /Ver tudo em CRM/ })).toHaveAttribute("href", "/app/crm");
-    // O hub da IA sai junto com o grupo na Treenity; a tela segue no ⌘K.
-    expect(screen.queryByRole("link", { name: /Ver tudo em IA/ })).toBeNull();
+    // Treenity: nenhum "Ver tudo" no menu do dono — IA sai com o grupo, CRM e
+    // Análise pela `HUBS_FORA_DO_MENU`. O rodapé (Configurações) continua.
+    for (const nome of [/Ver tudo em IA/, /Ver tudo em CRM/, /Ver tudo em Análise/]) {
+      expect(screen.queryByRole("link", { name: nome })).toBeNull();
+    }
+    expect(screen.getByRole("link", { name: /Configurações/ })).toBeTruthy();
   });
 
   it("colapsado esconde os títulos mas mantém os links", () => {

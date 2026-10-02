@@ -11,3 +11,11 @@
 import type { NavGroupId } from "@/lib/navigation/catalogo";
 
 export const GRUPOS_FORA_DO_MENU: readonly NavGroupId[] = ["ia"];
+
+/**
+ * Grupos que ficam no menu, mas sem o link "Ver tudo em …": para o dono da
+ * loja as telas do dia a dia já estão no menu, e o hub listava telas de
+ * montagem (Produtos, Etapas do funil, Evolução da IA, Audit Log) que confundem.
+ * Elas seguem no ⌘K.
+ */
+export const HUBS_FORA_DO_MENU: readonly NavGroupId[] = ["crm", "analise"];

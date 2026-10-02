@@ -6,14 +6,12 @@
  * lista de pessoas — mora em `chat-interno.tsx` (Client Component), porque
  * precisa de um socket.io persistente no navegador.
  *
- * Porta alcançável só pelo ⌘K (catálogo em lib/navigation/catalogo.ts) — o
- * link cruzado que existia na página principal virou a aba "Chat interno" lá
- * (mesmo componente, evita ter duas versões divergindo). Altura real de
- * viewport aqui pelo mesmo motivo daquela aba: `ChatInterno` é `h-full` e
- * precisa de um ancestral com altura de verdade, senão colapsa pra zero.
+ * Item próprio no menu ("Chat da equipe", grupo Atendimento — catálogo em
+ * lib/navigation/catalogo.ts); a aba que existia na tela do Treenity Bot saiu.
+ * Altura real de viewport porque `ChatInterno` é `h-full` e precisa de um
+ * ancestral com altura de verdade, senão colapsa pra zero.
  */
-import Link from "next/link";
-import { CaretLeft, ChatsCircle } from "@/lib/ui/icons";
+import { ChatsCircle } from "@/lib/ui/icons";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { loadAuthUser } from "@/lib/auth/server";
 import { isConfigured } from "@/lib/treenity-bot/config";
@@ -31,17 +29,10 @@ export default async function TreenityBotChatPage() {
             <ChatsCircle size={24} weight="duotone" className="text-muted-foreground" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold">Chat interno</h1>
-            <p className="text-sm text-muted-foreground">Treenity Bot</p>
+            <h1 className="text-xl font-semibold">Chat da equipe</h1>
+            <p className="text-sm text-muted-foreground">Converse com quem trabalha com você</p>
           </div>
         </div>
-        <Link
-          href="/app/integrations/treenity-bot"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
-        >
-          <CaretLeft size={14} />
-          Voltar
-        </Link>
       </div>
 
       {!configured || !user ? (

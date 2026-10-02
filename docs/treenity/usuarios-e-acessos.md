@@ -10,7 +10,7 @@
 |---|---|---|---|
 | **Gestão Treenity** | a equipe da Treenity | **todas** as empresas: painel da plataforma, uso, auditoria, incidentes, Inbox de todas | administrador da **plataforma** (`platform_admins`) — fora das empresas |
 | **Dono** | o cliente que contrata (ex.: Rodrigo, Loja Top Ultra) | tudo da **própria** empresa | papel `admin` da empresa + menu completo |
-| **Funcionário** | a equipe do dono | só o dia a dia: Inbox, Respostas rápidas, Contatos, Tarefas | papel `agent` da empresa + menu reduzido |
+| **Funcionário** | a equipe do dono | só o dia a dia: Inbox, Respostas rápidas, Chat da equipe, Contatos, Tarefas | papel `agent` da empresa + menu reduzido |
 
 Cada **cliente é uma empresa** (organização) no sistema. Os dados de uma nunca
 aparecem na outra — isso é garantido pelo banco (RLS), não pela tela.
