@@ -49,7 +49,7 @@ import {
   type NavGroupId,
 } from "./catalogo";
 import { destinosDaInterface, type InterfaceSettings } from "./interface";
-import { GRUPOS_FORA_DO_MENU } from "@/lib/treenity/menu";
+import { GRUPOS_FORA_DO_MENU, HUBS_FORA_DO_MENU } from "@/lib/treenity/menu";
 export { NAV_GROUPS, GRUPO_NO_RODAPE } from "./catalogo";
 export type { NavGroup, NavGroupId } from "./catalogo";
 const ICONS = {
@@ -116,12 +116,15 @@ export function sidebarGroups(
   const visible = new Set<string>(
     destinosDaInterface(settings, isPlatformAdmin, role).map((d) => d.href),
   );
-  return NAV_GROUPS.filter((group) => !GRUPOS_FORA_DO_MENU.includes(group.id)).map((group) => ({
-    group,
-    items: NAV_DESTINATIONS.filter(
+  return NAV_GROUPS.filter((group) => !GRUPOS_FORA_DO_MENU.includes(group.id)).map((group) => {
+    const items = NAV_DESTINATIONS.filter(
       (d) => d.group === group.id && (d.sidebar || (!group.hub && !!settings?.destinos)) && visible.has(d.href),
-    ),
-  })).filter(
+    );
+    // O hub só sai quando o grupo tem itens no menu: num menu granular em que o
+    // grupo só tem telas de hub, o "Ver tudo" é a única porta e fica.
+    const semHub = HUBS_FORA_DO_MENU.includes(group.id) && items.length > 0;
+    return { group: semHub ? { ...group, hub: undefined } : group, items };
+  }).filter(
     (g) =>
       g.items.length > 0 ||
       (g.group.hub && NAV_DESTINATIONS.some((d) => d.group === g.group.id && visible.has(d.href))),

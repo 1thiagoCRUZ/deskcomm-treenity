@@ -49,12 +49,14 @@ export interface DefinicaoDoPapel {
   interface: InterfaceSettings;
 }
 
-/** As telas do dia a dia do funcionário, na ordem do menu. */
+/** As telas do dia a dia do funcionário, na ordem do catálogo (a mesma em que
+ * o schema da interface as grava — fora dela o papel vira "personalizado"). */
 const TELAS_DO_FUNCIONARIO: readonly NavDestinationId[] = [
   "/app/inbox",
   "/app/templates",
   "/app/contacts",
   "/app/tasks",
+  "/app/integrations/treenity-bot/chat",
 ];
 
 export const PAPEIS_DO_CLIENTE: Record<PapelDoCliente, DefinicaoDoPapel> = {
@@ -66,7 +68,7 @@ export const PAPEIS_DO_CLIENTE: Record<PapelDoCliente, DefinicaoDoPapel> = {
   },
   funcionario: {
     rotulo: "Funcionário",
-    descricao: "Atende os clientes: Inbox, respostas rápidas, contatos e tarefas.",
+    descricao: "Atende os clientes: Inbox, respostas rápidas, chat da equipe, contatos e tarefas.",
     role: "agent",
     interface: { preset: "simplificada", destinos: [...TELAS_DO_FUNCIONARIO] },
   },

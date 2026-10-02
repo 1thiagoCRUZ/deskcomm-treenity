@@ -7143,6 +7143,7 @@ export const DICIONARIO: Traducoes = {
   // verde. Ao mexer nos mapas daqueles arquivos, volte aqui.
   "Meta Ads": { es: "Meta Ads" },
   "Vendas do bot": { es: "Ventas del bot" },
+  "Chat da equipe": { es: "Chat del equipo" },
   "O desempenho das campanhas que estão trazendo gente para cá. Os números vêm da plataforma no momento em que você clica em Atualizar — nada fica guardado aqui.":
     { es: "El rendimiento de las campañas que están trayendo gente hasta aquí. Los números vienen de la plataforma en el momento en que haces clic en Actualizar — nada queda guardado aquí." },
   "Nenhuma conta de anúncios conectada.": { es: "Ninguna cuenta publicitaria conectada." },
@@ -7503,7 +7504,7 @@ export const DICIONARIO: Traducoes = {
   "Dono": { es: "Dueño" },
   "Funcionário": { es: "Empleado" },
   "Vê e configura tudo da empresa: atendimento, funis, equipe, conexões e relatórios.": { es: "Ve y configura todo de la empresa: atención, embudos, equipo, conexiones e informes." },
-  "Atende os clientes: Inbox, respostas rápidas, contatos e tarefas.": { es: "Atiende a los clientes: Inbox, respuestas rápidas, contactos y tareas." },
+  "Atende os clientes: Inbox, respostas rápidas, chat da equipe, contatos e tarefas.": { es: "Atiende a los clientes: Inbox, respuestas rápidas, chat del equipo, contactos y tareas." },
   "Tipo de acesso de": { es: "Tipo de acceso de" },
   "Menu": { es: "Menú" },
   "Tipo de acesso atualizado.": { es: "Tipo de acceso actualizado." },

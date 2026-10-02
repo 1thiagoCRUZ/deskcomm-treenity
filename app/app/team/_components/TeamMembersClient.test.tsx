@@ -113,7 +113,7 @@ describe("TeamMembersClient — tipo de acesso do produto (Dono / Funcionário)"
     expect(apiClient.patch).toHaveBeenNthCalledWith(2, `/api/v1/team/${AGENT_ID}/interface`, {
       interface_settings: {
         preset: "simplificada",
-        destinos: ["/app/inbox", "/app/templates", "/app/contacts", "/app/tasks"],
+        destinos: ["/app/inbox", "/app/templates", "/app/contacts", "/app/tasks", "/app/integrations/treenity-bot/chat"],
       },
     });
   });
