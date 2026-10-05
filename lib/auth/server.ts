@@ -149,12 +149,21 @@ export async function loadAuthUser(): Promise<AuthUser | null> {
   }
   if (!user) return null;
 
+  // As três leituras abaixo (platform admin, vínculos e acompanhamento) não
+  // dependem uma da outra, então saem JUNTAS: em sequência eram três idas ao
+  // banco por chamada, e esta função roda várias vezes por clique (layout,
+  // página e cada rota da API). O acompanhamento é aguardado só depois da
+  // checagem de erro abaixo, para a ordem das falhas continuar a mesma; o
+  // `.catch` vazio só evita "rejeição não tratada" quando a função sai antes.
+  const supportPromise = readSupportContext(supabase);
+  supportPromise.catch(() => {});
+
   // Platform admin? (active = no revoked_at). RLS returns null for non-admins.
   //
   // ⚠️ O erro é capturado de propósito: aqui `data: null` é AMBÍGUO — significa tanto
   // "não é platform admin" (RLS filtrou, estado normal) quanto "a query falhou".
   // Sem separar os dois, um banco instável rebaixa silenciosamente um super-admin.
-  const { data: paRow, error: paErro } = await supabase
+  const paQuery = supabase
     .from("platform_admins")
     .select("user_id, revoked_at")
     .eq("user_id", user.id)
@@ -176,7 +185,7 @@ export async function loadAuthUser(): Promise<AuthUser | null> {
   // reconhece como "a minha"; `organization_id` como desempate, para o resultado
   // ser determinístico mesmo quando as duas entraram no mesmo instante (é o caso
   // de quem foi convidado para várias no mesmo lote).
-  const { data: rawMemberships, error: membErro } = await supabase
+  const membQuery = supabase
     .from("user_organizations")
     .select(
       "organization_id, role, interface_settings, accepted_at, organizations(display_name, locale)",
@@ -185,6 +194,9 @@ export async function loadAuthUser(): Promise<AuthUser | null> {
     .is("revoked_at", null)
     .order("accepted_at", { ascending: true, nullsFirst: true })
     .order("organization_id", { ascending: true });
+
+  const [{ data: paRow, error: paErro }, { data: rawMemberships, error: membErro }] =
+    await Promise.all([paQuery, membQuery]);
 
   /**
    * FALHA ALTO, não baixo.
@@ -231,7 +243,7 @@ export async function loadAuthUser(): Promise<AuthUser | null> {
     };
   });
 
-  const support = await readSupportContext(supabase);
+  const support = await supportPromise;
   const fullName = (user.user_metadata?.full_name as string | undefined) ?? null;
   const avatarUrl = (user.user_metadata?.avatar_url as string | undefined) ?? null;
   const locale = (user.user_metadata?.locale as string | undefined) ?? null;
