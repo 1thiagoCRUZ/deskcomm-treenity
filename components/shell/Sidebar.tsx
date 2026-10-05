@@ -1,8 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useT } from "@/hooks/i18n/useT";
-import { usePathname } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef, useState, useTransition, type ComponentProps } from "react";
 import { ArrowRight, CaretDoubleLeft, CaretDoubleRight, CaretDown, Gear } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 import { toggleSidebar } from "@/app/actions/shell/toggleSidebar";
@@ -252,7 +252,7 @@ export function SidebarContent({
                     const Icon = item.icon;
                     return (
                       <li key={item.href}>
-                        <Link
+                        <LinkDoMenu
                           href={item.href}
                           title={collapsed ? t(item.label) : undefined}
                           aria-current={isActive ? "page" : undefined}
@@ -272,13 +272,13 @@ export function SidebarContent({
                               className={cn(collapsed ? "absolute top-1.5 right-1.5" : "ml-auto")}
                             />
                           )}
-                        </Link>
+                        </LinkDoMenu>
                       </li>
                     );
                   })}
                   {group.hub && (
                     <li>
-                      <Link
+                      <LinkDoMenu
                         href={group.hub.href}
                         title={collapsed ? t(group.hub.label) : undefined}
                         aria-current={pathname === group.hub.href ? "page" : undefined}
@@ -293,7 +293,7 @@ export function SidebarContent({
                       >
                         <ArrowRight size={18} aria-hidden />
                         {!collapsed && <span className="truncate">{t(group.hub.label)}</span>}
-                      </Link>
+                      </LinkDoMenu>
                     </li>
                   )}
                 </ul>
@@ -304,7 +304,7 @@ export function SidebarContent({
       </nav>
       <div className="border-t p-2">
         {rodape && (
-          <Link
+          <LinkDoMenu
             href={rodape.href}
             title={collapsed ? t(rodape.label) : undefined}
             aria-current={pathname.startsWith(rodape.href) ? "page" : undefined}
@@ -319,7 +319,7 @@ export function SidebarContent({
           >
             <Gear size={18} aria-hidden />
             {!collapsed && <span className="truncate">{t(rodape.label)}</span>}
-          </Link>
+          </LinkDoMenu>
         )}
         <VersionFooter collapsed={collapsed} onNavigate={onNavigate} />
         {showCollapseControl && (
@@ -375,5 +375,40 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
     >
       <SidebarContent collapsed={collapsed} />
     </aside>
+  );
+}
+
+/**
+ * Link do menu que só pré-carrega a tela quando o mouse passa por cima (ou o
+ * foco do teclado chega nele).
+ *
+ * O padrão do Next pré-carrega TODO link visível assim que a página abre — no
+ * menu, ~20 telas de uma vez, e cada uma roda no servidor o layout do /app
+ * inteiro (usuário, empresa, marca, conexões, MFA). Medido em 05/10: ~25
+ * pedidos disputando o servidor logo depois do login, inclusive acordando
+ * instâncias frias. Pré-carregar no hover mantém o clique rápido sem esse custo.
+ */
+function LinkDoMenu({ href, onMouseEnter, onFocus, ...props }: ComponentProps<typeof Link>) {
+  const router = useRouter();
+  const jaPediu = useRef(false);
+  const preCarregar = () => {
+    if (jaPediu.current || typeof href !== "string") return;
+    jaPediu.current = true;
+    router.prefetch(href);
+  };
+  return (
+    <Link
+      href={href}
+      prefetch={false}
+      onMouseEnter={(e) => {
+        preCarregar();
+        onMouseEnter?.(e);
+      }}
+      onFocus={(e) => {
+        preCarregar();
+        onFocus?.(e);
+      }}
+      {...props}
+    />
   );
 }

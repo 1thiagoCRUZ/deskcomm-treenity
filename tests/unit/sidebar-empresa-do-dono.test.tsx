@@ -17,7 +17,10 @@ const authRef: {
 } = { user: { is_platform_admin: false, organizations: [] }, activeOrg: null };
 
 vi.mock("@/hooks/auth/AuthProvider", () => ({ useAuth: () => authRef, usePermission: () => false }));
-vi.mock("next/navigation", () => ({ usePathname: () => "/app/inbox" }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/app/inbox",
+  useRouter: () => ({ prefetch: vi.fn() }),
+}));
 vi.mock("@/components/connections/ConnectionHealthDot", () => ({ ConnectionHealthDot: () => null }));
 vi.mock("@/app/actions/shell/toggleSidebar", () => ({ toggleSidebar: vi.fn() }));
 vi.mock("@/components/shell/VersionFooter", () => ({ VersionFooter: () => null }));

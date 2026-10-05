@@ -10,7 +10,7 @@
  * `navegacao-registry.test.ts`; aqui é a superfície.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
 import { Sidebar } from "@/components/shell/Sidebar";
 import type { ActiveOrg, AuthUser } from "@/lib/auth/types";
@@ -24,8 +24,10 @@ vi.mock("@/hooks/auth/AuthProvider", () => ({
   useAuth: () => authRef,
   usePermission: () => false,
 }));
+const prefetch = vi.fn();
 vi.mock("next/navigation", () => ({
   usePathname: () => "/app/inbox",
+  useRouter: () => ({ prefetch }),
 }));
 vi.mock("@/components/connections/ConnectionHealthDot", () => ({
   ConnectionHealthDot: () => null,
@@ -158,5 +160,19 @@ describe("Sidebar agrupado", () => {
     expect(screen.getByRole("link", { name: /Inbox/ })).toHaveAttribute("aria-current", "page");
     // "Kanban" saiu da interface; o item da mesma URL agora se chama "Funis".
     expect(screen.getByRole("link", { name: "Funis" })).not.toHaveAttribute("aria-current");
+  });
+
+  it("só pré-carrega a tela quando o mouse passa no link, e uma vez só", () => {
+    // Medido em 05/10: com o pré-carregamento padrão, abrir qualquer tela
+    // disparava ~20 pedidos ao servidor (um por item do menu).
+    comoPapel("admin");
+    prefetch.mockClear();
+    render(<Sidebar collapsed={false} />);
+    expect(prefetch).not.toHaveBeenCalled();
+    const funis = screen.getByRole("link", { name: "Funis" });
+    fireEvent.mouseEnter(funis);
+    fireEvent.mouseEnter(funis);
+    expect(prefetch).toHaveBeenCalledTimes(1);
+    expect(prefetch).toHaveBeenCalledWith(funis.getAttribute("href"));
   });
 });
