@@ -17,6 +17,11 @@
 import type { VercelConfig } from "@vercel/config/v1";
 
 const config: VercelConfig = {
+  // As funções rodam em São Paulo, ao lado do Supabase (sa-east-1). No padrão
+  // da Vercel (iad1, Washington) cada consulta ao banco atravessava o
+  // continente — 150 a 430 ms medidos em /api/v1/health — e uma tela do /app
+  // faz dezenas delas em sequência (proxy, layout, página, rotas da API).
+  regions: ["gru1"],
   // Plano Hobby só aceita cron ≤1×/dia. Os jobs */1 (agent-dispatcher,
   // routing-worker, event-log-drain) ficam de fora até Pro — no self-host
   // eles rodam no container `scheduler`. Reative-os ao subir de plano.
