@@ -241,7 +241,7 @@ test.describe("Inbox — quem manda nesta conversa", () => {
     // -----------------------------------------------------------------
     // (2) A pessoa assume — pelo botão, como ela faria.
     // -----------------------------------------------------------------
-    await page.getByRole("button", { name: /^Assumir$/i }).click();
+    await page.getByRole("button", { name: /^Atender agora$/i }).click();
 
     // -----------------------------------------------------------------
     // (3) A tela passa a dizer QUEM manda, e o selo explica o porquê.

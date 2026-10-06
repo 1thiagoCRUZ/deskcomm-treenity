@@ -218,7 +218,7 @@ function RadarRow({ lead }: { lead: AtRiskLead }) {
             onClick={handleClaim}
             data-testid="radar-claim"
           >
-            {t("Assumir")}
+            {t("Atender agora")}
           </Button>
         ) : null}
         <ArrowRight size={16} className="text-muted-foreground" aria-hidden />

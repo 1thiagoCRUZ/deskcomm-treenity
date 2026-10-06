@@ -183,7 +183,7 @@ test("fechar canal preserva demanda, desfecho explícito e nova entrada volta à
       .single();
     expect(current.data?.current_demanda_id).not.toBe(demand);
     expect(current.data?.status).toBe("open");
-    await page.getByRole("button", { name: "Assumir", exact: true }).click();
+    await page.getByRole("button", { name: "Atender agora", exact: true }).click();
     await expect(page.getByRole("button", { name: "Liberar", exact: true })).toBeVisible();
     await expect(page.getByText("Sem responsável", { exact: true })).toHaveCount(0);
     await page

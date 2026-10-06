@@ -108,7 +108,7 @@ describe("header do inbox — não trava a largura da tela", () => {
     renderHeader();
     // Se um dia alguém "resolver" o aperto colapsando ações num menu, este caso
     // reprova. Esconder ação de quem atende é pior que uma segunda linha.
-    for (const rotulo of ["Assumir", "Transferir", "Fechar"]) {
+    for (const rotulo of ["Atender agora", "Transferir", "Fechar"]) {
       expect(screen.getByText(rotulo), `a ação "${rotulo}" sumiu do header`).toBeTruthy();
     }
   });

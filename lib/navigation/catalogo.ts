@@ -138,7 +138,9 @@ export const NAV_CATALOG = [
     description: "O que está marcado, com quem, e quem atende — seu e da equipe.",
     icon: "CalendarBlank",
     group: "atendimento",
-    // Sem `sidebar` na Treenity: volta ao menu quando a Agenda estiver pronta.
+    // Voltou ao menu na Treenity a pedido do Dono (reunião de 02/10): a agenda
+    // pode ser útil, mesmo com ajustes de visual ainda por fazer.
+    sidebar: true,
   },
   {
     // Renomeado de "Templates": estes são scripts do atendente, consumidos pelo
