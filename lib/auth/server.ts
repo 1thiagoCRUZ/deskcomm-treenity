@@ -8,6 +8,7 @@ import { lerInterface } from "@/lib/navigation/interface";
  * and then filter by `user_id` (a trusted source).
  */
 import { readSupportContext } from "@/lib/impersonate/support";
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { logger } from "@/lib/logger";
@@ -104,7 +105,7 @@ export function ehSessaoAusente(error: { name?: string } | null | undefined): bo
   return error?.name === "AuthSessionMissingError";
 }
 
-export async function loadAuthUser(): Promise<AuthUser | null> {
+async function carregarUsuario(): Promise<AuthUser | null> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -278,6 +279,17 @@ export async function loadAuthUser(): Promise<AuthUser | null> {
  * Priority: cookie `active_org` (if member of) → first membership.
  * Returns null if user has zero memberships.
  */
+/**
+ * Uma leitura por RENDERIZAÇÃO, não por chamada: o layout do /app, a página e
+ * os componentes dela chamam `loadAuthUser()` cada um, e sem o `cache` cada
+ * chamada refazia a conferência na Auth do Supabase e as três consultas acima.
+ * O `cache` do React só vale dentro da renderização dos Server Components — em
+ * rotas da API e em server actions ele chama a função toda vez, como antes.
+ * Por isso uma action que muda o usuário não deixa a tela seguinte com o valor
+ * velho: a renderização que vem depois dela é outra, com cache próprio.
+ */
+export const loadAuthUser = cache(carregarUsuario);
+
 export async function resolveActiveOrg(authUser: AuthUser): Promise<ActiveOrg | null> {
   if (authUser.support) {
     if (authUser.support.status !== "active") redirect("/support-ended");
@@ -312,11 +324,12 @@ export async function requireAuth(): Promise<AuthUser> {
  * Returns true if the current session has at least one verified TOTP factor.
  * Use only in Server Components / Server Actions (cookie session).
  */
-export async function isMfaEnrolled(): Promise<boolean> {
+// Mesmo motivo do `loadAuthUser`: uma consulta por renderização.
+export const isMfaEnrolled = cache(async function isMfaEnrolled(): Promise<boolean> {
   const supabase = await createClient();
   const { data } = await supabase.auth.mfa.listFactors();
   return !!data?.totp?.some((f) => f.status === "verified");
-}
+});
 
 /**
  * Quem é OBRIGADO a cadastrar a verificação em duas etapas.

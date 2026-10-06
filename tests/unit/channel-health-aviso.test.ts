@@ -278,7 +278,9 @@ describe("os elos que somem sem barulho", () => {
     // reprova, porque foi assim que três seletores passaram a oferecer canal
     // arquivado.
     const layout = readFileSync("app/app/layout.tsx", "utf8");
-    expect(layout).toMatch(/await listarConexoesCaidas\(/);
+    // Sem exigir o `await` colado: o layout dispara as leituras em paralelo
+    // (`Promise.all`), e o que importa aqui é QUEM monta a lista.
+    expect(layout).toMatch(/listarConexoesCaidas\(/);
     expect(layout).toMatch(/<ConexaoCaidaBanner/);
     expect(layout, "tela montando o select de canais à mão").not.toMatch(
       /from\(\s*["'`]channel_sessions/,
