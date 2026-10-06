@@ -397,6 +397,7 @@ export const DICIONARIO: Traducoes = {
 
   // ─── Inbox: cabeçalho e ações da conversa ───
   Assumir: { es: "Asumir" },
+  "Atender agora": { es: "Atender ahora" },
   Liberar: { es: "Liberar" },
   Transferir: { es: "Transferir" },
   Lembrar: { es: "Recordar" },

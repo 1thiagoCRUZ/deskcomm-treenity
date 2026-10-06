@@ -215,10 +215,12 @@ export function ConversationHeader({ conversation }: Props) {
             size="sm"
             variant="default"
             disabled={claim.isPending}
-            // O rótulo NÃO muda (é contrato: `inbox-header-nao-trava` e o
-            // dicionário de espanhol o citam). O que faltava era a consequência
-            // dita: desde a 0173 assumir também para o atendimento automático, e
-            // um botão que muda duas coisas precisa anunciar as duas.
+            // "Atender agora" e não "Assumir": pedido do Dono (reunião de 02/10)
+            // — é o verbo de quem atende o cliente, não o de quem toma posse da
+            // conversa. As specs `encerramento-atendimento` e `inbox-quem-manda`
+            // clicam por este rótulo. O `title` diz a consequência: desde a 0173
+            // assumir também para o atendimento automático, e um botão que muda
+            // duas coisas precisa anunciar as duas.
             title={t("Você passa a responder esta conversa e o atendimento automático para aqui.")}
             onClick={() =>
               claim.mutate({
@@ -227,7 +229,7 @@ export function ConversationHeader({ conversation }: Props) {
               })
             }
           >
-            {t("Assumir")}
+            {t("Atender agora")}
           </Button>
         )}
         {isMineAssigned && (

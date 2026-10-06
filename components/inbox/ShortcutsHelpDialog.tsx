@@ -16,7 +16,7 @@ const BINDINGS: { keys: string; description: string }[] = [
   // exatamente quando ia precisar dele para quebrar linha.
   { keys: "Enter", description: "Enviar a mensagem" },
   { keys: "Shift + Enter", description: "Quebrar linha sem enviar" },
-  { keys: "a", description: "Assumir conversa" },
+  { keys: "a", description: "Atender agora" },
   { keys: "e", description: "Fechar conversa" },
   { keys: "?", description: "Mostrar atalhos" },
 ];
