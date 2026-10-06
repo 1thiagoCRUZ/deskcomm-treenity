@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { JanelaSelo } from "@/components/inbox/JanelaSelo";
-import { Phone, ArrowRight } from "@/lib/ui/icons";
+import { Phone, ArrowRight, Bell } from "@/lib/ui/icons";
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import { useClaimConversation } from "@/hooks/inbox/useClaimConversation";
 import { useReleaseConversation } from "@/hooks/inbox/useReleaseConversation";
@@ -15,6 +15,7 @@ import { usePauseAiAttendance } from "@/hooks/inbox/usePauseAiAttendance";
 import { useAutomaticoAtivo } from "@/hooks/ai/useAutomaticoAtivo";
 import { OwnerBadge } from "@/components/kanban/OwnerBadge";
 import { comandoDaConversa, ROTULO_DO_MOTIVO } from "@/lib/inbox/comando-da-conversa";
+import { pedidoDeEspecialistaAberto } from "@/lib/treenity-bot/pediu-especialista";
 import { ReassignDialog } from "@/components/inbox/ReassignDialog";
 import { FecharComoTerminou } from "@/components/inbox/FecharComoTerminou";
 import { useTreenityBotNoInbox } from "@/hooks/inbox/useFecharComoTerminou";
@@ -114,6 +115,11 @@ export function ConversationHeader({ conversation }: Props) {
    * pior que não oferecer nenhuma.
    */
   const podeDevolver = travaVigente;
+  const motivoDoEspecialista = pedidoDeEspecialistaAberto({
+    status: conversation.status,
+    assigned_to_user_id: conversation.assigned_to_user_id,
+    last_handoff_reason: conversation.last_handoff_reason ?? null,
+  });
   /**
    * PAUSAR só aparece quando pausar é um gesto DIFERENTE de assumir.
    *
@@ -333,6 +339,23 @@ export function ConversationHeader({ conversation }: Props) {
           </Button>
         )}
       </div>
+      {/* A faixa ocupa a linha inteira (`basis-full` dentro do `flex-wrap`) e
+          diz POR QUE o bot chamou alguém — é a primeira coisa que o
+          especialista precisa ler antes de responder. Some quando alguém
+          assume. Ver `lib/treenity-bot/pediu-especialista.ts`. */}
+      {motivoDoEspecialista !== null && (
+        <div
+          role="status"
+          data-testid="faixa-pediu-especialista"
+          className="flex basis-full items-start gap-2 rounded-md border border-warning/40 bg-warning-bg px-3 py-2 text-sm text-warning-fg"
+        >
+          <Bell size={16} weight="fill" className="mt-0.5 shrink-0" aria-hidden />
+          <p className="min-w-0">
+            <strong className="font-semibold">{t("O bot pediu um especialista.")}</strong>{" "}
+            <span className="break-words">{motivoDoEspecialista}</span>
+          </p>
+        </div>
+      )}
       <ReassignDialog
         conversationId={conversation.id}
         open={reassignOpen}

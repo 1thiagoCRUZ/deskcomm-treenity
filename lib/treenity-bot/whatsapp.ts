@@ -36,6 +36,7 @@
  * automações do Treenity Bot (ver `configuracao.ts`). A chave que o n8n usa é
  * guardada só como hash; o texto dela aparece uma vez, quando é gerada.
  */
+import { PREFIXO_DO_PEDIDO_DE_ESPECIALISTA } from "@/lib/treenity-bot/pediu-especialista";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -370,7 +371,7 @@ export async function marcarPediuAjuda(
     .update({
       bot_silenced_until: "infinity",
       last_handoff_at: new Date().toISOString(),
-      last_handoff_reason: `O bot chamou o especialista: ${pedido.motivo}`.slice(0, TAMANHO_DO_MOTIVO),
+      last_handoff_reason: `${PREFIXO_DO_PEDIDO_DE_ESPECIALISTA}${pedido.motivo}`.slice(0, TAMANHO_DO_MOTIVO),
     })
     .eq("organization_id", pedido.organizationId)
     .eq("id", (conversa as { id: string }).id);

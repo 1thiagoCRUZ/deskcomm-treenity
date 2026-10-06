@@ -5,11 +5,12 @@ import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
 import type { Locale } from "date-fns";
 import { format, formatDistanceToNowStrict } from "date-fns";
 import { useT } from "@/hooks/i18n/useT";
-import { Phone, Robot } from "@/lib/ui/icons";
+import { Bell, Phone, Robot } from "@/lib/ui/icons";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { OwnerBadge } from "@/components/kanban/OwnerBadge";
 import { comandoDaConversa } from "@/lib/inbox/comando-da-conversa";
+import { pedidoDeEspecialistaAberto } from "@/lib/treenity-bot/pediu-especialista";
 import { cn } from "@/lib/utils";
 import type { ConversationWithContact } from "@/hooks/inbox/useConversationsRealtime";
 import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
@@ -153,6 +154,14 @@ export function ConversationListItem({
     automaticoDaOrg,
   });
   const isAi = comando.quem === "automatico";
+  // O bot chamou o especialista e ninguém assumiu: a linha fica destacada até
+  // alguém assumir (pedido do Dono, 02/10). Ver `pediu-especialista.ts`.
+  const motivoDoEspecialista = pedidoDeEspecialistaAberto({
+    status: conversation.status,
+    assigned_to_user_id: conversation.assigned_to_user_id,
+    last_handoff_reason: conversation.last_handoff_reason ?? null,
+  });
+  const pediuEspecialista = motivoDoEspecialista !== null;
   const dot = COR_DO_COMANDO[comando.quem] ?? COR_DO_COMANDO.ninguem;
 
   // O número DA EMPRESA por onde esta conversa chegou — não o do cliente. Com
@@ -162,6 +171,7 @@ export function ConversationListItem({
   const rotuloCanal = canal?.phone_number ?? canal?.display_name ?? null;
 
   const temSelos =
+    pediuEspecialista ||
     visibleTags.length > 0 ||
     (mostrarAtendente && comando.quem === "humano") ||
     (mostrarCanal && rotuloCanal != null) ||
@@ -176,13 +186,17 @@ export function ConversationListItem({
       className={cn(
         "group relative flex w-full items-start gap-3 border-b border-border/70 px-3 py-2.5 text-left transition-colors hover:bg-surface-elevated",
         "focus-visible:outline-hidden focus-visible:bg-surface-elevated",
+        pediuEspecialista && !isSelected && "bg-warning-bg",
         isSelected && "bg-accent-50 hover:bg-accent-50",
       )}
+      data-pediu-especialista={pediuEspecialista ? "" : undefined}
       aria-current={isSelected ? "true" : undefined}
     >
-      {isSelected && (
+      {isSelected ? (
         <span className="absolute inset-y-0 left-0 w-0.5 bg-accent" aria-hidden />
-      )}
+      ) : pediuEspecialista ? (
+        <span className="absolute inset-y-0 left-0 w-1 bg-warning" aria-hidden />
+      ) : null}
       <div className="relative shrink-0">
         <Avatar className="h-10 w-10">
           {/* Só monta a <img> quando existe arquivo: sem isso o browser pediria
@@ -257,6 +271,16 @@ export function ConversationListItem({
 
         {temSelos && (
           <div className="mt-1.5 flex flex-wrap items-center gap-1">
+            {pediuEspecialista && (
+              <Badge
+                variant="warning"
+                className="h-4 gap-1 px-1.5 text-[10px] font-semibold"
+                title={motivoDoEspecialista ?? undefined}
+              >
+                <Bell size={9} weight="fill" aria-hidden />
+                {t("Pediu especialista")}
+              </Badge>
+            )}
             {visibleTags.map((t) => (
               <Badge key={t} variant="secondary" className="h-4 px-1.5 text-[10px]">
                 {t}
