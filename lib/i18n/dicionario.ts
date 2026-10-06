@@ -421,6 +421,8 @@ export const DICIONARIO: Traducoes = {
   "Cliente pediu para não receber mensagens": { es: "El cliente pidió no recibir mensajes" },
   "Pausar o automático": { es: "Pausar el automático" },
   "Ver contato": { es: "Ver contacto" },
+  "Pediu especialista": { es: "Pidió especialista" },
+  "O bot pediu um especialista.": { es: "El bot pidió un especialista." },
 
   // ─── Inbox: composer ───
   Responder: { es: "Responder" },

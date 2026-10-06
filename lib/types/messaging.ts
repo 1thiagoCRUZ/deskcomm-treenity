@@ -49,6 +49,12 @@ export interface Conversation {
    */
   comando_da_conversa?: string | null;
   last_handoff_at: string | null;
+  /**
+   * Por que a conversa passou para uma pessoa. Opcional porque nem toda leitura
+   * o pede; a lista do Inbox pede, para destacar o pedido de especialista do bot
+   * (`lib/treenity-bot/pediu-especialista.ts`).
+   */
+  last_handoff_reason?: string | null;
   created_at: string;
   updated_at: string;
 }
