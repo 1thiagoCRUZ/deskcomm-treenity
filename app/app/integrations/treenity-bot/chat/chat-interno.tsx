@@ -34,6 +34,7 @@ import { useT } from "@/hooks/i18n/useT";
 import { iniciaisDe } from "@/lib/treenity-bot/formatacao";
 import { cn } from "@/lib/utils";
 import {
+  marcarConversaLidaBot,
   buscarHistorico,
   buscarSessaoChat,
   conectarSocketChat,
@@ -45,6 +46,7 @@ import {
   type SessaoChatBot,
   type UsuarioBot,
 } from "@/lib/treenity-bot/chat-client";
+import { atualizarChatNaoLidas } from "@/lib/treenity-bot/chat-nao-lidas";
 
 const CHAVE_ULTIMA_CONVERSA = "treenity-bot:chat:ultima-conversa";
 const RENOVAR_SESSAO_MS = 10 * 60 * 1000;
@@ -96,6 +98,33 @@ export default function ChatInterno() {
     if (lista) setConversas(lista);
   }, []);
 
+  // Você está vendo a conversa: zera o contador dela na lista na hora e avisa a
+  // API, que é quem guarda até onde você leu; depois o selo do menu se atualiza.
+  // Só com a aba visível — mensagem que chega com a aba escondida continua nova.
+  const marcarLida = useCallback(async (id: string) => {
+    const s = sessaoRef.current;
+    if (!s || document.visibilityState !== "visible") return;
+    setConversas((prev) => prev.map((c) => (c.id === id ? { ...c, naoLidas: 0 } : c)));
+    await marcarConversaLidaBot(s, id);
+    void atualizarChatNaoLidas(s);
+  }, []);
+  const marcarLidaRef = useRef(marcarLida);
+  useEffect(() => {
+    marcarLidaRef.current = marcarLida;
+  }, [marcarLida]);
+
+  // Voltou para a aba com uma conversa aberta: o que chegou enquanto estava
+  // escondida agora foi visto.
+  useEffect(() => {
+    const aoVoltar = () => {
+      if (document.visibilityState === "visible" && conversaIdRef.current) {
+        void marcarLidaRef.current(conversaIdRef.current);
+      }
+    };
+    document.addEventListener("visibilitychange", aoVoltar);
+    return () => document.removeEventListener("visibilitychange", aoVoltar);
+  }, []);
+
   useEffect(() => {
     let cancelado = false;
     let timer: ReturnType<typeof setInterval> | undefined;
@@ -137,7 +166,12 @@ export default function ChatInterno() {
       socket.on("receive_message", (mensagem: MensagemBot) => {
         if (mensagem.conversaId !== conversaIdRef.current) return;
         setMensagens((prev) => (prev.some((m) => m.id === mensagem.id) ? prev : [...prev, mensagem]));
+        if (mensagem.remetenteId !== s.usuario.id) void marcarLidaRef.current(mensagem.conversaId);
         void recarregarConversas(); // a prévia e a ordem da lista seguem a última mensagem
+      });
+      // Mensagem nova em OUTRA conversa: a lista ganha o contador sem esperar o polling.
+      socket.on("chat_nova_mensagem", (aviso: { conversaId: string }) => {
+        if (aviso.conversaId !== conversaIdRef.current) void recarregarConversas();
       });
 
       timer = setInterval(() => void renovarSessao(), RENOVAR_SESSAO_MS);
@@ -215,6 +249,7 @@ export default function ChatInterno() {
     setConversaId(conversa.id);
     conversaIdRef.current = conversa.id;
     socketRef.current?.emit("join_chat", { conversaId: conversa.id });
+    void marcarLidaRef.current(conversa.id);
 
     const historico = await buscarHistorico(s, conversa.id);
     if (conversaIdRef.current !== conversa.id) return; // trocou de conversa no meio do caminho
@@ -265,6 +300,7 @@ export default function ChatInterno() {
         const conhecidas = new Set(prev.map((m) => m.id));
         const novas = historico.filter((m) => !conhecidas.has(m.id));
         if (novas.length === 0) return prev;
+        if (novas.some((m) => m.remetenteId !== s.usuario.id)) void marcarLidaRef.current(id);
         return [...prev, ...novas].sort((a, b) => a.criadoEm.localeCompare(b.criadoEm));
       });
     }, ATUALIZAR_CONVERSA_ABERTA_MS);
@@ -338,6 +374,7 @@ export default function ChatInterno() {
                     {comConversa.map(({ usuario, resumo }) => {
                       const ultima = resumo.ultimaMensagem;
                       const minha = ultima?.remetenteId === sessao.usuario.id;
+                      const naoLidas = usuarioSelecionado?.id === usuario.id ? 0 : (resumo.naoLidas ?? 0);
                       return (
                         <li key={usuario.id}>
                           <button
@@ -362,10 +399,26 @@ export default function ChatInterno() {
                                   </span>
                                 ) : null}
                               </div>
-                              <p className="truncate text-sm text-muted-foreground">
-                                {minha ? `${t("Você:")} ` : ""}
-                                {ultima?.conteudo ?? t("Mensagem indisponível")}
-                              </p>
+                              <div className="flex items-center justify-between gap-2">
+                                <p
+                                  className={cn(
+                                    "truncate text-sm",
+                                    naoLidas > 0 ? "font-medium text-foreground" : "text-muted-foreground",
+                                  )}
+                                >
+                                  {minha ? `${t("Você:")} ` : ""}
+                                  {ultima?.conteudo ?? t("Mensagem indisponível")}
+                                </p>
+                                {naoLidas > 0 ? (
+                                  <span
+                                    data-testid="chat-nao-lidas-conversa"
+                                    className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-accent px-1.5 text-xs font-semibold tabular-nums text-accent-foreground"
+                                    aria-label={`${naoLidas} ${t("mensagens novas")}`}
+                                  >
+                                    {naoLidas > 99 ? "99+" : naoLidas}
+                                  </span>
+                                ) : null}
+                              </div>
                             </div>
                           </button>
                         </li>
