@@ -58,10 +58,20 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  // Validate JWT server-side (NEVER use getSession on backend per CLAUDE.md).
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Valida o JWT (NUNCA getSession, que confia no cookie sem conferir).
+  //
+  // `getClaims` e não `getUser`: o projeto assina com chave assimétrica (ES256,
+  // ver /auth/v1/.well-known/jwks.json), então a assinatura e a validade são
+  // conferidas AQUI, com a chave pública em cache — sem uma ida à Auth do
+  // Supabase em todo pedido. O proxy roda em toda tela e em toda rota da API, e
+  // essa ida se somava à que a própria rota faz logo depois. Se o token venceu,
+  // `getClaims` renova a sessão como o `getUser` fazia (e grava o cookie novo).
+  //
+  // O que o `getClaims` não vê é sessão encerrada em outro lugar antes de o token
+  // vencer. Não muda a segurança: este é só o portão de entrada; quem decide
+  // acesso é `loadAuthUser`/`requireRole`, que continuam no `getUser`.
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const user = claimsData?.claims?.sub ? { id: claimsData.claims.sub } : null;
 
   if (!user) {
     // API routes must respond with JSON envelope (contract: {error:{code,message}})

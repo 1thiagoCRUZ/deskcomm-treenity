@@ -221,7 +221,7 @@ Medido em 2026-08-14 @ `741c4ec8`, com o comando ao lado de cada número:
 
 ## Regras de segurança
 
-- Sempre `getUser()` no backend. **Nunca `getSession()`** (confia no cookie sem revalidar).
+- Sempre `getUser()` no backend. **Nunca `getSession()`** (confia no cookie sem revalidar). Exceção única: o portão do `proxy.ts` usa `getClaims()` (confere a assinatura localmente); a decisão de acesso continua no `getUser()`.
 - API key/token **nunca** em query string — só header. Plaintext do bearer é mostrado
   **uma vez**; no banco só hash SHA256.
 - HMAC de webhook com `crypto.timingSafeEqual`. Fail-closed quando o secret falta.
