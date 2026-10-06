@@ -45,6 +45,8 @@ export interface ConversaResumo {
   id: string;
   atualizadoEm: string;
   outroUsuario: UsuarioBot;
+  /** Mensagens do outro que chegaram depois da sua última leitura. Ausente em API antiga. */
+  naoLidas?: number;
   ultimaMensagem: {
     id: string;
     remetenteId: string;
@@ -113,6 +115,22 @@ export async function buscarHistorico(sessao: SessaoChatBot, conversaId: string)
 }
 
 /** Abre a conexão de socket autenticada — quem chama é responsável por fechar (`socket.disconnect()`). */
+/** Total de mensagens não lidas, somando todas as conversas (selo do menu). */
+export async function totalNaoLidasBot(sessao: SessaoChatBot): Promise<number | null> {
+  const dados = await chamarApiBot<{ total: number }>(sessao, "/api/chat/nao-lidas");
+  return typeof dados?.total === "number" ? dados.total : null;
+}
+
+/** Marca a conversa como lida até agora, do seu lado. */
+export async function marcarConversaLidaBot(sessao: SessaoChatBot, conversaId: string): Promise<boolean> {
+  const dados = await chamarApiBot<{ conversaId: string }>(
+    sessao,
+    `/api/chat/conversas/${encodeURIComponent(conversaId)}/lida`,
+    { method: "POST" },
+  );
+  return dados !== null;
+}
+
 export function conectarSocketChat(sessao: SessaoChatBot): Socket {
   return io(`${sessao.apiUrl}/chat`, {
     auth: { token: sessao.accessToken },

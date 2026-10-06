@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import type { Socket } from "socket.io-client";
 import { useT } from "@/hooks/i18n/useT";
 import { buscarSessaoChat, conectarSocketChat } from "@/lib/treenity-bot/chat-client";
+import { atualizarChatNaoLidas } from "@/lib/treenity-bot/chat-nao-lidas";
 import { definirPainelAoVivo, emitirEventoDoPainel, type EventoDoPainel } from "@/lib/treenity-bot/painel-eventos";
 import { buscarVendaParaAviso, textoDoAvisoDeVenda } from "@/lib/treenity-bot/avisos";
 import { emitNotification } from "@/lib/notifications/emit";
@@ -85,7 +86,13 @@ export function TreenityBotAlertProvider() {
         // Reconexão da aba: avisos emitidos enquanto estava fora se perderam.
         if (jaConectouAntes) emitirEventoDoPainel({ tipo: "reconectado" });
         jaConectouAntes = true;
+        // Ao (re)conectar, o selo do Chat da equipe pode ter mudado enquanto a
+        // conexão estava fora.
+        void atualizarChatNaoLidas(sessao);
       });
+      // Mensagem nova no Chat da equipe, de qualquer conversa: chega pela sala
+      // pessoal do usuário na API do bot, mesmo com o chat fechado.
+      socket.on("chat_nova_mensagem", () => void atualizarChatNaoLidas(sessao));
       socket.on("disconnect", () => definirPainelAoVivo(false));
 
       // Venda nova => tarefa "Conferir pagamento PIX". Quem recebe estes avisos é

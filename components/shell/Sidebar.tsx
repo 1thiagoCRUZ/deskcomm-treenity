@@ -12,6 +12,7 @@ import { VersionFooter } from "@/components/shell/VersionFooter";
 import { logoEhSoSimbolo } from "@/lib/branding";
 import { useMarcaDaInstalacao } from "@/lib/branding/contexto";
 import { GRUPO_NO_RODAPE, sidebarGroups } from "@/lib/navigation/registry";
+import { useChatNaoLidas } from "@/lib/treenity-bot/chat-nao-lidas";
 
 const CHAVE_GRUPOS_FECHADOS = "sidebar-grupos-fechados";
 
@@ -267,6 +268,9 @@ export function SidebarContent({
                         >
                           <Icon size={18} weight={isActive ? "fill" : "regular"} aria-hidden />
                           {!collapsed && <span className="truncate">{t(item.label)}</span>}
+                          {item.href === HREF_DO_CHAT_DA_EQUIPE && (
+                            <SeloDoChat collapsed={collapsed} />
+                          )}
                           {item.healthDot && (
                             <ConnectionHealthDot
                               className={cn(collapsed ? "absolute top-1.5 right-1.5" : "ml-auto")}
@@ -410,5 +414,34 @@ function LinkDoMenu({ href, onMouseEnter, onFocus, ...props }: ComponentProps<ty
       }}
       {...props}
     />
+  );
+}
+
+const HREF_DO_CHAT_DA_EQUIPE = "/app/integrations/treenity-bot/chat";
+
+/**
+ * Quantas mensagens do Chat da equipe você ainda não leu, ao lado do item do
+ * menu — como o WhatsApp (pedido do Dono, reunião de 02/10). Quem mantém o
+ * número é `lib/treenity-bot/chat-nao-lidas.ts`; com zero, não desenha nada.
+ */
+function SeloDoChat({ collapsed }: { collapsed: boolean }) {
+  const t = useT();
+  const naoLidas = useChatNaoLidas();
+  if (naoLidas <= 0) return null;
+  const rotulo = `${naoLidas} ${t("mensagens novas")}`;
+  return collapsed ? (
+    <span
+      data-testid="selo-chat-da-equipe"
+      className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-accent"
+      aria-label={rotulo}
+    />
+  ) : (
+    <span
+      data-testid="selo-chat-da-equipe"
+      className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-xs font-semibold tabular-nums text-accent-foreground"
+      aria-label={rotulo}
+    >
+      {naoLidas > 99 ? "99+" : naoLidas}
+    </span>
   );
 }

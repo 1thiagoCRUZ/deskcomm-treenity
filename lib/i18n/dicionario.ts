@@ -422,6 +422,7 @@ export const DICIONARIO: Traducoes = {
   "Pausar o automático": { es: "Pausar el automático" },
   "Ver contato": { es: "Ver contacto" },
   "Pediu especialista": { es: "Pidió especialista" },
+  "mensagens novas": { es: "mensajes nuevos" },
   "O bot pediu um especialista.": { es: "El bot pidió un especialista." },
 
   // ─── Inbox: composer ───

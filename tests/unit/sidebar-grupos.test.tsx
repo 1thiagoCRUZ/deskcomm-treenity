@@ -9,10 +9,12 @@
  * A regra de quem-vê-o-quê é do registro e está coberta em
  * `navegacao-registry.test.ts`; aqui é a superfície.
  */
+import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
 import { Sidebar } from "@/components/shell/Sidebar";
+import { __definirChatNaoLidasParaTeste } from "@/lib/treenity-bot/chat-nao-lidas";
 import type { ActiveOrg, AuthUser } from "@/lib/auth/types";
 
 const authRef: { user: Pick<AuthUser, "is_platform_admin">; activeOrg: ActiveOrg | null } = {
@@ -174,5 +176,17 @@ describe("Sidebar agrupado", () => {
     fireEvent.mouseEnter(funis);
     expect(prefetch).toHaveBeenCalledTimes(1);
     expect(prefetch).toHaveBeenCalledWith(funis.getAttribute("href"));
+  });
+
+  it("mostra quantas mensagens do Chat da equipe você não leu, e some no zero", () => {
+    comoPapel("admin");
+    render(<Sidebar collapsed={false} />);
+    expect(screen.queryByTestId("selo-chat-da-equipe")).toBeNull();
+    act(() => __definirChatNaoLidasParaTeste(3));
+    const chat = screen.getByRole("link", { name: /Chat da equipe/ });
+    expect(chat).toContainElement(screen.getByTestId("selo-chat-da-equipe"));
+    expect(screen.getByTestId("selo-chat-da-equipe")).toHaveTextContent("3");
+    act(() => __definirChatNaoLidasParaTeste(0));
+    expect(screen.queryByTestId("selo-chat-da-equipe")).toBeNull();
   });
 });
