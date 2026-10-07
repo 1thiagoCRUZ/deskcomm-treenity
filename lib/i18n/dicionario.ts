@@ -424,6 +424,15 @@ export const DICIONARIO: Traducoes = {
   "Ver contato": { es: "Ver contacto" },
   "Pediu especialista": { es: "Pidió especialista" },
   "mensagens novas": { es: "mensajes nuevos" },
+  "Falar com a equipe": { es: "Hablar con el equipo" },
+  "Anexar cliente": { es: "Adjuntar cliente" },
+  "Quem receber vê um cartão com o cliente e abre a conversa dele no Inbox.": {
+    es: "Quien lo reciba verá una tarjeta con el cliente y abrirá su conversación en el Inbox.",
+  },
+  "Nome ou telefone do cliente": { es: "Nombre o teléfono del cliente" },
+  "Nenhum cliente encontrado.": { es: "No se encontró ningún cliente." },
+  "Remover cliente": { es: "Quitar cliente" },
+  "Vai junto na mensagem:": { es: "Va junto con el mensaje:" },
   "O bot pediu um especialista.": { es: "El bot pidió un especialista." },
 
   // ─── Inbox: composer ───

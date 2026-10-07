@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { JanelaSelo } from "@/components/inbox/JanelaSelo";
-import { Phone, ArrowRight, Bell } from "@/lib/ui/icons";
+import { Phone, ArrowRight, Bell, ChatsCircle } from "@/lib/ui/icons";
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import { useClaimConversation } from "@/hooks/inbox/useClaimConversation";
 import { useReleaseConversation } from "@/hooks/inbox/useReleaseConversation";
@@ -321,6 +321,23 @@ export function ConversationHeader({ conversation }: Props) {
           onClick={() => reopen.mutate({ conversation_id: conversation.id, expected_revision: conversation.service_revision })}>
           {t("Reabrir")}
         </Button>}
+        {/* Levar ESTA conversa para o Chat da equipe: o Dono pergunta ao
+            funcionário "por que você fez isso?" mostrando qual conversa, ou
+            avisa "fica de olho nesse cliente" (pedido de 02/10). Abre o chat
+            com o cliente já anexado; quem recebe ganha um cartão que volta
+            para cá. Só com o Treenity Bot, que é onde o chat mora. */}
+        {treenityBotNoInbox && (
+          <Button asChild size="sm" variant="ghost">
+            <Link
+              href={`/app/integrations/treenity-bot/chat?anexo=${conversation.id}&nome=${encodeURIComponent(displayName)}`}
+              className="flex items-center gap-1"
+              data-testid="falar-com-a-equipe"
+            >
+              <ChatsCircle size={14} aria-hidden />
+              {t("Falar com a equipe")}
+            </Link>
+          </Button>
+        )}
         {/* `xl:hidden` porque a partir de 1280px o painel lateral de CRM entra
             na tela — e ele já tem um "Ver contato", para o MESMO contato, a um
             palmo de distância. Duas portas idênticas na mesma tela não são
