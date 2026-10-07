@@ -47,6 +47,13 @@ import {
   type UsuarioBot,
 } from "@/lib/treenity-bot/chat-client";
 import { atualizarChatNaoLidas } from "@/lib/treenity-bot/chat-nao-lidas";
+import {
+  montarMensagemComAnexo,
+  separarAnexo,
+  type AnexoDeCliente,
+} from "@/lib/treenity-bot/anexo-de-cliente";
+import { AnexarCliente } from "@/components/treenity-bot/AnexarCliente";
+import { CartaoDoCliente } from "@/components/treenity-bot/CartaoDoCliente";
 
 const CHAVE_ULTIMA_CONVERSA = "treenity-bot:chat:ultima-conversa";
 const RENOVAR_SESSAO_MS = 10 * 60 * 1000;
@@ -64,6 +71,9 @@ export default function ChatInterno() {
   const [conversaId, setConversaId] = useState<string | null>(null);
   const [mensagens, setMensagens] = useState<MensagemBot[]>([]);
   const [texto, setTexto] = useState("");
+  // Cliente anexado à próxima mensagem. Chega pronto quando se vem do Inbox
+  // ("Falar com a equipe" → ?anexo=<conversa>&nome=<cliente>) ou pelo clipe.
+  const [anexo, setAnexo] = useState<AnexoDeCliente | null>(null);
   const [conectado, setConectado] = useState(false);
   const [entrou, setEntrou] = useState(false);
   const [abrindo, setAbrindo] = useState(false);
@@ -81,6 +91,19 @@ export default function ChatInterno() {
   useEffect(() => {
     tRef.current = t;
   }, [t]);
+
+  // Veio do Inbox com um cliente para mostrar: anexa e tira da URL, para que
+  // recarregar a página não anexe de novo depois de enviado.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const conversaId = params.get("anexo");
+    if (!conversaId || !/^[0-9a-f-]{36}$/i.test(conversaId)) return;
+    setAnexo({ conversaId, nome: params.get("nome")?.trim() || tRef.current("Cliente") });
+    params.delete("anexo");
+    params.delete("nome");
+    const resto = params.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${resto ? `?${resto}` : ""}`);
+  }, []);
 
   const renovarSessao = useCallback(async () => {
     const nova = await buscarSessaoChat();
@@ -165,7 +188,9 @@ export default function ChatInterno() {
       });
       socket.on("receive_message", (mensagem: MensagemBot) => {
         if (mensagem.conversaId !== conversaIdRef.current) return;
-        setMensagens((prev) => (prev.some((m) => m.id === mensagem.id) ? prev : [...prev, mensagem]));
+        setMensagens((prev) =>
+          prev.some((m) => m.id === mensagem.id) ? prev : [...prev, mensagem],
+        );
         if (mensagem.remetenteId !== s.usuario.id) void marcarLidaRef.current(mensagem.conversaId);
         void recarregarConversas(); // a prévia e a ordem da lista seguem a última mensagem
       });
@@ -321,11 +346,12 @@ export default function ChatInterno() {
 
   function enviarMensagem(e: React.FormEvent) {
     e.preventDefault();
-    const conteudo = texto.trim();
-    if (!conteudo || !conversaId || !conectado || !entrou) return;
+    if ((!texto.trim() && !anexo) || !conversaId || !conectado || !entrou) return;
+    const conteudo = montarMensagemComAnexo(texto, anexo);
     forcarFimRef.current = true;
     socketRef.current?.emit("send_message", { conversaId, conteudo });
     setTexto("");
+    setAnexo(null);
   }
 
   if (carregando) {
@@ -336,7 +362,9 @@ export default function ChatInterno() {
     return (
       <Card className="h-full">
         <CardContent className="p-6 text-base text-muted-foreground">
-          {t("Não foi possível conectar ao chat do Treenity Bot agora. Confira se a API está no ar.")}
+          {t(
+            "Não foi possível conectar ao chat do Treenity Bot agora. Confira se a API está no ar.",
+          )}
         </CardContent>
       </Card>
     );
@@ -367,14 +395,15 @@ export default function ChatInterno() {
             <>
               {comConversa.length > 0 ? (
                 <section>
-                  <h3 className="px-5 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <h3 className="px-5 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                     {t("Conversas")}
                   </h3>
                   <ul className="space-y-1 p-2.5 pt-1">
                     {comConversa.map(({ usuario, resumo }) => {
                       const ultima = resumo.ultimaMensagem;
                       const minha = ultima?.remetenteId === sessao.usuario.id;
-                      const naoLidas = usuarioSelecionado?.id === usuario.id ? 0 : (resumo.naoLidas ?? 0);
+                      const naoLidas =
+                        usuarioSelecionado?.id === usuario.id ? 0 : (resumo.naoLidas ?? 0);
                       return (
                         <li key={usuario.id}>
                           <button
@@ -403,16 +432,20 @@ export default function ChatInterno() {
                                 <p
                                   className={cn(
                                     "truncate text-sm",
-                                    naoLidas > 0 ? "font-medium text-foreground" : "text-muted-foreground",
+                                    naoLidas > 0
+                                      ? "font-medium text-foreground"
+                                      : "text-muted-foreground",
                                   )}
                                 >
                                   {minha ? `${t("Você:")} ` : ""}
-                                  {ultima?.conteudo ?? t("Mensagem indisponível")}
+                                  {ultima?.conteudo != null
+                                    ? previaSemCaminho(ultima.conteudo)
+                                    : t("Mensagem indisponível")}
                                 </p>
                                 {naoLidas > 0 ? (
                                   <span
                                     data-testid="chat-nao-lidas-conversa"
-                                    className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-accent px-1.5 text-xs font-semibold tabular-nums text-accent-foreground"
+                                    className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-accent px-1.5 text-xs font-semibold text-accent-foreground tabular-nums"
                                     aria-label={`${naoLidas} ${t("mensagens novas")}`}
                                   >
                                     {naoLidas > 99 ? "99+" : naoLidas}
@@ -430,7 +463,7 @@ export default function ChatInterno() {
 
               {semConversa.length > 0 ? (
                 <section>
-                  <h3 className="px-5 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <h3 className="px-5 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                     {comConversa.length > 0 ? t("Outras pessoas") : t("Pessoas")}
                   </h3>
                   <ul className="space-y-1 p-2.5 pt-1">
@@ -449,7 +482,9 @@ export default function ChatInterno() {
                               {iniciaisDe(usuario.nome)}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="min-w-0 flex-1 truncate font-semibold">{rotuloDe(usuario)}</span>
+                          <span className="min-w-0 flex-1 truncate font-semibold">
+                            {rotuloDe(usuario)}
+                          </span>
                           <Badge variant="secondary" className="shrink-0 text-xs">
                             {usuario.papel === "admin" ? t("Admin") : t("Equipe")}
                           </Badge>
@@ -471,6 +506,12 @@ export default function ChatInterno() {
             <p className="text-base font-medium text-text-muted">
               {t("Escolha alguém à esquerda para conversar.")}
             </p>
+            {anexo ? (
+              <div className="w-full max-w-sm text-left">
+                <p className="mb-2 text-sm text-muted-foreground">{t("Vai junto na mensagem:")}</p>
+                <CartaoDoCliente anexo={anexo} onRemover={() => setAnexo(null)} />
+              </div>
+            ) : null}
           </div>
         ) : (
           <>
@@ -481,7 +522,9 @@ export default function ChatInterno() {
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <span className="block truncate text-lg font-semibold">{rotuloDe(usuarioSelecionado)}</span>
+                <span className="block truncate text-lg font-semibold">
+                  {rotuloDe(usuarioSelecionado)}
+                </span>
                 {!conectado ? (
                   <span className="block text-xs text-warning-fg">{t("Reconectando…")}</span>
                 ) : null}
@@ -496,7 +539,9 @@ export default function ChatInterno() {
               {erroAoAbrir ? (
                 <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
                   <p className="text-base text-muted-foreground">
-                    {t("Não foi possível carregar esta conversa agora. Suas mensagens continuam salvas.")}
+                    {t(
+                      "Não foi possível carregar esta conversa agora. Suas mensagens continuam salvas.",
+                    )}
                   </p>
                   <Button variant="secondary" size="sm" onClick={() => void tentarDeNovo()}>
                     {t("Tentar de novo")}
@@ -513,10 +558,14 @@ export default function ChatInterno() {
               ) : (
                 mensagens.map((mensagem) => {
                   const minha = mensagem.remetenteId === sessao.usuario.id;
+                  const partes = separarAnexo(mensagem.conteudo);
                   return (
                     <div
                       key={mensagem.id}
-                      className={cn("flex w-full px-2 py-1.5", minha ? "justify-end" : "justify-start")}
+                      className={cn(
+                        "flex w-full px-2 py-1.5",
+                        minha ? "justify-end" : "justify-start",
+                      )}
                     >
                       <div
                         className={cn(
@@ -526,7 +575,16 @@ export default function ChatInterno() {
                             : "rounded-bl-sm bg-muted text-foreground",
                         )}
                       >
-                        <p className="whitespace-pre-wrap break-words leading-relaxed">{mensagem.conteudo}</p>
+                        {partes.texto ? (
+                          <p className="leading-relaxed break-words whitespace-pre-wrap">
+                            {partes.texto}
+                          </p>
+                        ) : null}
+                        {partes.anexo ? (
+                          <div className={cn(partes.texto && "mt-2")}>
+                            <CartaoDoCliente anexo={partes.anexo} minha={minha} />
+                          </div>
+                        ) : null}
                         <div
                           className={cn(
                             "mt-1 text-right text-xs",
@@ -545,26 +603,45 @@ export default function ChatInterno() {
               )}
             </div>
 
-            <form onSubmit={enviarMensagem} className="flex items-center gap-3 border-t border-border p-4">
-              <Input
-                value={texto}
-                onChange={(e) => setTexto(e.target.value)}
-                placeholder={podeEnviar ? t("Escreva uma mensagem...") : t("Conectando…")}
-                autoComplete="off"
-                className="h-11 text-base"
-              />
-              <Button
-                type="submit"
-                size="icon"
-                className="h-11 w-11 shrink-0"
-                disabled={!texto.trim() || !podeEnviar}
-              >
-                <PaperPlaneTilt size={18} weight="fill" aria-hidden />
-              </Button>
+            <form onSubmit={enviarMensagem} className="border-t border-border p-4">
+              {anexo ? (
+                <div className="mb-3">
+                  <CartaoDoCliente anexo={anexo} onRemover={() => setAnexo(null)} />
+                </div>
+              ) : null}
+              <div className="flex items-center gap-3">
+                <AnexarCliente onEscolher={setAnexo} disabled={!podeEnviar} />
+                <Input
+                  value={texto}
+                  onChange={(e) => setTexto(e.target.value)}
+                  placeholder={podeEnviar ? t("Escreva uma mensagem...") : t("Conectando…")}
+                  autoComplete="off"
+                  className="h-11 text-base"
+                />
+                <Button
+                  type="submit"
+                  size="icon"
+                  className="h-11 w-11 shrink-0"
+                  disabled={(!texto.trim() && !anexo) || !podeEnviar}
+                >
+                  <PaperPlaneTilt size={18} weight="fill" aria-hidden />
+                </Button>
+              </div>
             </form>
           </>
         )}
       </div>
     </div>
   );
+}
+
+/**
+ * Prévia da lista sem o caminho do anexo: "📎 João · /app/inbox?id=…" vira
+ * "📎 João". A prévia vem cortada em 140 caracteres pela API, então a linha do
+ * anexo pode chegar pela metade — por isso um corte no separador, e não o
+ * `separarAnexo` (que exige a linha inteira).
+ */
+function previaSemCaminho(conteudo: string): string {
+  const i = conteudo.indexOf(" · /app/inbox");
+  return i === -1 ? conteudo : conteudo.slice(0, i);
 }
