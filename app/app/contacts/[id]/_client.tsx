@@ -20,6 +20,7 @@ import { TimelineView } from "@/components/contacts/TimelineView";
 import { EditContactDialog } from "@/components/contacts/EditContactDialog";
 import { AnonymizeDialog } from "@/components/contacts/AnonymizeDialog";
 import { PropostasDeDado } from "@/components/contacts/PropostasDeDado";
+import { DadosDeNota } from "@/components/contacts/DadosDeNota";
 import { ConversaNoDossie } from "@/components/kanban/ConversaNoDossie";
 import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { phoneForDisplay } from "@/lib/channels/phone-variants";
@@ -187,6 +188,7 @@ export function ContactDetailClient({ contactId }: Props) {
               </div>
             </dl>
           </Card>
+          <DadosDeNota contactId={contact.id} />
         </TabsContent>
 
         <TabsContent value="timeline" className="mt-4">

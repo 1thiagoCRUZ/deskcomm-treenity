@@ -79,6 +79,11 @@ vi.mock("@/lib/supabase/admin", () => ({
           updates.push({ tabela, patch });
           return { error: null };
         }),
+      delete: () =>
+        chain(async () => {
+          ops.push(`delete:${tabela}`);
+          return { error: null, count: 1 };
+        }),
     }),
     storage: {
       from: (bucket: string) => ({
@@ -192,6 +197,16 @@ describe("cascadeRedactContact — foto de perfil", () => {
 
     expect(updates.find((u) => u.tabela === "contacts")).toBeUndefined();
     expect(ops).not.toContain("rpc");
+  });
+});
+
+describe("cascadeRedactContact — dados para nota e envio", () => {
+  it("apaga os dados de nota (CPF, endereço) antes da cascata e conta no resultado", async () => {
+    const r = await cascadeRedactContact({ organizationId: ORG, contactId: CONTATO, requestId: PEDIDO });
+    const apagou = ops.indexOf("delete:contato_dados_de_nota");
+    expect(apagou).toBeGreaterThanOrEqual(0);
+    expect(apagou).toBeLessThan(ops.indexOf("rpc"));
+    expect(r.counts.dados_de_nota).toBe(1);
   });
 });
 
