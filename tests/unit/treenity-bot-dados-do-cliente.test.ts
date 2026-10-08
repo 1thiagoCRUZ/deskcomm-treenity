@@ -97,4 +97,11 @@ describe("dados do cliente pelo bot", () => {
     expect(corpo.error.message).toContain("CPF inválido");
     expect(estado.gravado).toBeNull();
   });
+
+  it("campo em branco vindo do bot não apaga o que já está guardado", async () => {
+    const r = await POST(post({ id_face: "5514999990000", cidade: "Garça", cpf: "", email: "  ", nome: null }));
+    expect(r.status).toBe(200);
+    const entrada = (estado.gravado as { entrada: Record<string, unknown> }).entrada;
+    expect(entrada).toEqual({ cidade: "Garça" });
+  });
 });

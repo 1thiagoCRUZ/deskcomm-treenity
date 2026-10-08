@@ -67,7 +67,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const c = await contexto(req, corpo?.id_face);
   if ("resposta" in c) return c.resposta!;
 
-  const { id_face: _idFace, ...campos } = corpo ?? {};
+  const { id_face: _idFace, ...enviados } = corpo ?? {};
+  // Pelo bot, campo vazio é "o cliente não disse", NUNCA "apague": a ferramenta
+  // do n8n pode mandar o parâmetro opcional em branco, e isso não pode zerar o
+  // CPF que já estava guardado. Apagar é só pela tela, pela equipe.
+  const campos = Object.fromEntries(
+    Object.entries(enviados).filter(([, v]) => v !== null && v !== undefined && String(v).trim() !== ""),
+  );
   const entrada = dadosDeNotaEntradaSchema.safeParse(campos);
   if (!entrada.success) {
     return NextResponse.json(
