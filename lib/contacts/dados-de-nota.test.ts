@@ -33,6 +33,7 @@ const linha = (mudanca: Partial<LinhaDadosDeNota> = {}): LinhaDadosDeNota => ({
   propriedade_ie: null,
   propriedade_cep: null,
   propriedade_endereco: null,
+  transportadora_preferida: "Sedex",
   preenchido_por: "bot",
   updated_at: "2026-10-07T12:00:00Z",
   ...mudanca,
@@ -88,22 +89,28 @@ describe("o que falta e o que o bot vê", () => {
     expect(camposFaltando(null)).toHaveLength(8);
   });
 
-  it("o bot recebe uma frase para confirmar, sem CPF, e-mail ou endereço", () => {
-    const r = resumoParaOBot(linha());
-    expect(r).toEqual({
-      tem_dados: true,
-      faltando: [],
-      confirmar: "nome João da Silva, entrega em Marília/SP, CEP 17500-000",
-      tem_propriedade: false,
-    });
+  it("o bot recebe os dados MASCARADOS para o cliente conferir, mais CEP e transportadora", () => {
+    const r = resumoParaOBot(linha({ propriedade_nome: "Fazenda Boa Vista", propriedade_cnpj: "12345678000195" }));
+    expect(r.dados_mascarados).toBe(
+      [
+        "Nome: João da Silva",
+        "CPF: ***.***.***-25",
+        "Telefone: (14) *****-0000",
+        "E-mail: j*****@exemplo.com",
+        "Entrega: Rua A, 10, Marília/SP, CEP 17500-000",
+        "Propriedade na nota: Fazenda Boa Vista, CNPJ **.***.***/****-95",
+      ].join("\n"),
+    );
+    expect(r).toMatchObject({ tem_dados: true, faltando: [], cep: "17500000", transportadora_preferida: "Sedex", tem_propriedade: true });
     const tudo = JSON.stringify(r);
     expect(tudo).not.toContain(CPF);
     expect(tudo).not.toContain("joao@exemplo.com");
-    expect(tudo).not.toContain("Rua A");
+    expect(tudo).not.toContain("14999990000");
+    expect(tudo).not.toContain("12345678000195");
   });
 
   it("cliente novo: nada para confirmar, tudo para pedir", () => {
-    expect(resumoParaOBot(null)).toMatchObject({ tem_dados: false, confirmar: null });
+    expect(resumoParaOBot(null)).toMatchObject({ tem_dados: false, dados_mascarados: null, transportadora_preferida: null });
     expect(resumoParaOBot(null).faltando).toContain("CPF");
   });
 });

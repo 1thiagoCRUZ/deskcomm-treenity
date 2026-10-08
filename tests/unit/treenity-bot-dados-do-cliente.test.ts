@@ -9,6 +9,12 @@ import { NextRequest } from "next/server";
 vi.mock("@/lib/env", () => ({ env: { CPF_ENCRYPTION_KEY: "chave-de-teste" } }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({}) }));
 vi.mock("@/lib/audit", () => ({ audit: vi.fn(async () => {}) }));
+const agendados: Array<() => Promise<void>> = [];
+vi.mock("next/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/server")>()),
+  after: (fn: () => Promise<void>) => agendados.push(fn),
+}));
+const mascarar = vi.fn(async () => ({ inbox: 1 }));
 vi.mock("@/lib/logger", () => ({ logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() } }));
 
 const estado = {
@@ -28,6 +34,7 @@ vi.mock("@/lib/contacts/dados-de-nota", async (importOriginal) => {
   return {
     ...real,
     lerDadosDeNota: async () => null,
+    mascararCpfNasConversas: (...args: unknown[]) => mascarar(...(args as [])),
     gravarDadosDeNota: async (_db: unknown, org: string, contato: string, entrada: Record<string, unknown>) => {
       estado.gravado = { org, contato, entrada };
       return {
@@ -35,7 +42,7 @@ vi.mock("@/lib/contacts/dados-de-nota", async (importOriginal) => {
         nome: "João", cpf_cifrado: "x.y.z", cpf_final: "25", telefone: null, email: null,
         cep: "17500000", endereco: null, cidade: "Marília", estado: "SP",
         propriedade_nome: null, propriedade_cnpj: null, propriedade_ie: null,
-        propriedade_cep: null, propriedade_endereco: null, preenchido_por: "bot", updated_at: "",
+        propriedade_cep: null, propriedade_endereco: null, transportadora_preferida: null, preenchido_por: "bot", updated_at: "",
       };
     },
   };
@@ -55,6 +62,8 @@ beforeEach(() => {
   estado.chaveValida = true;
   estado.contato = { id: "ct-1", phone_number: "+5514999990000" };
   estado.gravado = null;
+  agendados.length = 0;
+  mascarar.mockClear();
 });
 
 describe("dados do cliente pelo bot", () => {
@@ -103,5 +112,27 @@ describe("dados do cliente pelo bot", () => {
     expect(r.status).toBe(200);
     const entrada = (estado.gravado as { entrada: Record<string, unknown> }).entrada;
     expect(entrada).toEqual({ cidade: "Garça" });
+  });
+
+  it("com CPF: mascara nas conversas na hora e agenda mais passadas depois da resposta", async () => {
+    vi.useFakeTimers();
+    try {
+      await POST(post({ id_face: "5514999990000", cpf: "529.982.247-25" }));
+      expect(mascarar).toHaveBeenCalledTimes(1);
+      expect(mascarar).toHaveBeenCalledWith({}, "org-1", "ct-1", "52998224725");
+      expect(agendados).toHaveLength(1);
+      const rodando = agendados[0]!();
+      await vi.runAllTimersAsync();
+      await rodando;
+      expect(mascarar).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("sem CPF: não mexe nas conversas", async () => {
+    await POST(post({ id_face: "5514999990000", cidade: "Garça" }));
+    expect(mascarar).not.toHaveBeenCalled();
+    expect(agendados).toHaveLength(0);
   });
 });

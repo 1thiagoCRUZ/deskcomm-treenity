@@ -1,9 +1,9 @@
 /**
  * Dados para nota e envio, pelo BOT (n8n), no fechamento da venda.
  *
- *   GET  ?id_face=5514…   → o que já existe, SEM CPF: `tem_dados`, `faltando`,
- *                           e uma frase para confirmar ("nome X, entrega em
- *                           Cidade/UF, CEP …") na compra seguinte.
+ *   GET  ?id_face=5514…   → o que já existe, MASCARADO (`dados_mascarados`),
+ *                           para o cliente conferir na compra seguinte, mais o
+ *                           CEP e a transportadora preferida para refazer o frete.
  *   POST { id_face, ...campos } → grava o que o cliente respondeu. `telefone`
  *                           nos campos é o telefone PARA A NOTA, não a busca.
  *
@@ -12,7 +12,7 @@
  * WhatsApp do cliente), como em `pediu-ajuda`. Erro de validação volta em português simples
  * em `faltou`/`message`, porque quem lê é o modelo, que repassa ao cliente.
  */
-import { NextResponse, type NextRequest } from "next/server";
+import { after, NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { audit } from "@/lib/audit";
 import { encontrarContatoPorTelefone } from "@/lib/channels/contato-por-telefone";
@@ -21,6 +21,7 @@ import {
   dadosDeNotaEntradaSchema,
   gravarDadosDeNota,
   lerDadosDeNota,
+  mascararCpfNasConversas,
   resumoParaOBot,
 } from "@/lib/contacts/dados-de-nota";
 import { logger } from "@/lib/logger";
@@ -29,6 +30,11 @@ import { organizacaoPelaChave } from "@/lib/treenity-bot/whatsapp";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+// As passadas de mascarar o CPF rodam até ~2 min depois da resposta (`after`).
+export const maxDuration = 300;
+
+/** 45 s e mais 75 s (2 min no total): o tempo de o Cadu responder e o CRM gravar. */
+const ESPERAS_PARA_MASCARAR_DE_NOVO_MS = [45_000, 75_000];
 
 const idFaceSchema = z.string().trim().min(8).max(32);
 
@@ -90,6 +96,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   try {
     const linha = await gravarDadosDeNota(c.admin, c.organizationId, c.contactId, entrada.data, "bot");
+    const cpf = entrada.data.cpf;
+    if (cpf) {
+      // O CPF já está guardado cifrado; agora ele sai do TEXTO das conversas.
+      // Na hora pega o Inbox. A mensagem desta vez nas tabelas do bot e na
+      // memória do Cadu só é gravada DEPOIS que ele responde (o CRM do n8n roda
+      // depois do envio) — por isso mais duas passadas, depois da resposta.
+      await mascararCpfNasConversas(c.admin, c.organizationId, c.contactId, cpf);
+      after(async () => {
+        for (const esperaMs of ESPERAS_PARA_MASCARAR_DE_NOVO_MS) {
+          await new Promise((r) => setTimeout(r, esperaMs));
+          await mascararCpfNasConversas(c.admin, c.organizationId, c.contactId, cpf);
+        }
+      });
+    }
     await audit({
       action: "contact.dados_de_nota_updated",
       organizationId: c.organizationId,

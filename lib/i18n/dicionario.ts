@@ -441,6 +441,8 @@ export const DICIONARIO: Traducoes = {
   "O CPF fica guardado cifrado e só aparece inteiro quando alguém pede para mostrar.": { es: "El CPF se guarda cifrado y solo aparece completo cuando alguien pide mostrarlo." },
   "O bot pede no fechamento da venda. A equipe também pode preencher.": { es: "El bot lo pide al cerrar la venta. El equipo también puede completarlo." },
   "Preencher": { es: "Completar" },
+  "Transportadora preferida": { es: "Transportadora preferida" },
+  "Só o Dono pode ver o CPF inteiro.": { es: "Solo el Dueño puede ver el CPF completo." },
   "Preenchido pela equipe.": { es: "Completado por el equipo." },
   "Preenchido pelo bot no fechamento da venda.": { es: "Completado por el bot al cerrar la venta." },
   "Propriedade (opcional, vai na nota)": { es: "Propiedad (opcional, va en la factura)" },
