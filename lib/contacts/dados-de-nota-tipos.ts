@@ -45,6 +45,7 @@ export interface DadosDeNotaParaTela {
   propriedade_ie: string | null;
   propriedade_cep: string | null;
   propriedade_endereco: string | null;
+  transportadora_preferida: string | null;
   preenchido_por: "bot" | "equipe";
   atualizado_em: string;
   faltando: CampoObrigatorio[];

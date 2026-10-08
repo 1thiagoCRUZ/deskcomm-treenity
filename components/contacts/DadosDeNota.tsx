@@ -25,6 +25,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useT } from "@/hooks/i18n/useT";
+import { useAuth } from "@/hooks/auth/AuthProvider";
 import { apiClient } from "@/lib/api/client";
 import { ROTULO_DO_CAMPO, type DadosDeNotaParaTela } from "@/lib/contacts/dados-de-nota-tipos";
 
@@ -49,6 +50,7 @@ const DO_CLIENTE: Campo[] = [
   { chave: "endereco", rotulo: "Endereço" },
   { chave: "cidade", rotulo: "Cidade" },
   { chave: "estado", rotulo: "Estado" },
+  { chave: "transportadora_preferida", rotulo: "Transportadora preferida" },
 ];
 
 const DA_PROPRIEDADE: Campo[] = [
@@ -65,6 +67,9 @@ export function DadosDeNota({ contactId }: { contactId: string }) {
   const t = useT();
   const [editando, setEditando] = useState(false);
   const [cpfRevelado, setCpfRevelado] = useState<string | null>(null);
+  // Ver o CPF inteiro é só do Dono (decisão de 08/10); a rota recusa os demais.
+  const { activeOrg } = useAuth();
+  const podeVerCpf = activeOrg?.role === "admin";
 
   const q = useQuery({
     queryKey: chaveDaConsulta(contactId),
@@ -134,7 +139,7 @@ export function DadosDeNota({ contactId }: { contactId: string }) {
                 <dt className="text-xs uppercase text-muted-foreground">{t(campo.rotulo)}</dt>
                 <dd className="mt-1 flex items-center gap-2">
                   <span>{valor(campo)}</span>
-                  {campo.chave === "cpf" && dados?.cpf_mascarado && !cpfRevelado ? (
+                  {campo.chave === "cpf" && podeVerCpf && dados?.cpf_mascarado && !cpfRevelado ? (
                     <button
                       type="button"
                       onClick={() => void revelarCpf()}

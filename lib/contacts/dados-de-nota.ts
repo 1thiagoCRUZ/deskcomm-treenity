@@ -24,6 +24,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { env } from "@/lib/env";
 import { isValidCpf } from "@/lib/schemas/contacts";
+import { logger } from "@/lib/logger";
 import {
   CAMPOS_OBRIGATORIOS,
   ROTULO_DO_CAMPO,
@@ -108,6 +109,8 @@ export const dadosDeNotaEntradaSchema = z.object({
     .optional()
     .refine((v) => v == null || v.length === 8, { message: "CEP da propriedade precisa ter 8 dígitos." }),
   propriedade_endereco: texto(300),
+  /** A transportadora que ele escolheu (ex.: "Sedex"). O VALOR do frete não se guarda: muda a cada pedido. */
+  transportadora_preferida: texto(60),
 });
 
 export type DadosDeNotaEntrada = z.infer<typeof dadosDeNotaEntradaSchema>;
@@ -131,6 +134,7 @@ export interface LinhaDadosDeNota {
   propriedade_ie: string | null;
   propriedade_cep: string | null;
   propriedade_endereco: string | null;
+  transportadora_preferida: string | null;
   preenchido_por: "bot" | "equipe";
   updated_at: string;
 }
@@ -199,42 +203,85 @@ export function paraTela(linha: LinhaDadosDeNota, revelarCpf = false): DadosDeNo
     propriedade_ie: linha.propriedade_ie,
     propriedade_cep: linha.propriedade_cep,
     propriedade_endereco: linha.propriedade_endereco,
+    transportadora_preferida: linha.transportadora_preferida,
     preenchido_por: linha.preenchido_por,
     atualizado_em: linha.updated_at,
     faltando: camposFaltando(linha),
   };
 }
 
+export function mascararTelefone(tel: string | null): string | null {
+  if (!tel) return null;
+  const d = soDigitos(tel).replace(/^55(?=\d{10,11}$)/, "");
+  if (d.length < 8) return "*****";
+  const ddd = d.length >= 10 ? `(${d.slice(0, 2)}) ` : "";
+  return `${ddd}*****-${d.slice(-4)}`;
+}
+
+export function mascararEmail(email: string | null): string | null {
+  if (!email) return null;
+  const [usuario, dominio] = email.split("@");
+  if (!usuario || !dominio) return "*****";
+  return `${usuario.slice(0, 1)}*****@${dominio}`;
+}
+
+export function mascararCnpj(cnpj: string | null): string | null {
+  return cnpj && cnpj.length === 14 ? `**.***.***/****-${cnpj.slice(-2)}` : cnpj ? "*****" : null;
+}
+
+const cepFormatado = (cep: string) => (cep.length === 8 ? `${cep.slice(0, 5)}-${cep.slice(5)}` : cep);
+
 /**
- * O que o BOT recebe para confirmar na compra seguinte. Sem CPF, sem e-mail,
- * sem endereço completo: o suficiente para perguntar "continua o mesmo?"
- * sem repetir dado pessoal numa conversa de WhatsApp.
+ * O que o BOT recebe na compra seguinte, para o cliente CONFERIR de olho e só
+ * responder "sim" (sugestão do usuário, 08/10). O que identifica a pessoa vai
+ * MASCARADO — CPF, telefone, e-mail, CNPJ —, porque a mensagem fica no celular
+ * dele e pode ser vista por outra pessoa. O endereço vai inteiro: é o que ele
+ * precisa conferir, e o que mais muda. `cep` vai em dígitos para o bot
+ * recalcular o frete (o valor muda a cada pedido; só a transportadora se repete).
  */
 export function resumoParaOBot(linha: LinhaDadosDeNota | null): {
   tem_dados: boolean;
   faltando: string[];
-  confirmar: string | null;
+  dados_mascarados: string | null;
+  cep: string | null;
+  transportadora_preferida: string | null;
   tem_propriedade: boolean;
 } {
   if (!linha) {
     return {
       tem_dados: false,
       faltando: CAMPOS_OBRIGATORIOS.map((c) => ROTULO_DO_CAMPO[c]),
-      confirmar: null,
+      dados_mascarados: null,
+      cep: null,
+      transportadora_preferida: null,
       tem_propriedade: false,
     };
   }
-  const faltando = camposFaltando(linha).map((c) => ROTULO_DO_CAMPO[c]);
-  const partes = [
-    linha.nome ? `nome ${linha.nome}` : null,
-    linha.cidade && linha.estado ? `entrega em ${linha.cidade}/${linha.estado}` : null,
-    linha.cep ? `CEP ${linha.cep.slice(0, 5)}-${linha.cep.slice(5)}` : null,
+  const entrega = [
+    linha.endereco,
+    linha.cidade && linha.estado ? `${linha.cidade}/${linha.estado}` : (linha.cidade ?? linha.estado),
+    linha.cep ? `CEP ${cepFormatado(linha.cep)}` : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  const temPropriedade = Boolean(linha.propriedade_nome || linha.propriedade_cnpj);
+  const linhas = [
+    linha.nome ? `Nome: ${linha.nome}` : null,
+    linha.cpf_final ? `CPF: ${mascararCpf(linha.cpf_final)}` : null,
+    linha.telefone ? `Telefone: ${mascararTelefone(linha.telefone)}` : null,
+    linha.email ? `E-mail: ${mascararEmail(linha.email)}` : null,
+    entrega ? `Entrega: ${entrega}` : null,
+    temPropriedade
+      ? `Propriedade na nota: ${[linha.propriedade_nome, linha.propriedade_cnpj ? `CNPJ ${mascararCnpj(linha.propriedade_cnpj)}` : null].filter(Boolean).join(", ")}`
+      : null,
   ].filter(Boolean);
   return {
     tem_dados: true,
-    faltando,
-    confirmar: partes.length ? partes.join(", ") : null,
-    tem_propriedade: Boolean(linha.propriedade_nome || linha.propriedade_cnpj),
+    faltando: camposFaltando(linha).map((c) => ROTULO_DO_CAMPO[c]),
+    dados_mascarados: linhas.length ? linhas.join("\n") : null,
+    cep: linha.cep,
+    transportadora_preferida: linha.transportadora_preferida,
+    tem_propriedade: temPropriedade,
   };
 }
 
@@ -258,7 +305,7 @@ export function colunasParaGravar(entrada: DadosDeNotaEntrada): Record<string, s
 // ---------------------------------------------------------------------------
 
 const COLUNAS =
-  "id, organization_id, contact_id, nome, cpf_cifrado, cpf_final, telefone, email, cep, endereco, cidade, estado, propriedade_nome, propriedade_cnpj, propriedade_ie, propriedade_cep, propriedade_endereco, preenchido_por, updated_at";
+  "id, organization_id, contact_id, nome, cpf_cifrado, cpf_final, telefone, email, cep, endereco, cidade, estado, propriedade_nome, propriedade_cnpj, propriedade_ie, propriedade_cep, propriedade_endereco, transportadora_preferida, preenchido_por, updated_at";
 
 export async function lerDadosDeNota(
   db: SupabaseClient,
@@ -310,4 +357,32 @@ export function camposAlterados(entrada: DadosDeNotaEntrada): string[] {
   return Object.entries(entrada)
     .filter(([, v]) => v !== undefined)
     .map(([k]) => k);
+}
+
+/**
+ * Troca o CPF por `***.***.***-NN` nas conversas guardadas (Inbox e, quando
+ * existem, as tabelas do bot) — ver `fn_mascarar_cpf_nas_conversas`, migration
+ * 0237. Falha ABERTA: os dados de nota já foram gravados, e um erro aqui não
+ * pode desfazer isso; fica no log para ser refeito.
+ */
+export async function mascararCpfNasConversas(
+  admin: SupabaseClient,
+  organizationId: string,
+  contactId: string,
+  cpf: string,
+): Promise<Record<string, number> | null> {
+  const { data, error } = await admin.rpc("fn_mascarar_cpf_nas_conversas", {
+    p_organization_id: organizationId,
+    p_contact_id: contactId,
+    p_cpf: cpf,
+  });
+  if (error) {
+    logger.error("[dados-de-nota] CPF não foi mascarado nas conversas", {
+      organization_id: organizationId,
+      contact_id: contactId,
+      detail: error.message.slice(0, 160),
+    });
+    return null;
+  }
+  return (data as Record<string, number> | null) ?? null;
 }
