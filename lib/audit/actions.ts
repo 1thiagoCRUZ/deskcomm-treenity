@@ -56,6 +56,10 @@ export const AUDIT_ACTIONS = [
   "lead.imported",
   "contact.created",
   "contact.updated",
+  // Dados para nota e envio (CPF, endereço, propriedade): quem gravou, e quem
+  // REVELOU o CPF inteiro na tela — o valor nunca vai para o audit.
+  "contact.dados_de_nota_updated",
+  "contact.cpf_revealed",
   "contacts.imported",
   "contact.anonymized",
   "contact.merge_pending",

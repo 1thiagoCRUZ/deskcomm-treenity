@@ -222,6 +222,35 @@ export function LgpdExportPdf({ data, unsignedWarning }: Props): React.ReactElem
           </View>
         ) : null}
 
+        {/* Dados para nota e envio (migration 0236) */}
+        {data.contact?.dados_de_nota ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Dados para Nota e Envio</Text>
+            {(
+              [
+                ["Nome", data.contact.dados_de_nota.nome],
+                ["CPF", data.contact.dados_de_nota.cpf ?? data.contact.dados_de_nota.cpf_mascarado],
+                ["Telefone", data.contact.dados_de_nota.telefone],
+                ["E-mail", data.contact.dados_de_nota.email],
+                ["CEP", data.contact.dados_de_nota.cep],
+                ["Endereço", data.contact.dados_de_nota.endereco],
+                ["Cidade", data.contact.dados_de_nota.cidade],
+                ["Estado", data.contact.dados_de_nota.estado],
+                ["Propriedade", data.contact.dados_de_nota.propriedade_nome],
+                ["CNPJ", data.contact.dados_de_nota.propriedade_cnpj],
+                ["IE", data.contact.dados_de_nota.propriedade_ie],
+                ["CEP da propriedade", data.contact.dados_de_nota.propriedade_cep],
+                ["Endereço da propriedade", data.contact.dados_de_nota.propriedade_endereco],
+              ] as const
+            ).map(([rotulo, valor]) => (
+              <View key={rotulo} style={styles.row}>
+                <Text style={styles.label}>{rotulo}:</Text>
+                <Text style={styles.value}>{valor ?? "—"}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
         {/* Consents */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Consentimentos</Text>

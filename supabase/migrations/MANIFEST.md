@@ -292,3 +292,5 @@ To re-apply on a fresh Supabase project, replay the migrations in version order 
 | `20260923120000` | `0234_gatilhos_do_bot_em_message_templates` | `message_templates` ganha `bot_triggers`/`bot_context`/`bot_max_chars`/`bot_enabled` + `usage_count`/`last_used_at`: a mesma resposta salva serve ao atalho `/` do atendente e, com gatilho, ao bot respondendo sozinho. CHECK impede ligado-sem-gatilho (resposta automatica que nunca dispara). Baseline idempotente. |
 
 | `20260925120000` | `0235_espelho_das_respostas_no_bot` | `message_templates` ganha `bot_synced_at`/`bot_sync_error`: a cada salvamento a resposta é enviada à API do Treenity Bot, e estas colunas guardam se chegou (a lista avisa quando não chegou; salvar de novo reenvia). Substitui o cron de sincronismo previsto na 0234. Baseline idempotente. |
+
+| `20261007120000` | `0236_dados_de_nota_do_contato` | Tabela `contato_dados_de_nota` (1 por contato, RLS por organização): dados do comprador e da propriedade que a loja pede no fechamento para emitir a nota e despachar. CPF cifrado pela aplicação (`cpf_cifrado` + `cpf_final` para a máscara). Preenchida pelo bot ou pela equipe. Baseline idempotente. |

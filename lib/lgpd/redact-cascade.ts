@@ -103,6 +103,19 @@ export async function cascadeRedactContact(args: CascadeArgs): Promise<CascadeRe
       .eq("organization_id", args.organizationId);
   }
 
+  // DADOS PARA NOTA E ENVIO (CPF, endereço, propriedade — migration 0236):
+  // apagados, não mascarados. Não há o que preservar ali para histórico, e a
+  // linha só existe para a próxima venda. Mesma razão do avatar para morar no
+  // app: a função SQL da cascata não conhece esta tabela. Falha FECHADA.
+  const { error: notaErro, count: notasApagadas } = await admin
+    .from("contato_dados_de_nota")
+    .delete({ count: "exact" })
+    .eq("contact_id", args.contactId)
+    .eq("organization_id", args.organizationId);
+  if (notaErro) {
+    throw new Error(`[lgpd-redact-cascade] dados de nota não apagados: ${notaErro.message}`);
+  }
+
   const { data, error } = await admin.rpc("fn_lgpd_cascade_redact_contact" as never, {
     p_organization_id: args.organizationId,
     p_contact_id: args.contactId,
@@ -116,7 +129,7 @@ export async function cascadeRedactContact(args: CascadeArgs): Promise<CascadeRe
   const result = (data ?? {}) as RpcResult;
   return {
     alreadyAnonymized: result.already_anonymized === true,
-    counts: result.counts ?? {},
+    counts: { ...(result.counts ?? {}), dados_de_nota: notasApagadas ?? 0 },
     mediaPaths: result.media_paths ?? [],
   };
 }

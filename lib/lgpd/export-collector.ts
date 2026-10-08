@@ -6,6 +6,7 @@
  * (admin client bypasses RLS). PII is NEVER logged — only ids and counts.
  */
 
+import { lerDadosDeNota, paraTela, type DadosDeNotaParaTela } from "@/lib/contacts/dados-de-nota";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logger } from "@/lib/logger";
 import type { Json } from "@/lib/database.types";
@@ -30,6 +31,11 @@ export interface ContactSnapshot {
   source_metadata: Record<string, unknown> | null;
   created_at: string;
   last_activity_at: string | null;
+  /**
+   * Dados para nota e envio (migration 0236), com o CPF INTEIRO: este relatório
+   * é o direito de acesso do próprio titular. Ausente em relatórios antigos.
+   */
+  dados_de_nota?: DadosDeNotaParaTela | null;
 }
 
 export interface ConsentRow {
@@ -357,6 +363,15 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
         created_at: data.created_at,
         last_activity_at: data.last_activity_at ?? null,
       };
+      try {
+        const nota = await lerDadosDeNota(admin, organizationId, contactId);
+        contact.dados_de_nota = nota ? paraTela(nota, true) : null;
+      } catch (err) {
+        logger.warn("[lgpd-export-worker] dados de nota load failed", {
+          request_id: requestId,
+          error: err instanceof Error ? err.message : "desconhecido",
+        });
+      }
     }
   }
 
