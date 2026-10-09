@@ -55,6 +55,8 @@ describe("entrada dos dados para nota", () => {
     expect(dadosDeNotaEntradaSchema.safeParse({ cpf: "52998224724" }).success).toBe(false);
     expect(dadosDeNotaEntradaSchema.safeParse({ cep: "1750" }).success).toBe(false);
     expect(dadosDeNotaEntradaSchema.safeParse({ estado: "XX" }).success).toBe(false);
+    expect(dadosDeNotaEntradaSchema.parse({ estado: "São Paulo" }).estado).toBe("SP");
+    expect(dadosDeNotaEntradaSchema.parse({ estado: "mato grosso do sul" }).estado).toBe("MS");
     expect(dadosDeNotaEntradaSchema.safeParse({ propriedade_cnpj: "123" }).success).toBe(false);
   });
 

@@ -280,6 +280,11 @@ describe("o bot chamou o especialista", () => {
     expect(isPublicPath("/api/treenity-bot/whatsapp/pediu-ajuda")).toBe(true);
     expect(isPublicPath("/api/treenity-bot/whatsapp/pediu-ajuda/x")).toBe(false);
   });
+
+  it("a rota dos dados de nota do bot é pública só no caminho exato (o proxy barrava o n8n)", () => {
+    expect(isPublicPath("/api/treenity-bot/whatsapp/dados-do-cliente")).toBe(true);
+    expect(isPublicPath("/api/treenity-bot/whatsapp/dados-do-cliente/x")).toBe(false);
+  });
 });
 
 describe("o Treenity Bot conta como atendimento automático", () => {

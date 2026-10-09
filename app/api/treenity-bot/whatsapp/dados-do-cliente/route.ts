@@ -18,11 +18,11 @@ import { audit } from "@/lib/audit";
 import { encontrarContatoPorTelefone } from "@/lib/channels/contato-por-telefone";
 import {
   camposAlterados,
-  dadosDeNotaEntradaSchema,
   gravarDadosDeNota,
   lerDadosDeNota,
   mascararCpfNasConversas,
   resumoParaOBot,
+  separarCamposValidos,
 } from "@/lib/contacts/dados-de-nota";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -80,14 +80,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const campos = Object.fromEntries(
     Object.entries(enviados).filter(([, v]) => v !== null && v !== undefined && String(v).trim() !== ""),
   );
-  const entrada = dadosDeNotaEntradaSchema.safeParse(campos);
-  if (!entrada.success) {
+  const { validos, problemas } = separarCamposValidos(campos);
+  const entrada = { data: validos };
+  if (Object.keys(validos).length === 0) {
     return NextResponse.json(
       {
         error: {
           code: "validation_failed",
-          message: entrada.error.issues.map((i) => i.message).join(" "),
-          campos_com_problema: entrada.error.issues.map((i) => i.path.join(".")),
+          message: problemas.length
+            ? `Nada foi salvo. ${problemas.map((p) => p.mensagem).join(" ")}`
+            : "Nada foi salvo: nenhum dado veio.",
+          campos_com_problema: problemas.map((p) => p.campo),
         },
       },
       { status: 422 },
@@ -117,7 +120,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       resourceId: c.contactId,
       metadata: { campos: camposAlterados(entrada.data), preenchido_por: "bot" },
     });
-    return NextResponse.json({ data: resumoParaOBot(linha) });
+    return NextResponse.json({
+      data: {
+        salvo: true,
+        ...resumoParaOBot(linha),
+        // O que NÃO foi salvo, para o bot pedir só isso de novo.
+        nao_salvos: problemas,
+      },
+    });
   } catch (err) {
     logger.error("[treenity-bot.dados-do-cliente] gravação falhou", {
       organization_id: c.organizationId,

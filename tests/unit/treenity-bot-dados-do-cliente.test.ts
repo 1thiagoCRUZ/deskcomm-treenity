@@ -135,4 +135,30 @@ describe("dados do cliente pelo bot", () => {
     expect(mascarar).not.toHaveBeenCalled();
     expect(agendados).toHaveLength(0);
   });
+
+  it("o atendimento real de 08/10: 'Estado: São Paulo' vira SP e tudo é salvo", async () => {
+    const r = await POST(post({
+      id_face: "5514998364820",
+      nome: "Fernando Costa",
+      cpf: "485.936.858-46",
+      telefone: "14998364820",
+      email: "cliente@exemplo.com",
+      endereco: "Rua das Glicínias",
+      cidade: "Marília",
+      estado: "São Paulo",
+    }));
+    expect(r.status).toBe(200);
+    const entrada = (estado.gravado as { entrada: Record<string, unknown> }).entrada;
+    expect(entrada).toMatchObject({ estado: "SP", cidade: "Marília", cpf: "48593685846" });
+    expect((await r.json()).data).toMatchObject({ salvo: true, nao_salvos: [] });
+  });
+
+  it("um campo errado não derruba os outros: salva o resto e diz o que faltou", async () => {
+    const r = await POST(post({ id_face: "5514998364820", nome: "Fernando", cep: "1750", cidade: "Marília" }));
+    expect(r.status).toBe(200);
+    const entrada = (estado.gravado as { entrada: Record<string, unknown> }).entrada;
+    expect(entrada).toEqual({ nome: "Fernando", cidade: "Marília" });
+    const corpo = await r.json();
+    expect(corpo.data.nao_salvos).toEqual([{ campo: "cep", mensagem: "CEP precisa ter 8 dígitos." }]);
+  });
 });
