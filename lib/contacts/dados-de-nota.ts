@@ -49,6 +49,26 @@ const texto = (max: number) =>
 
 const soDigitos = (v: string) => v.replace(/\D/g, "");
 
+/** Nome do estado (sem acento, minúsculo) → sigla. O cliente escreve "São Paulo". */
+const UF_POR_NOME: Record<string, string> = {
+  acre: "AC", alagoas: "AL", amapa: "AP", amazonas: "AM", bahia: "BA", ceara: "CE",
+  "distrito federal": "DF", "espirito santo": "ES", goias: "GO", maranhao: "MA",
+  "mato grosso": "MT", "mato grosso do sul": "MS", "minas gerais": "MG", para: "PA",
+  paraiba: "PB", parana: "PR", pernambuco: "PE", piaui: "PI", "rio de janeiro": "RJ",
+  "rio grande do norte": "RN", "rio grande do sul": "RS", rondonia: "RO", roraima: "RR",
+  "santa catarina": "SC", "sao paulo": "SP", sergipe: "SE", tocantins: "TO",
+};
+
+export function siglaDoEstado(valor: string): string {
+  const limpo = valor
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+  return UF_POR_NOME[limpo] ?? valor.trim().toUpperCase();
+}
+
 const UFS = new Set([
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA",
   "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO",
@@ -88,10 +108,10 @@ export const dadosDeNotaEntradaSchema = z.object({
   estado: z
     .string()
     .trim()
-    .transform((v) => (v === "" ? null : v.toUpperCase()))
+    .transform((v) => (v === "" ? null : siglaDoEstado(v)))
     .nullable()
     .optional()
-    .refine((v) => v == null || UFS.has(v), { message: "Estado: use a sigla (ex.: SP)." }),
+    .refine((v) => v == null || UFS.has(v), { message: "Estado não reconhecido (ex.: SP ou São Paulo)." }),
   propriedade_nome: texto(200),
   propriedade_cnpj: z
     .string()
@@ -350,6 +370,32 @@ export async function gravarDadosDeNota(
     .single();
   if (error) throw new Error(`gravar dados de nota: ${error.message}`);
   return data as LinhaDadosDeNota;
+}
+
+/**
+ * Pelo BOT, um campo errado não pode derrubar os outros: o cliente mandou dez
+ * dados de uma vez, e recusar tudo por causa de um faria o bot pedir tudo de
+ * novo. Valida campo a campo; devolve o que passou e, do que não passou, a
+ * mensagem para o bot pedir só aquele.
+ */
+export function separarCamposValidos(campos: Record<string, unknown>): {
+  validos: DadosDeNotaEntrada;
+  problemas: { campo: string; mensagem: string }[];
+} {
+  const forma = dadosDeNotaEntradaSchema.shape;
+  const validos: Record<string, unknown> = {};
+  const problemas: { campo: string; mensagem: string }[] = [];
+  for (const [campo, valor] of Object.entries(campos)) {
+    const regra = forma[campo as keyof typeof forma];
+    if (!regra) continue;
+    const r = regra.safeParse(valor);
+    if (r.success) {
+      if (r.data !== undefined) validos[campo] = r.data;
+    } else {
+      problemas.push({ campo, mensagem: r.error.issues[0]?.message ?? "Dado inválido." });
+    }
+  }
+  return { validos: validos as DadosDeNotaEntrada, problemas };
 }
 
 /** Os campos que mudaram, por NOME (o audit não leva o valor do CPF). */
