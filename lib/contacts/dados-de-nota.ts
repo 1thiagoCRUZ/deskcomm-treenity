@@ -88,7 +88,9 @@ export const dadosDeNotaEntradaSchema = z.object({
     .nullable()
     .optional()
     .refine((v) => v == null || isValidCpf(v), { message: "CPF inválido." }),
-  telefone: texto(40).transform((v) => (v == null ? v : soDigitos(v) || null)),
+  telefone: texto(40)
+    .transform((v) => (v == null ? v : soDigitos(v) || null))
+    .optional(),
   email: z
     .string()
     .trim()
