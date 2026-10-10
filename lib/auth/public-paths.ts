@@ -48,6 +48,9 @@ export const PUBLIC_PATHS: RegExp[] = [
   // `tbw_`, conferida dentro da rota. Sem esta linha o proxy respondia 401 a
   // toda chamada do bot e nada era gravado (medido no teste de 08/10).
   /^\/api\/treenity-bot\/whatsapp\/dados-do-cliente$/,
+  // Texto que o bot manda NA HORA (ex.: apresentação antes dos vídeos). Mesma
+  // chave `tbw_`, conferida dentro da rota.
+  /^\/api\/treenity-bot\/whatsapp\/enviar-texto$/,
   /^\/api\/internal\//,
   /^\/api\/mcp(\/.*)?$/,
   /^\/_next\//,
