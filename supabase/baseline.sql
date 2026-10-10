@@ -23343,6 +23343,44 @@ $$;
 revoke execute on function public.fn_mascarar_cpf_nas_conversas(uuid, uuid, text) from public, anon, authenticated;
 grant execute on function public.fn_mascarar_cpf_nas_conversas(uuid, uuid, text) to service_role;
 
+-- ---- Nome e e-mail dos dados de nota no contato (migration 0238) ----
+-- Move o que estava na reserva para contacts. Baseline idempotente.
+update public.contacts c
+   set name = n.nome
+  from public.contato_dados_de_nota n
+ where n.contact_id = c.id
+   and n.organization_id = c.organization_id
+   and n.nome is not null;
+
+update public.contato_dados_de_nota n
+   set nome = null
+  from public.contacts c
+ where c.id = n.contact_id
+   and c.organization_id = n.organization_id
+   and n.nome is not null
+   and c.name = n.nome;
+
+update public.contacts c
+   set email = n.email
+  from public.contato_dados_de_nota n
+ where n.contact_id = c.id
+   and n.organization_id = c.organization_id
+   and n.email is not null
+   and not exists (
+     select 1 from public.contacts o
+      where o.organization_id = c.organization_id
+        and o.id <> c.id
+        and o.is_merged_into is null
+        and o.email_normalized = lower(trim(n.email)));
+
+update public.contato_dados_de_nota n
+   set email = null
+  from public.contacts c
+ where c.id = n.contact_id
+   and c.organization_id = n.organization_id
+   and n.email is not null
+   and c.email_normalized = lower(trim(n.email));
+
 -- ---- VARREDURA anon: função nova nasce exposta em quem ATUALIZA (migration 0116) ----
 --
 -- ⚠️ ESTE BLOCO É, DE PROPÓSITO, O ÚLTIMO DO ARQUIVO. Apêndice novo entra ANTES

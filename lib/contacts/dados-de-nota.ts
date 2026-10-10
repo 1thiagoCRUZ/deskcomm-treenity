@@ -327,24 +327,53 @@ export function colunasParaGravar(entrada: DadosDeNotaEntrada): Record<string, s
 const COLUNAS =
   "id, organization_id, contact_id, nome, cpf_cifrado, cpf_final, telefone, email, cep, endereco, cidade, estado, propriedade_nome, propriedade_cnpj, propriedade_ie, propriedade_cep, propriedade_endereco, transportadora_preferida, preenchido_por, updated_at";
 
+/**
+ * NOME e E-MAIL moram no CONTATO (`contacts.name` / `contacts.email`), não
+ * aqui — pedido do usuário em 09/10: a tela tinha dois "Nome" e dois "E-mail".
+ * As colunas `nome`/`email` desta tabela ficam só como reserva: o e-mail que
+ * já pertence a OUTRO contato da empresa (índice único `uniq_contacts_org_email`)
+ * não pode ir para o contato, e fica guardado aqui para a nota não perder.
+ * Quem lê recebe sempre o valor do contato primeiro.
+ */
+function juntarComOContato(
+  linha: LinhaDadosDeNota,
+  contato: { name: string | null; email: string | null } | null,
+): LinhaDadosDeNota {
+  return { ...linha, nome: contato?.name ?? linha.nome, email: contato?.email ?? linha.email };
+}
+
+async function lerContato(db: SupabaseClient, organizationId: string, contactId: string) {
+  const { data } = await db
+    .from("contacts")
+    .select("name, email")
+    .eq("organization_id", organizationId)
+    .eq("id", contactId)
+    .maybeSingle();
+  return (data as { name: string | null; email: string | null } | null) ?? null;
+}
+
 export async function lerDadosDeNota(
   db: SupabaseClient,
   organizationId: string,
   contactId: string,
 ): Promise<LinhaDadosDeNota | null> {
-  const { data, error } = await db
-    .from("contato_dados_de_nota")
-    .select(COLUNAS)
-    .eq("organization_id", organizationId)
-    .eq("contact_id", contactId)
-    .maybeSingle();
+  const [{ data, error }, contato] = await Promise.all([
+    db
+      .from("contato_dados_de_nota")
+      .select(COLUNAS)
+      .eq("organization_id", organizationId)
+      .eq("contact_id", contactId)
+      .maybeSingle(),
+    lerContato(db, organizationId, contactId),
+  ]);
   if (error) throw new Error(`dados de nota: ${error.message}`);
-  return (data as LinhaDadosDeNota | null) ?? null;
+  return data ? juntarComOContato(data as LinhaDadosDeNota, contato) : null;
 }
 
 /**
  * Grava (cria ou atualiza) só os campos que vieram. `organizationId` vem de
- * fonte confiável (sessão ou chave do bot), nunca do corpo.
+ * fonte confiável (sessão ou chave do bot), nunca do corpo. Nome e e-mail vão
+ * para o CONTATO (ver `juntarComOContato`); o resto, para esta tabela.
  */
 export async function gravarDadosDeNota(
   db: SupabaseClient,
@@ -353,7 +382,33 @@ export async function gravarDadosDeNota(
   entrada: DadosDeNotaEntrada,
   preenchidoPor: "bot" | "equipe",
 ): Promise<LinhaDadosDeNota> {
-  const colunas = colunasParaGravar(entrada);
+  const { nome, email, ...resto } = entrada;
+  const colunas = colunasParaGravar(resto);
+
+  const doContato: Record<string, string | null> = {};
+  if (nome !== undefined) doContato.name = nome;
+  if (email !== undefined) doContato.email = email;
+  if (Object.keys(doContato).length > 0) {
+    let { error } = await db
+      .from("contacts")
+      .update(doContato)
+      .eq("organization_id", organizationId)
+      .eq("id", contactId);
+    if (error?.code === "23505" && "email" in doContato) {
+      // E-mail de OUTRO contato da empresa: o contato fica sem ele e a nota
+      // guarda (reserva), em vez de a gravação inteira falhar.
+      delete doContato.email;
+      colunas.email = email ?? null;
+      error = Object.keys(doContato).length
+        ? (await db.from("contacts").update(doContato).eq("organization_id", organizationId).eq("id", contactId)).error
+        : null;
+    }
+    if (error) throw new Error(`gravar nome/e-mail no contato: ${error.message}`);
+    // Uma fonte só: o que foi para o contato sai da reserva.
+    if ("name" in doContato) colunas.nome = null;
+    if ("email" in doContato) colunas.email = null;
+  }
+
   const { data, error } = await db
     .from("contato_dados_de_nota")
     .upsert(
@@ -369,7 +424,7 @@ export async function gravarDadosDeNota(
     .select(COLUNAS)
     .single();
   if (error) throw new Error(`gravar dados de nota: ${error.message}`);
-  return data as LinhaDadosDeNota;
+  return juntarComOContato(data as LinhaDadosDeNota, await lerContato(db, organizationId, contactId));
 }
 
 /**

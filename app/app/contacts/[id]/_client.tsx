@@ -134,61 +134,8 @@ export function ContactDetailClient({ contactId }: Props) {
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
-          <Card className="p-4">
-            <dl className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
-              <div>
-                <dt className="text-xs uppercase text-muted-foreground">{t("Nome")}</dt>
-                <dd className="mt-1">{contact.name ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase text-muted-foreground">Display name</dt>
-                <dd className="mt-1">{contact.display_name ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase text-muted-foreground">Email</dt>
-                <dd className="mt-1">{contact.email ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase text-muted-foreground">{t("Telefone")}</dt>
-                <dd className="mt-1">
-                  {contact.phone_number ? phoneForDisplay(contact.phone_number) : "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase text-muted-foreground">{t("Origem")}</dt>
-                <dd className="mt-1">{contact.source}</dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase text-muted-foreground">{t("Última atividade")}</dt>
-                <dd className="mt-1">
-                  {contact.last_activity_at
-                    ? format(new Date(contact.last_activity_at), "dd/MM/yyyy HH:mm", {
-                        locale: localeDaData,
-                      })
-                    : "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase text-muted-foreground">{t("Criado em")}</dt>
-                <dd className="mt-1">
-                  {format(new Date(contact.created_at), "dd/MM/yyyy", { locale: localeDaData })}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase text-muted-foreground">Tags</dt>
-                <dd className="mt-1 flex flex-wrap gap-1">
-                  {contact.tags.length === 0
-                    ? "—"
-                    : contact.tags.map((t) => (
-                        <Badge key={t} variant="neutral">
-                          {t}
-                        </Badge>
-                      ))}
-                </dd>
-              </div>
-            </dl>
-          </Card>
-          <DadosDeNota contactId={contact.id} />
+          {/* Um quadro só: cadastro + dados para nota e envio (09/10). */}
+          <DadosDeNota contactId={contact.id} contato={contact} />
         </TabsContent>
 
         <TabsContent value="timeline" className="mt-4">
