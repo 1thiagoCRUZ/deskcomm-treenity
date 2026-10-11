@@ -14,11 +14,14 @@ export function TopBar() {
         <MobileSidebar />
         <TenantSwitcher />
       </div>
-      <div className="flex min-w-0 flex-1 justify-center md:max-w-md">
+      {/* A busca ocupa o meio da barra (antes cabia só "Buscar..."): é o ⌘K
+          para achar contato, conversa ou tela sem passar pelo menu. */}
+      <div className="flex min-w-0 flex-1 justify-center md:max-w-2xl">
         <SearchTrigger />
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <CustomizacaoPopover />
+        {/* O único botão de tema: havia outro no UserMenu (dois iguais lado a lado). */}
         <ThemeToggle />
         <AlertsBell />
         <UserMenu />

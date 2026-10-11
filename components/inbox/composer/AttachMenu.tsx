@@ -19,8 +19,8 @@ export function AttachMenu({ disabled, onPick, onPickContact }: Props) {
   const docRef = useRef<HTMLInputElement | null>(null);
 
   const handle = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) onPick(file);
+    // Fotos e vídeos podem ir vários de uma vez (padrão WhatsApp).
+    for (const file of Array.from(e.target.files ?? [])) onPick(file);
     e.target.value = ""; // permite re-selecionar o mesmo arquivo
   };
 
@@ -72,7 +72,7 @@ export function AttachMenu({ disabled, onPick, onPickContact }: Props) {
           popover ao fechar, e um input desmontado no meio do clique perde o
           file picker ("nada acontece"). Aqui os refs seguem válidos após o
           fechamento — o .click() síncrono no onClick preserva o user-gesture. */}
-      <input ref={mediaRef} type="file" accept="image/*,video/*" className="hidden" onChange={handle} />
+      <input ref={mediaRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={handle} />
       <input
         ref={docRef}
         type="file"
