@@ -433,6 +433,7 @@ export const DICIONARIO: Traducoes = {
   "Digite uma mensagem": { es: "Escribe un mensaje" },
   "Enviar anexos": { es: "Enviar adjuntos" },
   "Recortar": { es: "Recortar" },
+  "Para": { es: "Para" },
   "Voltar ao original": { es: "Volver al original" },
   "Buscar contatos, conversas e telas...": { es: "Buscar contactos, conversaciones y pantallas..." },
   "Lembrete: hora de voltar no cliente": { es: "Recordatorio: hora de volver con el cliente" },
