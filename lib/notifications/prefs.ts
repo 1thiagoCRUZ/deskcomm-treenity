@@ -8,6 +8,7 @@ export const NOTIFY_UI_CATEGORIES = [
   "mention",
   "venda_bot",
   "especialista",
+  "lembrete",
 ] as const;
 
 export type NotifyCategory = (typeof NOTIFY_UI_CATEGORIES)[number];
@@ -34,6 +35,7 @@ export function prefsPadrao(): NotifyPrefs {
     mention: { in_app: true, push: true },
     venda_bot: { in_app: true, push: true },
     especialista: { in_app: true, push: true },
+    lembrete: { in_app: true, push: true },
   };
 }
 
