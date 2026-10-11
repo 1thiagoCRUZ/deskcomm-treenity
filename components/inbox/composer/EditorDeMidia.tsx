@@ -288,7 +288,7 @@ export function EditorDeMidia({
       aria-modal="true"
       aria-label={t("Enviar anexos")}
       data-testid="editor-de-midia"
-      className="fixed inset-0 z-50 flex flex-col bg-[#0b141a] text-white"
+      className="absolute inset-0 z-40 flex flex-col bg-[#0b141a] text-white"
     >
       {/* Topo: fechar | ferramentas */}
       <div className="flex h-16 shrink-0 items-center justify-between px-4">
@@ -378,7 +378,7 @@ export function EditorDeMidia({
       </div>
 
       {/* Centro: a mídia */}
-      <div className="flex min-h-0 flex-1 items-center justify-center px-4">
+      <div className="flex min-h-0 flex-1 items-center justify-center p-4 [container-type:size]">
         {podeEditar && url ? (
           <div
             className={cn("relative max-h-full touch-none select-none", ferramenta !== "nenhuma" && "cursor-crosshair")}
@@ -397,7 +397,7 @@ export function EditorDeMidia({
                   altura: e.currentTarget.naturalHeight || 1,
                 })
               }
-              className="block max-h-[calc(100dvh-16rem)] max-w-full object-contain"
+              className="block max-h-[100cqh] max-w-[100cqw] object-contain"
             />
             {/* Traços em andamento, desenhados por cima em SVG (mesma escala da imagem). */}
             {tracos.length > 0 ? (
@@ -432,7 +432,7 @@ export function EditorDeMidia({
             ) : null}
           </div>
         ) : ehVideo(item.atual) && url ? (
-          <video src={url} controls className="max-h-[calc(100dvh-16rem)] max-w-full" />
+          <video src={url} controls className="max-h-[100cqh] max-w-[100cqw]" />
         ) : (
           <div className="flex flex-col items-center gap-3 rounded-xl bg-white/5 px-10 py-8 text-center">
             <FileText size={56} weight="duotone" className="text-white/80" aria-hidden />
