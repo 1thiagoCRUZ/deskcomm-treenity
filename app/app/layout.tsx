@@ -17,6 +17,7 @@ import {
 } from "@/components/app/ImpersonateBanner";
 import { ConexaoCaidaBanner } from "@/components/app/ConexaoCaidaBanner";
 import { TreenityBotAlertProvider } from "@/components/app/TreenityBotAlertProvider";
+import { AvisoDeLembretes } from "@/components/app/AvisoDeLembretes";
 import { IdiomaProvider } from "@/lib/i18n/IdiomaProvider";
 import { listarConexoesCaidas, type ConexaoCaida } from "@/lib/channels/health";
 import { isConfigured as treenityBotConfigurado } from "@/lib/treenity-bot/config";
@@ -173,6 +174,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <ImpersonateBanner impersonating={impersonating} />
         <ConexaoCaidaBanner caidas={conexoesCaidas} />
         {mostrarAlertaTreenityBot ? <TreenityBotAlertProvider /> : null}
+        {roleAtLeast(activeOrg?.role, "agent") ? <AvisoDeLembretes /> : null}
         {needsMfaGate ? (
           // Gate always mounted for MFA-required roles; it latches the blocking
           // decision client-side so the enroll Server Action's revalidation

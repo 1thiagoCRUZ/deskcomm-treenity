@@ -25,6 +25,7 @@ const LABELS: Record<NotifyCategory, string> = {
   mention: "Você foi mencionado",
   venda_bot: "Venda nova do bot",
   especialista: "Cliente pediu um especialista",
+  lembrete: "Lembrete de conversa (Lembrar)",
 };
 
 export function NotificationPrefsClient() {

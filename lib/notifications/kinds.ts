@@ -7,6 +7,7 @@ export const NOTIFY_KINDS = {
   mention: { sound: "attention", tagPrefix: "mention" },
   venda_bot: { sound: "success", tagPrefix: "venda-bot" },
   especialista: { sound: "attention", tagPrefix: "especialista" },
+  lembrete: { sound: "attention", tagPrefix: "lembrete" },
 } as const;
 
 export type NotifyKind = keyof typeof NOTIFY_KINDS;

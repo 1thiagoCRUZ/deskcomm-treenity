@@ -51,6 +51,9 @@ export const PUBLIC_PATHS: RegExp[] = [
   // Texto que o bot manda NA HORA (ex.: apresentação antes dos vídeos). Mesma
   // chave `tbw_`, conferida dentro da rota.
   /^\/api\/treenity-bot\/whatsapp\/enviar-texto$/,
+  // O n8n vence os lembretes ("Lembrar") da empresa da chave a cada 5 min.
+  // Mesma chave `tbw_`, conferida dentro da rota.
+  /^\/api\/treenity-bot\/lembretes\/vencer$/,
   /^\/api\/internal\//,
   /^\/api\/mcp(\/.*)?$/,
   /^\/_next\//,

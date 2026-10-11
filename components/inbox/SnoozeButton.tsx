@@ -40,6 +40,7 @@ export function SnoozeButton({ conversationId, snoozeUntil, disabled }: Props) {
           variant="outline"
           disabled={disabled || isPending}
           className="flex items-center gap-1"
+          title={t("Se o cliente não responder até lá, você recebe um aviso para voltar nele.")}
         >
           <Clock size={12} weight="regular" aria-hidden />
           {isActive ? t("Lembrete ativo") : t("Lembrar")}
