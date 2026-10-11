@@ -363,6 +363,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
       <EditorDeMidia
         arquivos={pendingFiles}
         enviando={enviandoAnexos}
+        contactName={contactName}
         onCancel={() => setPendingFiles([])}
         onSend={async (itens) => {
           // Um por vez, na ordem da fila — como o WhatsApp. Se um falhar, os

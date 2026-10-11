@@ -92,12 +92,15 @@ export function EditorDeMidia({
   enviando,
   onCancel,
   onSend,
+  contactName,
 }: {
   /** Os arquivos escolhidos (ou colados). Vazio = editor fechado. */
   arquivos: File[];
   enviando: boolean;
   onCancel: () => void;
   onSend: (itens: ItemParaEnviar[]) => void;
+  /** Para quem vai — aparece no topo, como no WhatsApp. */
+  contactName?: string | null;
 }) {
   const t = useT();
   const [itens, setItens] = useState<Item[]>([]);
@@ -280,7 +283,7 @@ export function EditorDeMidia({
   const url = urls.get(item.id);
   const { largura, altura } = tamanho;
 
-  const botaoTopo = "rounded-full p-2 text-white/85 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40";
+  const botaoTopo = "rounded-full p-2 text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground disabled:opacity-40";
 
   return (
     <div
@@ -288,13 +291,20 @@ export function EditorDeMidia({
       aria-modal="true"
       aria-label={t("Enviar anexos")}
       data-testid="editor-de-midia"
-      className="absolute inset-0 z-40 flex flex-col bg-[#0b141a] text-white"
+      className="absolute inset-0 z-40 flex flex-col bg-muted text-foreground"
     >
       {/* Topo: fechar | ferramentas */}
       <div className="flex h-16 shrink-0 items-center justify-between px-4">
-        <button type="button" className={botaoTopo} onClick={onCancel} aria-label={t("Fechar")} disabled={enviando}>
-          <X size={24} aria-hidden />
-        </button>
+        <div className="flex w-56 min-w-0 items-center gap-2">
+          <button type="button" className={botaoTopo} onClick={onCancel} aria-label={t("Fechar")} disabled={enviando}>
+            <X size={24} aria-hidden />
+          </button>
+          {contactName ? (
+            <span className="truncate text-sm text-muted-foreground">
+              {t("Para")} <strong className="font-semibold text-foreground">{contactName}</strong>
+            </span>
+          ) : null}
+        </div>
 
         {ferramenta === "nenhuma" ? (
           <div className="flex items-center gap-1">
@@ -341,7 +351,7 @@ export function EditorDeMidia({
                     aria-label={`${t("Cor")} ${c}`}
                     className={cn(
                       "h-7 w-7 rounded-full border-2 transition-transform",
-                      cor === c ? "scale-110 border-white" : "border-white/30",
+                      cor === c ? "scale-110 border-foreground" : "border-border",
                     )}
                     style={{ backgroundColor: c }}
                   />
@@ -358,7 +368,7 @@ export function EditorDeMidia({
                 </button>
               </>
             ) : (
-              <span className="text-sm text-white/80">{t("Arraste para marcar a área do recorte")}</span>
+              <span className="text-sm text-muted-foreground">{t("Arraste para marcar a área do recorte")}</span>
             )}
             <button type="button" className={botaoTopo} onClick={cancelarFerramenta} aria-label={t("Cancelar")}>
               <X size={20} aria-hidden />
@@ -366,7 +376,7 @@ export function EditorDeMidia({
             <button
               type="button"
               onClick={() => void (ferramenta === "desenhar" ? concluirDesenho() : concluirRecorte())}
-              className="rounded-full bg-[#00a884] p-2 text-white hover:bg-[#06cf9c]"
+              className="rounded-full bg-primary p-2 text-primary-foreground hover:bg-primary/90"
               aria-label={t("Concluir")}
               title={t("Concluir")}
             >
@@ -374,7 +384,7 @@ export function EditorDeMidia({
             </button>
           </div>
         )}
-        <span className="w-10" aria-hidden />
+        <span className="w-56" aria-hidden />
       </div>
 
       {/* Centro: a mídia */}
@@ -397,7 +407,7 @@ export function EditorDeMidia({
                   altura: e.currentTarget.naturalHeight || 1,
                 })
               }
-              className="block max-h-[100cqh] max-w-[100cqw] object-contain"
+              className="block max-h-[100cqh] max-w-[100cqw] rounded-md object-contain shadow-md"
             />
             {/* Traços em andamento, desenhados por cima em SVG (mesma escala da imagem). */}
             {tracos.length > 0 ? (
@@ -434,10 +444,10 @@ export function EditorDeMidia({
         ) : ehVideo(item.atual) && url ? (
           <video src={url} controls className="max-h-[100cqh] max-w-[100cqw]" />
         ) : (
-          <div className="flex flex-col items-center gap-3 rounded-xl bg-white/5 px-10 py-8 text-center">
-            <FileText size={56} weight="duotone" className="text-white/80" aria-hidden />
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-background px-10 py-8 text-center shadow-sm">
+            <FileText size={56} weight="duotone" className="text-muted-foreground" aria-hidden />
             <p className="max-w-xs break-words font-medium">{item.atual.name}</p>
-            <p className="text-sm text-white/60">{formatBytes(item.atual.size)}</p>
+            <p className="text-sm text-muted-foreground">{formatBytes(item.atual.size)}</p>
           </div>
         )}
       </div>
@@ -456,12 +466,12 @@ export function EditorDeMidia({
           placeholder={t("Digite uma mensagem")}
           aria-label={t("Legenda")}
           disabled={enviando || ferramenta !== "nenhuma"}
-          className="w-full max-w-2xl rounded-lg bg-[#2a3942] px-4 py-3 text-[15px] text-white placeholder:text-white/50 focus:outline-none"
+          className="w-full max-w-2xl rounded-lg border border-border bg-background px-4 py-3 text-[15px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
         />
       </div>
 
       {/* Fila de miniaturas + enviar */}
-      <div className="flex h-24 shrink-0 items-center gap-3 border-t border-white/10 px-4">
+      <div className="flex h-24 shrink-0 items-center gap-3 border-t border-border bg-background px-4">
         <div className="flex min-w-0 flex-1 items-center justify-center gap-2 overflow-x-auto py-2">
           {itens.map((i, indice) => (
             <div key={i.id} className="group relative shrink-0">
@@ -471,8 +481,8 @@ export function EditorDeMidia({
                 aria-label={`${t("Arquivo")} ${indice + 1}`}
                 aria-current={indice === selecionado ? "true" : undefined}
                 className={cn(
-                  "flex h-14 w-14 items-center justify-center overflow-hidden rounded-md border-2 bg-white/5",
-                  indice === selecionado ? "border-[#00a884]" : "border-transparent",
+                  "flex h-14 w-14 items-center justify-center overflow-hidden rounded-md border-2 bg-muted",
+                  indice === selecionado ? "border-primary" : "border-border",
                 )}
               >
                 {ehImagem(i.atual) ? (
@@ -501,7 +511,7 @@ export function EditorDeMidia({
               disabled={enviando}
               aria-label={t("Adicionar mais")}
               title={t("Adicionar mais")}
-              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md border border-white/30 text-white/80 hover:bg-white/10"
+              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               <Plus size={22} aria-hidden />
             </button>
@@ -513,10 +523,10 @@ export function EditorDeMidia({
           disabled={enviando || ferramenta !== "nenhuma"}
           aria-label={t("Enviar")}
           data-testid="editor-de-midia-enviar"
-          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#00a884] text-white shadow-lg transition-colors hover:bg-[#06cf9c] disabled:opacity-60"
+          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-colors hover:bg-primary/90 disabled:opacity-60"
         >
           {enviando ? (
-            <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+            <span className="h-5 w-5 animate-spin rounded-full border-2 border-primary-foreground/40 border-t-primary-foreground" />
           ) : (
             <PaperPlaneTilt size={24} weight="fill" aria-hidden />
           )}
