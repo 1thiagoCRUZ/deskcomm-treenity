@@ -2,6 +2,7 @@
 import { useT } from "@/hooks/i18n/useT";
 import {
   forwardRef,
+  useCallback,
   useImperativeHandle,
   useRef,
   useState,
@@ -11,7 +12,7 @@ import {
 import { PaperPlaneTilt } from "@/lib/ui/icons";
 import { Button } from "@/components/ui/button";
 import { AttachMenu } from "@/components/inbox/composer/AttachMenu";
-import { AttachmentPreviewDialog } from "@/components/inbox/composer/AttachmentPreviewDialog";
+import { EditorDeMidia } from "@/components/inbox/composer/EditorDeMidia";
 import { ContactPickerDialog } from "@/components/inbox/composer/ContactPickerDialog";
 import { AudioRecorder } from "@/components/inbox/composer/AudioRecorder";
 import { ReplyReviewPanel } from "@/components/inbox/composer/ReplyReviewPanel";
@@ -80,7 +81,10 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   // não usa — o botão só levaria a erro ou a uma segunda IA falando outra coisa.
   const { data: treenityBotNoInbox } = useTreenityBotNoInbox();
   const [text, setText] = useState("");
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  // Anexos escolhidos (ou colados) esperando o envio, no editor estilo WhatsApp.
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [enviandoAnexos, setEnviandoAnexos] = useState(false);
+  const juntarAnexo = useCallback((file: File) => setPendingFiles((prev) => [...prev, file]), []);
   const [contactPickerOpen, setContactPickerOpen] = useState(false);
   const [menuDismissed, setMenuDismissed] = useState(false);
   const [mode, setMode] = useState<"reply" | "note">("reply");
@@ -174,11 +178,11 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
    * Ctrl+V precisa continuar sendo o Ctrl+V de sempre.
    */
   function onPaste(e: ClipboardEvent<HTMLTextAreaElement>) {
-    if (mode !== "reply" || respostaBarrada || pendingFile) return;
+    if (mode !== "reply" || respostaBarrada || pendingFiles.length > 0) return;
     const imagem = imagemDoClipboard(e.clipboardData, new Date());
     if (!imagem) return; // colagem de texto segue o caminho normal do browser
     e.preventDefault();
-    setPendingFile(imagem);
+    setPendingFiles([imagem]);
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
@@ -279,7 +283,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           {mode === "reply" && (
             <AttachMenu
               disabled={respostaBarrada}
-              onPick={setPendingFile}
+              onPick={juntarAnexo}
               onPickContact={() => setContactPickerOpen(true)}
             />
           )}
@@ -356,28 +360,34 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           )}
         </div>
       </div>
-      <AttachmentPreviewDialog
-        file={pendingFile}
-        sending={upload.isPending || send.isPending}
-        onCancel={() => setPendingFile(null)}
-        onSend={async (caption) => {
-          if (!pendingFile) return;
+      <EditorDeMidia
+        arquivos={pendingFiles}
+        enviando={enviandoAnexos}
+        onCancel={() => setPendingFiles([])}
+        onSend={async (itens) => {
+          // Um por vez, na ordem da fila — como o WhatsApp. Se um falhar, os
+          // que já saíram não voltam e o editor fica aberto com os que faltam.
+          setEnviandoAnexos(true);
+          let enviados = 0;
           try {
-            const uploaded = await upload.mutateAsync({ conversationId, file: pendingFile });
-            send.mutate(
-              {
+            for (const item of itens) {
+              const uploaded = await upload.mutateAsync({ conversationId, file: item.file });
+              await send.mutateAsync({
                 conversation_id: conversationId,
                 type: uploaded.kind,
-                body: caption || undefined,
+                body: item.caption || undefined,
                 media_storage_path: uploaded.storage_path,
                 media_mime: uploaded.media_mime,
                 media_size_bytes: uploaded.media_size_bytes,
-              },
-              { onSuccess: () => setPendingFile(null) },
-            );
+              });
+              enviados++;
+            }
+            setPendingFiles([]);
           } catch {
-            // toast já disparado pelo onError de useUploadMedia; dialog fica aberto p/ retry
-            return;
+            // toast já disparado pelo onError dos hooks; reabre só com o que faltou
+            setPendingFiles(itens.slice(enviados).map((i) => i.file));
+          } finally {
+            setEnviandoAnexos(false);
           }
         }}
       />

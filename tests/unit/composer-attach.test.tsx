@@ -15,7 +15,12 @@ vi.mock("@/hooks/inbox/useUploadMedia", () => ({
   useUploadMedia: () => ({ mutateAsync: uploadMock, isPending: false }),
 }));
 vi.mock("@/hooks/inbox/useSendMessage", () => ({
-  useSendMessage: () => ({ mutate: sendMock, isPending: false }),
+  useSendMessage: () => ({
+    mutate: sendMock,
+    // O editor estilo WhatsApp envia os anexos em sequência, com `mutateAsync`.
+    mutateAsync: (...args: unknown[]) => Promise.resolve(sendMock(...args)),
+    isPending: false,
+  }),
 }));
 
 import { Composer } from "@/components/inbox/Composer";
@@ -49,9 +54,9 @@ describe("Composer + anexos", () => {
     const file = new File([new Uint8Array([1, 2, 3])], "foto.jpg", { type: "image/jpeg" });
     fireEvent.change(input, { target: { files: [file] } });
 
-    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(await screen.findByTestId("editor-de-midia")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText(/legenda/i), { target: { value: "olha isso" } });
-    fireEvent.click(screen.getByRole("button", { name: /^enviar$/i }));
+    fireEvent.click(screen.getByTestId("editor-de-midia-enviar"));
 
     await waitFor(() => expect(uploadMock).toHaveBeenCalled());
     await waitFor(() =>
@@ -64,7 +69,6 @@ describe("Composer + anexos", () => {
           media_mime: "image/jpeg",
           media_size_bytes: 3,
         }),
-        expect.anything(),
       ),
     );
   });
@@ -77,11 +81,11 @@ describe("Composer + anexos", () => {
     const file = new File([new Uint8Array([1, 2, 3])], "foto.jpg", { type: "image/jpeg" });
     fireEvent.change(input, { target: { files: [file] } });
 
-    expect(await screen.findByRole("dialog")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /^enviar$/i }));
+    expect(await screen.findByTestId("editor-de-midia")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("editor-de-midia-enviar"));
 
     await waitFor(() => expect(uploadMock).toHaveBeenCalled());
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByTestId("editor-de-midia")).toBeInTheDocument();
     expect(sendMock).not.toHaveBeenCalled();
   });
 });

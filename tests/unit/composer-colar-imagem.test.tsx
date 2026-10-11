@@ -25,7 +25,12 @@ vi.mock("@/hooks/inbox/useUploadMedia", () => ({
   useUploadMedia: () => ({ mutateAsync: uploadMock, isPending: false }),
 }));
 vi.mock("@/hooks/inbox/useSendMessage", () => ({
-  useSendMessage: () => ({ mutate: sendMock, isPending: false }),
+  useSendMessage: () => ({
+    mutate: sendMock,
+    // O editor estilo WhatsApp envia os anexos em sequência, com `mutateAsync`.
+    mutateAsync: (...args: unknown[]) => Promise.resolve(sendMock(...args)),
+    isPending: false,
+  }),
 }));
 
 import { Composer } from "@/components/inbox/Composer";
@@ -114,15 +119,14 @@ describe("Composer — colar imagem", () => {
     renderComposer();
     fireEvent.paste(campo(), { clipboardData: clipboard({ files: [png()] }) });
 
-    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(await screen.findByTestId("editor-de-midia")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText(/legenda/i), { target: { value: "mirá esto" } });
-    fireEvent.click(screen.getByRole("button", { name: /^enviar$/i }));
+    fireEvent.click(screen.getByTestId("editor-de-midia-enviar"));
 
     await waitFor(() => expect(uploadMock).toHaveBeenCalled());
     await waitFor(() =>
       expect(sendMock).toHaveBeenCalledWith(
         expect.objectContaining({ conversation_id: "conv-1", type: "image", body: "mirá esto" }),
-        expect.anything(),
       ),
     );
   });
@@ -131,7 +135,7 @@ describe("Composer — colar imagem", () => {
     renderComposer();
     const seguiu = fireEvent.paste(campo(), { clipboardData: clipboard({ texto: "bom dia" }) });
 
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("editor-de-midia")).not.toBeInTheDocument();
     expect(seguiu, "preventDefault aqui quebraria o Ctrl+V de texto").toBe(true);
   });
 
@@ -140,7 +144,7 @@ describe("Composer — colar imagem", () => {
     fireEvent.click(screen.getByRole("button", { name: /nota interna/i }));
     const seguiu = fireEvent.paste(campo(), { clipboardData: clipboard({ files: [png()] }) });
 
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("editor-de-midia")).not.toBeInTheDocument();
     expect(seguiu).toBe(true);
   });
 
@@ -151,19 +155,19 @@ describe("Composer — colar imagem", () => {
     const doc = new File([new Uint8Array([1])], "contrato-assinado.pdf", { type: "application/pdf" });
     fireEvent.change(inputDoc, { target: { files: [doc] } });
 
-    expect(await screen.findByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByText("contrato-assinado.pdf")).toBeInTheDocument();
+    expect(await screen.findByTestId("editor-de-midia")).toBeInTheDocument();
+    expect(screen.getAllByText("contrato-assinado.pdf").length).toBeGreaterThan(0);
 
     fireEvent.paste(campo(), { clipboardData: clipboard({ files: [png()] }) });
 
-    expect(screen.getByText("contrato-assinado.pdf")).toBeInTheDocument();
+    expect(screen.getAllByText("contrato-assinado.pdf").length).toBeGreaterThan(0);
   });
 
   it("composer desabilitado ignora a colagem", () => {
     renderComposer({ disabled: true });
     fireEvent.paste(campo(), { clipboardData: clipboard({ files: [png()] }) });
 
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("editor-de-midia")).not.toBeInTheDocument();
   });
 });
 

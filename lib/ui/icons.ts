@@ -10,6 +10,10 @@
 export {
   // navigation (inbox icon = Tray in Phosphor)
   Tray as Inbox,
+  // editor de mídia do Inbox (padrão WhatsApp)
+  Crop,
+  ArrowUUpLeft,
+  ArrowCounterClockwise,
   ListChecks,
   Plugs,
   PlugsConnected,
