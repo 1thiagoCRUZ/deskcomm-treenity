@@ -16,6 +16,7 @@ import {
 import { useConversation, isNotFound } from "@/hooks/inbox/useConversation";
 import { ConversationList } from "./ConversationList";
 import { InboxFilters, type InboxFiltersValue, type InboxTab } from "./InboxFilters";
+import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { ChatThread } from "./ChatThread";
 import { Composer, type ComposerHandle } from "./Composer";
 import { ConversationHeader } from "./ConversationHeader";
@@ -468,6 +469,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
                   <ChatThread
                     conversationId={selectedConversation.id}
                     onResponder={setRespondendo}
+                    nomeDoContato={rotuloDoContato(selectedConversation.contacts ?? null, t)}
                   />
                 </div>
                 <RetentionNotice conversationId={selectedConversation.id} />

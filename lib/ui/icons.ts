@@ -12,6 +12,10 @@ export {
   Tray as Inbox,
   // editor de mídia do Inbox (padrão WhatsApp)
   Crop,
+  // visualizador de mídia do Inbox
+  MagnifyingGlassPlus,
+  MagnifyingGlassMinus,
+  ChatText,
   ArrowUUpLeft,
   ArrowCounterClockwise,
   ListChecks,

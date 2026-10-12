@@ -65,8 +65,9 @@ export function MessageBubble({ message, debugCitations, onResponder, citada }: 
 
   return (
     <div
+      id={`msg-${message.id}`}
       className={cn(
-        "group flex w-full items-center gap-1 px-4 py-1",
+        "group flex w-full items-center gap-1 px-4 py-1 transition-colors duration-500",
         isOutbound ? "justify-end" : "justify-start",
       )}
     >
