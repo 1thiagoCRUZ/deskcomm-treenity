@@ -9,6 +9,7 @@ import { format, isToday, isYesterday } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MessageBubble } from "./MessageBubble";
+import { MediaViewerProvider } from "./media/MediaViewer";
 import { NoteCard } from "./NoteCard";
 import { useMessagesRealtime } from "@/hooks/inbox/useMessagesRealtime";
 import { useConversationNotes } from "@/hooks/inbox/useConversationNotes";
@@ -22,6 +23,8 @@ interface Props {
   conversationId: string | null;
   /** Escolher uma mensagem para responder. Sobe até o composer. */
   onResponder?: (m: Message) => void;
+  /** Nome mostrado no topo do visualizador de mídia para o que o cliente enviou. */
+  nomeDoContato?: string;
 }
 
 /** Onda 5.2: union de item do thread — mensagem real ou nota interna (nunca vai ao cliente). */
@@ -47,7 +50,7 @@ function dayLabel(d: Date, t: (texto: string) => string = (texto) => texto, loca
   return format(d, "dd/MM/yyyy", { locale: locale });
 }
 
-export function ChatThread({ conversationId, onResponder }: Props) {
+export function ChatThread({ conversationId, onResponder, nomeDoContato }: Props) {
   const localeDaData = useLocaleDeData();
   const t = useT();
   const q = useMessagesRealtime(conversationId);
@@ -201,6 +204,7 @@ export function ChatThread({ conversationId, onResponder }: Props) {
   }
 
   return (
+    <MediaViewerProvider messages={messages} nomeDoContato={nomeDoContato ?? t("Contato")} onResponder={onResponder}>
     <div {...sinalDoCanal} className="flex h-full flex-col">
       <div ref={scrollerRef} className="flex-1 overflow-y-auto py-2">
         {q.hasNextPage && (
@@ -256,5 +260,6 @@ export function ChatThread({ conversationId, onResponder }: Props) {
         <div ref={bottomRef} />
       </div>
     </div>
+    </MediaViewerProvider>
   );
 }

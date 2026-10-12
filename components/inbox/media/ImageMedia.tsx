@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 
 import { MediaUnavailable } from "./MediaUnavailable";
 import { mediaSrc } from "./media-utils";
+import { useMediaViewer } from "./MediaViewer";
 
 interface Props {
   messageId: string;
@@ -20,6 +21,7 @@ export function ImageMedia({ messageId, alt }: Props) {
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [open, setOpen] = useState(false);
   const src = mediaSrc(messageId);
+  const viewer = useMediaViewer();
 
   if (state === "error")
     return (
@@ -33,7 +35,7 @@ export function ImageMedia({ messageId, alt }: Props) {
       <button
         type="button"
         aria-label={t("Ampliar imagem")}
-        onClick={() => setOpen(true)}
+        onClick={() => (viewer ? viewer.abrir(messageId) : setOpen(true))}
         disabled={state !== "ready"}
         aria-disabled={state !== "ready"}
         className={cn(
