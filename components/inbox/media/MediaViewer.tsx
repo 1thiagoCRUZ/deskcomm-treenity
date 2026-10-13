@@ -34,7 +34,6 @@ import {
   ArrowBendUpLeft,
   CaretLeft,
   CaretRight,
-  ChatText,
   DownloadSimple,
   MagnifyingGlassMinus,
   MagnifyingGlassPlus,
@@ -63,7 +62,8 @@ export function ehMidiaDaGaleria(m: Message): boolean {
   );
 }
 
-const ZOOMS = [1, 1.75, 2.5];
+/** 5 degraus, como no WhatsApp: normal + 4 cliques de zoom. */
+const ZOOMS = [1, 1.5, 2, 3, 4];
 
 interface ProviderProps {
   messages: Message[];
@@ -122,6 +122,32 @@ function Viewer({ galeria, msg, indice, nomeDoContato, onTrocar, onFechar, onRes
   const zoom = zoomDe.id === msg.id ? zoomDe.nivel : 0;
   const setZoom = (f: (z: number) => number) => setZoomDe({ id: msg.id, nivel: f(zoom) });
   const miniaturaAtiva = useRef<HTMLButtonElement | null>(null);
+  const palco = useRef<HTMLDivElement | null>(null);
+  // Arrastar a imagem ampliada move a vista (rolagem). `moveu` evita que o fim
+  // do arrasto conte como clique e dê mais um zoom.
+  const arrasto = useRef<{ x: number; y: number; left: number; top: number; moveu: boolean } | null>(null);
+  const noMax = zoom === ZOOMS.length - 1;
+
+  const iniciarArrasto = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (zoom === 0 || !palco.current) return;
+    arrasto.current = { x: e.clientX, y: e.clientY, left: palco.current.scrollLeft, top: palco.current.scrollTop, moveu: false };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+  const moverArrasto = (e: React.PointerEvent<HTMLDivElement>) => {
+    const a = arrasto.current;
+    if (!a || !palco.current) return;
+    const dx = e.clientX - a.x;
+    const dy = e.clientY - a.y;
+    if (Math.abs(dx) + Math.abs(dy) > 4) a.moveu = true;
+    palco.current.scrollLeft = a.left - dx;
+    palco.current.scrollTop = a.top - dy;
+  };
+  const terminarArrasto = () => {
+    // Zera depois do click que vem junto com o pointerup.
+    setTimeout(() => {
+      arrasto.current = null;
+    }, 0);
+  };
 
   const anterior = useCallback(() => indice > 0 && onTrocar(indice - 1), [indice, onTrocar]);
   const proxima = useCallback(
@@ -153,19 +179,6 @@ function Viewer({ galeria, msg, indice, nomeDoContato, onTrocar, onFechar, onRes
   const quando = format(new Date(msg.sent_at), "dd/MM/yyyy 'às' HH:mm", { locale });
   const inicial = quem.trim().charAt(0).toUpperCase() || "?";
 
-  const irParaMensagem = () => {
-    const id = msg.id;
-    onFechar();
-    // Espera o viewer sair para o scroll não disputar com o overflow do body.
-    setTimeout(() => {
-      const el = document.getElementById(`msg-${id}`);
-      if (!el) return;
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-      el.classList.add("bg-primary/10");
-      setTimeout(() => el.classList.remove("bg-primary/10"), 1800);
-    }, 50);
-  };
-
   const responder = () => {
     onFechar();
     onResponder?.(msg);
@@ -192,18 +205,29 @@ function Viewer({ galeria, msg, indice, nomeDoContato, onTrocar, onFechar, onRes
           <p className="truncate text-xs text-white/60">{quando}</p>
         </div>
         {!ehVideo && (
-          <button
-            type="button"
-            className={botao}
-            aria-label={zoom === ZOOMS.length - 1 ? t("Reduzir") : t("Aumentar")}
-            onClick={() => setZoom((z) => (z + 1) % ZOOMS.length)}
-          >
-            {zoom === ZOOMS.length - 1 ? <MagnifyingGlassMinus size={22} /> : <MagnifyingGlassPlus size={22} />}
-          </button>
+          <>
+            <button
+              type="button"
+              className={botao}
+              aria-label={t("Reduzir")}
+              title={t("Reduzir")}
+              disabled={zoom === 0}
+              onClick={() => setZoom((z) => Math.max(0, z - 1))}
+            >
+              <MagnifyingGlassMinus size={22} />
+            </button>
+            <button
+              type="button"
+              className={botao}
+              aria-label={t("Aumentar")}
+              title={t("Aumentar")}
+              disabled={noMax}
+              onClick={() => setZoom((z) => Math.min(ZOOMS.length - 1, z + 1))}
+            >
+              <MagnifyingGlassPlus size={22} />
+            </button>
+          </>
         )}
-        <button type="button" className={botao} aria-label={t("Ir para a mensagem")} title={t("Ir para a mensagem")} onClick={irParaMensagem}>
-          <ChatText size={22} />
-        </button>
         {onResponder && (
           <button type="button" className={botao} aria-label={t("Responder")} title={t("Responder")} onClick={responder}>
             <ArrowBendUpLeft size={22} />
@@ -227,7 +251,18 @@ function Viewer({ galeria, msg, indice, nomeDoContato, onTrocar, onFechar, onRes
         <button type="button" className={cn(botao, "absolute left-3 top-1/2 z-10 -translate-y-1/2 bg-white/10")} aria-label={t("Anterior")} onClick={anterior} disabled={indice === 0}>
           <CaretLeft size={24} />
         </button>
-        <div className="flex min-w-0 flex-1 overflow-auto px-16 py-2" onClick={(e) => e.target === e.currentTarget && onFechar()}>
+        <div
+          ref={palco}
+          className={cn(
+            "flex min-w-0 flex-1 overflow-auto px-16 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+            zoom > 0 && "touch-none cursor-grab active:cursor-grabbing",
+          )}
+          onPointerDown={iniciarArrasto}
+          onPointerMove={moverArrasto}
+          onPointerUp={terminarArrasto}
+          onPointerCancel={terminarArrasto}
+          onClick={(e) => e.target === e.currentTarget && onFechar()}
+        >
           {ehVideo ? (
             <video
               key={msg.id}
@@ -242,9 +277,13 @@ function Viewer({ galeria, msg, indice, nomeDoContato, onTrocar, onFechar, onRes
               key={msg.id}
               src={mediaSrc(msg.id)}
               alt={t("Imagem recebida")}
-              onClick={() => setZoom((z) => (z + 1) % ZOOMS.length)}
+              draggable={false}
+              onClick={() => {
+                if (arrasto.current?.moveu) return;
+                setZoom((z) => (z + 1) % ZOOMS.length);
+              }}
               style={zoom === 0 ? undefined : { height: `${(ZOOMS[zoom] ?? 1) * 100}%`, maxWidth: "none", maxHeight: "none" }}
-              className={cn("m-auto object-contain", zoom === 0 ? "max-h-full max-w-full cursor-zoom-in" : "shrink-0 cursor-zoom-out")}
+              className={cn("m-auto object-contain", zoom === 0 ? "max-h-full max-w-full cursor-zoom-in" : "shrink-0 select-none")}
             />
           )}
         </div>
