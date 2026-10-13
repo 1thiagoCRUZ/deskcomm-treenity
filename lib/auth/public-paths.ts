@@ -44,6 +44,8 @@ export const PUBLIC_PATHS: RegExp[] = [
   // O aviso "o bot chamou o especialista", que a API do bot manda sem cookie.
   // Mesma chave `tbw_`, conferida dentro da rota.
   /^\/api\/treenity-bot\/whatsapp\/pediu-ajuda$/,
+  // O aviso de venda nova, mesma chave `tbw_` conferida dentro da rota.
+  /^\/api\/treenity-bot\/whatsapp\/venda-nova$/,
   // Dados para nota e envio, que o bot (n8n) lê e grava sem cookie. Mesma chave
   // `tbw_`, conferida dentro da rota. Sem esta linha o proxy respondia 401 a
   // toda chamada do bot e nada era gravado (medido no teste de 08/10).
