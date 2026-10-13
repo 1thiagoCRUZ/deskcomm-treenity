@@ -38,6 +38,7 @@ export async function encerrarAtendimentoNoBot(pedido: {
       body: JSON.stringify({
         id_faces: idsFaceDoTelefone(pedido.telefone),
         ...(pedido.valorDaVenda !== null ? { venda: { valor_total: pedido.valorDaVenda } } : {}),
+        fechada_por: pedido.usuario.nome,
       }),
       cache: "no-store",
       signal: AbortSignal.timeout(TEMPO_MAXIMO_MS),

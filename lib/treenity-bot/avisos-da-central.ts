@@ -114,3 +114,27 @@ export async function resolverAvisosDaConversa(
     });
   }
 }
+
+/** Alguém abriu a venda da conversa: os avisos de "venda nova" dela se resolvem. */
+export async function resolverAvisosDeVenda(
+  admin: SupabaseClient,
+  organizationId: string,
+  conversationId: string,
+): Promise<void> {
+  try {
+    await admin
+      .from("agent_inbox_items")
+      .update({ status: "resolved", resolved_at: new Date().toISOString() })
+      .eq("organization_id", organizationId)
+      .eq("kind", "other")
+      .eq("ref_kind", "conversation")
+      .eq("ref_id", conversationId)
+      .eq("status", "open")
+      .like("body", "%[venda %");
+  } catch (err) {
+    logger.warn("[treenity-bot.avisos] não resolveu o aviso de venda", {
+      organization_id: organizationId,
+      detail: err instanceof Error ? err.message.slice(0, 160) : "desconhecido",
+    });
+  }
+}
