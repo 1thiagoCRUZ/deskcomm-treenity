@@ -146,3 +146,36 @@ describe("payload capenga não vira linha meia-boca", () => {
     expect(e).toMatchObject({ type: "location", text: null, media: null });
   });
 });
+
+describe("legenda de imagem e vídeo", () => {
+  const comMidia = (tipo: "image" | "video", corpo: Record<string, unknown>) =>
+    parseMetaWebhook({
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          id: "waba1",
+          changes: [
+            {
+              field: "messages",
+              value: {
+                metadata: { phone_number_id: "pn1" },
+                contacts: [{ wa_id: "5514999999999", profile: { name: "Cliente" } }],
+                messages: [{ from: "5514999999999", id: "wamid.x", timestamp: "1760000000", type: tipo, [tipo]: corpo }],
+              },
+            },
+          ],
+        },
+      ],
+    } as never).filter((e): e is InboundMessageEvent => e.kind === "inbound_message");
+
+  it("o `caption` vira o texto da mensagem — antes ele sumia", () => {
+    const [img] = comMidia("image", { id: "m1", mime_type: "image/jpeg", caption: "Seria esse aqui né" });
+    const [vid] = comMidia("video", { id: "m2", mime_type: "video/mp4", caption: "Olha isso" });
+    expect(img!.text).toBe("Seria esse aqui né");
+    expect(vid!.text).toBe("Olha isso");
+  });
+
+  it("mídia sem legenda continua sem texto", () => {
+    expect(comMidia("image", { id: "m3", mime_type: "image/jpeg" })[0]!.text).toBeNull();
+  });
+});

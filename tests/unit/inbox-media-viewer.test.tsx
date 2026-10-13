@@ -67,11 +67,6 @@ describe("MediaViewer", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("baixar aponta para o endpoint de mídia", () => {
-    abre();
-    expect(screen.getByRole("link", { name: "Baixar" })).toHaveAttribute("href", "/api/v1/messages/a/media");
-  });
-
   it("zoom em 4 degraus: o + desliga no máximo e o - só liga depois do primeiro zoom", () => {
     abre();
     const mais = screen.getByRole("button", { name: "Aumentar" });
@@ -90,5 +85,31 @@ describe("MediaViewer", () => {
   it("não tem mais o botão de ir para a mensagem", () => {
     abre();
     expect(screen.queryByRole("button", { name: "Ir para a mensagem" })).not.toBeInTheDocument();
+  });
+
+  it("baixar pede o arquivo como anexo (o atributo download não vale entre origens)", () => {
+    abre();
+    const a = screen.getByRole("link", { name: "Baixar" });
+    expect(a.getAttribute("href")).toMatch(/^\/api\/v1\/messages\/a\/media\?download=imagem-a\.jpg$/);
+    expect(a).toHaveAttribute("download", "imagem-a.jpg");
+  });
+
+  it("clicar na imagem com zoom não fecha o visualizador", () => {
+    abre();
+    const img = document.querySelector("img[alt='Imagem recebida']") as HTMLElement;
+    fireEvent.click(img);
+    fireEvent.click(img);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("depois de arrastar, o clique solto no palco não fecha", () => {
+    abre();
+    fireEvent.click(screen.getByRole("button", { name: "Aumentar" }));
+    const palco = document.querySelector("img[alt='Imagem recebida']")!.parentElement as HTMLElement;
+    fireEvent.pointerDown(palco, { clientX: 100, clientY: 100, pointerId: 1 });
+    fireEvent.pointerMove(palco, { clientX: 160, clientY: 140, pointerId: 1 });
+    fireEvent.pointerUp(palco, { pointerId: 1 });
+    fireEvent.click(palco);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 });

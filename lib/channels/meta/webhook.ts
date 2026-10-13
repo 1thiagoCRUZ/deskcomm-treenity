@@ -256,7 +256,8 @@ export function parseMetaWebhook(envelope: MetaWebhookEnvelope): MetaWebhookEven
                 ? str((raw.text as Record<string, unknown>)?.body)
                 : tipoCrm === "text"
                   ? (respostaDeBotao ?? MENSAGEM_SEM_SUPORTE)
-                  : sharedContact?.name ?? null,
+                  : // Imagem, vídeo e documento chegam com a legenda em `caption`.
+                    sharedContact?.name ?? str(corpoMidia?.caption) ?? null,
             ...(sharedContact ? { sharedContact } : {}),
             media:
               corpoMidia && str(corpoMidia.id)
