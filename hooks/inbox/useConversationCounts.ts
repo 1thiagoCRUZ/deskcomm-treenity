@@ -13,6 +13,8 @@ export interface ConversationCounts {
   automatico?: number;
   /** Pedidos de especialista do bot sem dono — acende a bolinha laranja da Fila. */
   pediu_especialista?: number;
+  /** Vendas fechadas que ninguém abriu ainda — acende a bolinha verde de Fechadas. */
+  venda_nova?: number;
   /** Nome antigo de `fila`, mantido pela rota versionada. Prefira `fila`. */
   unassigned: number;
   mine: number;

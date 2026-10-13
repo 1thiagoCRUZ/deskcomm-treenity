@@ -14,6 +14,7 @@ import { traduzir } from "@/lib/i18n/dicionario";
 import { CONVERSATION_TERMINAL_STATUSES } from "@/lib/schemas";
 import { orgTemAutomatico } from "@/lib/ai/agents/org-tem-automatico";
 import { comandosDaFila } from "@/lib/inbox/comando-da-conversa";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { PREFIXO_DO_PEDIDO_DE_ESPECIALISTA } from "@/lib/treenity-bot/pediu-especialista";
 
@@ -60,7 +61,7 @@ export async function GET(): Promise<Response> {
   // convenção da regra: assume que há automático.
   const automaticoDaOrg = await orgTemAutomatico(supabase, org);
 
-  const [fila, automatico, mine, all, pediuEspecialista] = await Promise.all([
+  const [fila, automatico, mine, all, pediuEspecialista, vendasNovas] = await Promise.all([
     // A FILA DEIXOU DE SER "sem dono + status de espera".
     //
     // Aquele par contava como trabalho humano pendente tudo que o robô estava
@@ -83,9 +84,20 @@ export async function GET(): Promise<Response> {
       .like("last_handoff_reason", `${PREFIXO_DO_PEDIDO_DE_ESPECIALISTA}%`)
       .is("assigned_to_user_id", null)
       .not("status", "in", `(${CONVERSATION_TERMINAL_STATUSES.join(",")})`),
+    // Vendas que o bot fechou e ninguém olhou ainda: avisos de venda abertos da
+    // Central, ligados a uma conversa. É o que acende a bolinha verde de Fechadas.
+    // Admin client com a org JÁ resolvida acima (nunca do corpo).
+    createAdminClient()
+      .from("agent_inbox_items")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", org)
+      .eq("kind", "other")
+      .eq("ref_kind", "conversation")
+      .eq("status", "open")
+      .like("body", "%[venda %"),
   ]);
 
-  const firstErr = fila.error ?? automatico.error ?? mine.error ?? all.error ?? pediuEspecialista.error;
+  const firstErr = fila.error ?? automatico.error ?? mine.error ?? all.error ?? pediuEspecialista.error ?? vendasNovas.error;
   if (firstErr) {
     return fail("internal_error", firstErr.message, 500, { requestId });
   }
@@ -102,6 +114,7 @@ export async function GET(): Promise<Response> {
       mine: mine.count ?? 0,
       all: all.count ?? 0,
       pediu_especialista: pediuEspecialista.count ?? 0,
+      venda_nova: vendasNovas.count ?? 0,
     },
     { requestId },
   );

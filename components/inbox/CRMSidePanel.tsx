@@ -18,6 +18,7 @@ import { apiClient } from "@/lib/api/client";
 import { toast } from "sonner";
 import type { ConversationWithContact } from "@/hooks/inbox/useConversationsRealtime";
 import { activityLabel, actorLabel, actorShape } from "@/lib/leads/activity-vocabulary";
+import { VendaDaConversa } from "./VendaDaConversa";
 import { ConversationTagsEditor } from "./ConversationTagsEditor";
 import { ContactTagsEditor } from "./ContactTagsEditor";
 import { useDefaultPipeline } from "@/hooks/pipelines/useDefaultPipeline";
@@ -623,6 +624,8 @@ export function CRMSidePanel({ conversation }: Props) {
       />}
 
       <Separator />
+
+      <VendaDaConversa conversationId={conversation.id} />
 
       {/* ANTES dos negócios de propósito (doutrina cap. 5): lead é o negócio,
           conversa é o canal, demanda é o que precisa acabar. Quem abre esta

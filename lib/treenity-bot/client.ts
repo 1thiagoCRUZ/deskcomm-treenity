@@ -137,6 +137,10 @@ export interface VendaPainel {
   valor_produtos: number;
   status: string;
   transportadora: string | null;
+  /** pix | credito | debito | boleto — quando o cliente já escolheu. */
+  forma_pagamento?: string | null;
+  /** Nome de quem fechou pelo Inbox; vazio = o bot (CADU) fechou. */
+  fechada_por?: string | null;
   cliente_detalhes: {
     id: string | null;
     nome: string;
@@ -170,6 +174,8 @@ export interface PaginaDeVendas {
 }
 
 export interface FiltrosDeVendas {
+  /** Só as vendas deste cliente (o `id_face` como o bot gravou). */
+  id_face?: string;
   status?: string;
   canal?: string;
   /** `YYYY-MM-DD`, inclusivo. */

@@ -222,6 +222,14 @@ export function InboxFilters({ value, onChange }: Props) {
                 {typeof count === "number" && count > 0 && (
                   <span className="text-[11px] tabular-nums text-text-subtle">{count}</span>
                 )}
+                {tab === "closed" && (counts?.venda_nova ?? 0) > 0 && (
+                  <span
+                    role="img"
+                    aria-label={t("Venda nova para conferir")}
+                    title={t("Venda nova para conferir")}
+                    className="h-2 w-2 shrink-0 rounded-full bg-green-500"
+                  />
+                )}
                 {tab === "unassigned" && (counts?.pediu_especialista ?? 0) > 0 && (
                   <span
                     role="img"
