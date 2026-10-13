@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { abrirAvisoDeEspecialista, abrirAvisoDeVenda, resolverAvisosDaConversa } from "@/lib/treenity-bot/avisos-da-central";
+import { pagamentoDoMotivo, abrirAvisoDeEspecialista, abrirAvisoDeVenda, resolverAvisosDaConversa } from "@/lib/treenity-bot/avisos-da-central";
 
 /** Cliente falso: toda consulta encadeia e termina devolvendo `existente`. */
 function falso(existente: unknown) {
@@ -22,6 +22,21 @@ describe("avisos da central", () => {
     const f = falso(null);
     await abrirAvisoDeEspecialista(f.admin, { organizationId: "o", conversationId: "c", cliente: "Ana", motivo: "quer desconto" });
     expect(f.insert).toHaveBeenCalledWith(expect.objectContaining({ kind: "handoff", ref_kind: "conversation", ref_id: "c", severity: "critical" }));
+  });
+
+  it("trata escolha de boleto/cartão como aviso de Pagamento, não de especialista", async () => {
+    const f = falso(null);
+    await abrirAvisoDeEspecialista(f.admin, {
+      organizationId: "o",
+      conversationId: "c",
+      cliente: "Ana",
+      motivo: "PAGAMENTO - produtor escolheu boleto. Finalizar a venda.",
+    });
+    expect(f.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Pagamento: Ana quer pagar no boleto", severity: "warn" }),
+    );
+    expect(pagamentoDoMotivo("PAGAMENTO - produtor escolheu credito. x")?.forma).toBe("cartão de crédito");
+    expect(pagamentoDoMotivo("quer desconto")).toBeNull();
   });
 
   it("não duplica o aviso de especialista aberto", async () => {

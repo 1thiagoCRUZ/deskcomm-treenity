@@ -15,7 +15,7 @@ import {
   useUpdateInboxItem,
   type AgentInboxItem,
 } from "@/hooks/ai/useAgentInbox";
-import { kindLabel, SEVERITY_LABEL, type AgentInboxSeverity } from "@/lib/ai/agent-inbox-copy";
+import { etiquetaDoAviso, kindLabel, type AgentInboxSeverity } from "@/lib/ai/agent-inbox-copy";
 import { Bell, Check } from "@/lib/ui/icons";
 import { useT } from "@/hooks/i18n/useT";
 import { ApiError } from "@/lib/api/types";
@@ -128,7 +128,7 @@ function InboxRow({
       data-testid="inbox-item"
     >
       <Badge variant={SEVERITY_VARIANT[item.severity]} className="mt-0.5 shrink-0">
-        {t(SEVERITY_LABEL[item.severity])}
+        {etiquetaDoAviso(item, t)}
       </Badge>
       <div className="min-w-0 flex-1 basis-48 break-words">
         {/* TÍTULO E CORPO SAEM COMO VIERAM — nunca por t().

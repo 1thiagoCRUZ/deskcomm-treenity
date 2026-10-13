@@ -134,3 +134,18 @@ export function copyDaPromessaSemDono(
 
   return { title, body: CORPO[porque] };
 }
+
+/**
+ * O que vai na etiqueta colorida do aviso. A cor continua sendo a severidade,
+ * mas o TEXTO diz do que se trata quando o aviso é do Treenity Bot — "crítico"
+ * não diz a quem lê se é pagamento, especialista ou venda.
+ */
+export function etiquetaDoAviso(
+  item: { kind: string; severity: AgentInboxSeverity; title: string; body: string | null },
+  t: (texto: string) => string = (texto) => texto,
+): string {
+  if (item.kind === "handoff" && item.title.startsWith("Pagamento:")) return t("Pagamento");
+  if (item.kind === "handoff" && item.title.endsWith("pediu um especialista")) return t("Especialista");
+  if (item.kind === "other" && item.body?.includes("[venda ")) return t("Venda");
+  return t(SEVERITY_LABEL[item.severity]);
+}
