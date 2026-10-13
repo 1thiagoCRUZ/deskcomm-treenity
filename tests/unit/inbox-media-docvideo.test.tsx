@@ -13,11 +13,11 @@ describe("VideoMedia", () => {
     expect(video).toHaveAttribute("controls");
   });
 
-  it("caixa estável aspect-video mantém proporção", () => {
+  it("caixa estável mantém a proporção do vídeo", () => {
     const { container } = render(<VideoMedia messageId="m4" />);
-    const box = container.querySelector(".aspect-video");
+    const box = container.querySelector("div[style*='aspect-ratio']");
     expect(box).not.toBeNull();
-    expect(box).toHaveClass("relative", "w-full", "max-w-sm", "overflow-hidden", "rounded-lg");
+    expect(box).toHaveClass("relative", "max-w-full", "overflow-hidden", "rounded-xl");
   });
 
   it("mostra skeleton enquanto carrega, desaparece após loadedmetadata", () => {
@@ -41,11 +41,11 @@ describe("VideoMedia", () => {
 
     fireEvent.error(video);
 
-    const aspectVideoBox = container.querySelector(".aspect-video");
+    const aspectVideoBox = container.querySelector("div[style*='aspect-ratio']");
     expect(aspectVideoBox).not.toBeNull();
     expect(screen.getByText("Mídia indisponível")).toBeInTheDocument();
 
-    // Verifica que o fallback está dentro do container aspect-video
+    // Verifica que o fallback está dentro do container com proporção
     expect(aspectVideoBox?.contains(screen.getByText("Mídia indisponível"))).toBe(true);
   });
 });

@@ -46,6 +46,7 @@ export function MessageBubble({ message, debugCitations, onResponder, citada }: 
   const hasMedia = Boolean(message.media_url || message.media_storage_path);
   const isContact = message.type === "contact";
   // Figurinha sem caption: sem moldura de bolha (padrão WhatsApp).
+  const visual = hasMedia && (message.type === "image" || message.type === "video");
   const isBareSticker = hasMedia && message.type === "sticker" && !message.body;
   // Apagada pelo autor ("apagar para todos"). A linha continua no histórico —
   // sumir com ela deixaria a resposta seguinte respondendo ao nada —, mas o
@@ -112,7 +113,8 @@ export function MessageBubble({ message, debugCitations, onResponder, citada }: 
           isBareSticker
             ? "px-0 py-0"
             : cn(
-                "rounded-2xl px-3 py-2 shadow-sm",
+                "relative rounded-2xl shadow-sm",
+                visual ? "p-1" : "px-3 py-2",
                 isOutbound
                   ? "rounded-br-sm bg-primary text-primary-foreground"
                   : "rounded-bl-sm bg-muted text-foreground",
@@ -174,7 +176,7 @@ export function MessageBubble({ message, debugCitations, onResponder, citada }: 
         ) : (
           <>
             {hasMedia && (
-              <div className={cn(message.body && "mb-1")}>
+              <div className={cn(message.body && !visual && "mb-1")}>
                 <MediaRenderer message={message} />
               </div>
             )}
@@ -186,15 +188,17 @@ export function MessageBubble({ message, debugCitations, onResponder, citada }: 
             )}
 
             {message.body && !isContact && (
-              <p className="whitespace-pre-wrap break-words leading-snug">{message.body}</p>
+              <p className={cn("whitespace-pre-wrap break-words leading-snug", visual && "px-2 pt-1")}>{message.body}</p>
             )}
           </>
         )}
 
         <div
           className={cn(
-            "mt-1 flex items-center justify-end gap-1 text-[10px]",
-            isOutbound ? "text-primary-foreground" : "text-muted-foreground",
+            "flex items-center justify-end gap-1 text-[10px] leading-none",
+            visual && !message.body
+              ? "absolute bottom-2 right-3 rounded-full bg-black/50 px-1.5 py-0.5 text-white"
+              : cn(visual ? "px-2 pb-1 pt-0.5" : "mt-0.5", isOutbound ? "text-primary-foreground" : "text-muted-foreground"),
           )}
         >
           {editada && (
