@@ -11,6 +11,8 @@ export interface ConversationCounts {
    */
   fila?: number;
   automatico?: number;
+  /** Pedidos de especialista do bot sem dono — acende a bolinha laranja da Fila. */
+  pediu_especialista?: number;
   /** Nome antigo de `fila`, mantido pela rota versionada. Prefira `fila`. */
   unassigned: number;
   mine: number;

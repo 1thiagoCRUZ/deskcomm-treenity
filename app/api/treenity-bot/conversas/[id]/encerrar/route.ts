@@ -29,6 +29,7 @@ import { requireSupportWrite } from "@/lib/impersonate/support";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { resolverAvisosDaConversa } from "@/lib/treenity-bot/avisos-da-central";
 import { encerrarAtendimentoNoBot } from "@/lib/treenity-bot/encerrar-no-bot";
 import { sincronizarFunilDoTreenityBot } from "@/lib/treenity-bot/funil-de-leads";
 import { botDoTreenityAtende } from "@/lib/treenity-bot/whatsapp";
@@ -129,6 +130,8 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
       .eq("organization_id", c.organization_id)
       .eq("id", c.contact_id);
   }
+
+  await resolverAvisosDaConversa(admin, c.organization_id, c.id);
 
   await audit({
     action: "conversation.closed",

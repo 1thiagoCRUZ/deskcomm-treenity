@@ -17,6 +17,8 @@ import { requireSupportWrite } from "@/lib/impersonate/support";
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 
+import { createAdminClient } from "@/lib/supabase/admin";
+import { resolverAvisosDaConversa } from "@/lib/treenity-bot/avisos-da-central";
 import { audit } from "@/lib/audit";
 import { registrarTrocaDeComando } from "@/lib/inbox/atividade-de-comando";
 import { ApiError } from "@/lib/api/types";
@@ -80,6 +82,8 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
   }
 
   const conv = row as unknown as Conversation;
+
+  await resolverAvisosDaConversa(createAdminClient(), conv.organization_id, conv.id);
 
   await audit({
     action: "conversation.claimed",

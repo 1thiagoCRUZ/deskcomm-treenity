@@ -24,6 +24,9 @@ import type { Actor } from "@/lib/api/handlers/types";
 import { registrarTrocaDeComando } from "@/lib/inbox/atividade-de-comando";
 import { logger } from "@/lib/logger";
 
+import { createAdminClient } from "@/lib/supabase/admin";
+
+import { resolverAvisosDaConversa } from "./avisos-da-central";
 import { botDoTreenityAtende } from "./whatsapp";
 
 export type DesfechoDoResponder = "nao_se_aplica" | "ja_tem_dono" | "assumida" | "falhou";
@@ -61,6 +64,8 @@ export async function assumirAoResponder(
     // otimista fazendo o trabalho dela.
     if (error) throw new Error(error.message);
     if (!data?.[0]) return "ja_tem_dono";
+
+    await resolverAvisosDaConversa(createAdminClient(), pedido.organizationId, c.id);
 
     await registrarTrocaDeComando({
       supabase,

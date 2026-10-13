@@ -41,7 +41,8 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { encontrarContatoPorTelefone } from "@/lib/channels/contato-por-telefone";
+import { abrirAvisoDeEspecialista } from "./avisos-da-central";
+import { encontrarContatoPorTelefoneComNome } from "@/lib/channels/contato-por-telefone";
 import { logger } from "@/lib/logger";
 
 export interface ConfigDoWhatsApp {
@@ -351,7 +352,7 @@ export async function marcarPediuAjuda(
   admin: SupabaseClient,
   pedido: { organizationId: string; idFace: string; motivo: string },
 ): Promise<DesfechoDoPedidoDeAjuda> {
-  const contato = await encontrarContatoPorTelefone(admin, pedido.organizationId, pedido.idFace);
+  const contato = await encontrarContatoPorTelefoneComNome(admin, pedido.organizationId, pedido.idFace);
   if (!contato) return "sem_contato";
 
   const { data: conversa, error } = await admin
@@ -376,5 +377,11 @@ export async function marcarPediuAjuda(
     .eq("organization_id", pedido.organizationId)
     .eq("id", (conversa as { id: string }).id);
   if (erroUpdate) throw new Error(`marcar: ${erroUpdate.message}`);
+  await abrirAvisoDeEspecialista(admin, {
+    organizationId: pedido.organizationId,
+    conversationId: (conversa as { id: string }).id,
+    cliente: contato.name,
+    motivo: pedido.motivo,
+  });
   return "marcada";
 }
