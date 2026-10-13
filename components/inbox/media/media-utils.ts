@@ -25,3 +25,15 @@ export function mediaFileLabel(mime: string | null, storagePath: string | null):
   if (sub && !["octet-stream", "bin"].includes(sub)) return sub.toUpperCase();
   return "Arquivo";
 }
+
+const MIDIA_LARGURA_MAX = 330;
+const MIDIA_ALTURA_MAX = 380;
+
+/**
+ * Tamanho de exibição que preserva a proporção original (como o WhatsApp):
+ * deitada ocupa a largura toda; em pé fica mais estreita, limitada pela altura.
+ */
+export function tamanhoDaMidia(w: number, h: number): { width: number; aspectRatio: string } {
+  const ratio = w > 0 && h > 0 ? w / h : 4 / 3;
+  return { width: Math.round(Math.min(MIDIA_LARGURA_MAX, MIDIA_ALTURA_MAX * ratio)), aspectRatio: String(ratio) };
+}
