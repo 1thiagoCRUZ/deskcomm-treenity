@@ -71,4 +71,24 @@ describe("MediaViewer", () => {
     abre();
     expect(screen.getByRole("link", { name: "Baixar" })).toHaveAttribute("href", "/api/v1/messages/a/media");
   });
+
+  it("zoom em 4 degraus: o + desliga no máximo e o - só liga depois do primeiro zoom", () => {
+    abre();
+    const mais = screen.getByRole("button", { name: "Aumentar" });
+    const menos = screen.getByRole("button", { name: "Reduzir" });
+    expect(menos).toBeDisabled();
+    for (let i = 0; i < 4; i++) {
+      expect(mais).toBeEnabled();
+      fireEvent.click(mais);
+    }
+    expect(mais).toBeDisabled();
+    expect(menos).toBeEnabled();
+    fireEvent.click(menos);
+    expect(mais).toBeEnabled();
+  });
+
+  it("não tem mais o botão de ir para a mensagem", () => {
+    abre();
+    expect(screen.queryByRole("button", { name: "Ir para a mensagem" })).not.toBeInTheDocument();
+  });
 });
