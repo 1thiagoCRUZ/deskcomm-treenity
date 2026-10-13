@@ -131,14 +131,19 @@ function Viewer({ galeria, msg, indice, nomeDoContato, onTrocar, onFechar, onRes
   const iniciarArrasto = (e: React.PointerEvent<HTMLDivElement>) => {
     if (zoom === 0 || !palco.current) return;
     arrasto.current = { x: e.clientX, y: e.clientY, left: palco.current.scrollLeft, top: palco.current.scrollTop, moveu: false };
-    e.currentTarget.setPointerCapture?.(e.pointerId);
   };
   const moverArrasto = (e: React.PointerEvent<HTMLDivElement>) => {
     const a = arrasto.current;
     if (!a || !palco.current) return;
     const dx = e.clientX - a.x;
     const dy = e.clientY - a.y;
-    if (Math.abs(dx) + Math.abs(dy) > 4) a.moveu = true;
+    if (!a.moveu && Math.abs(dx) + Math.abs(dy) > 4) {
+      a.moveu = true;
+      // Só captura o ponteiro quando virou arrasto: capturar já no pressionar faz o
+      // clique cair no palco (fora da imagem) e fechar o visualizador.
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+    }
+    if (!a.moveu) return;
     palco.current.scrollLeft = a.left - dx;
     palco.current.scrollTop = a.top - dy;
   };
@@ -189,6 +194,8 @@ function Viewer({ galeria, msg, indice, nomeDoContato, onTrocar, onFechar, onRes
 
   const ext = msg.media_mime?.split(";")[0]?.split("/")[1]?.replace("jpeg", "jpg") ?? (ehVideo ? "mp4" : "jpg");
 
+  const nomeDoArquivo = `${ehVideo ? "video" : "imagem"}-${msg.id.slice(0, 8)}.${ext}`;
+
   return (
     <div
       role="dialog"
@@ -237,8 +244,8 @@ function Viewer({ galeria, msg, indice, nomeDoContato, onTrocar, onFechar, onRes
           className={botao}
           aria-label={t("Baixar")}
           title={t("Baixar")}
-          href={mediaSrc(msg.id)}
-          download={`${ehVideo ? "video" : "imagem"}-${msg.id.slice(0, 8)}.${ext}`}
+          href={`${mediaSrc(msg.id)}?download=${encodeURIComponent(nomeDoArquivo)}`}
+          download={nomeDoArquivo}
         >
           <DownloadSimple size={22} />
         </a>
@@ -261,7 +268,7 @@ function Viewer({ galeria, msg, indice, nomeDoContato, onTrocar, onFechar, onRes
           onPointerMove={moverArrasto}
           onPointerUp={terminarArrasto}
           onPointerCancel={terminarArrasto}
-          onClick={(e) => e.target === e.currentTarget && onFechar()}
+          onClick={(e) => e.target === e.currentTarget && !arrasto.current?.moveu && onFechar()}
         >
           {ehVideo ? (
             <video

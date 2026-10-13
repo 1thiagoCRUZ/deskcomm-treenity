@@ -33,7 +33,7 @@ interface RouteCtx {
   params: Promise<{ id: string }>;
 }
 
-export async function GET(_req: NextRequest, ctx: RouteCtx): Promise<Response> {
+export async function GET(req: NextRequest, ctx: RouteCtx): Promise<Response> {
   const requestId = randomUUID();
   const { id: messageId } = await ctx.params;
   const supabase = await createClient();
@@ -67,11 +67,21 @@ export async function GET(_req: NextRequest, ctx: RouteCtx): Promise<Response> {
     return fail("not_found", t("Mensagem sem mídia."), 404, { requestId });
   }
 
+  const pedido = new URL(req.url).searchParams.get("download");
+  const nomeDoDownload = pedido ? pedido.replace(/[^\w.-]/g, "_").slice(0, 80) || "arquivo" : null;
+
   if (msg.media_storage_path) {
     const admin = createAdminClient();
     const { data: signed, error: signErr } = await admin.storage
       .from("whatsapp-media")
-      .createSignedUrl(msg.media_storage_path, SIGNED_URL_TTL_S);
+      .createSignedUrl(
+        msg.media_storage_path,
+        SIGNED_URL_TTL_S,
+        // `?download=nome.jpg` pede a URL com Content-Disposition: attachment. O atributo
+        // `download` do <a> é ignorado quando o destino é de outra origem (o Supabase),
+        // então só o servidor consegue forçar o arquivo a baixar em vez de abrir.
+        nomeDoDownload ? { download: nomeDoDownload } : undefined,
+      );
     if (!signErr && signed?.signedUrl) {
       const response = NextResponse.redirect(signed.signedUrl, 302);
       response.headers.set("X-Request-Id", requestId);
