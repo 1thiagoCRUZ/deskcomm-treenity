@@ -8,6 +8,7 @@ import { apiClient } from "@/lib/api/client";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/hooks/i18n/useT";
+import { usePessoasDaAgenda } from "@/hooks/agenda/usePessoasDaAgenda";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 
@@ -22,6 +23,11 @@ type Detalhe = {
   status: string;
   revision: number;
   contact_id: string | null;
+  notes?: string | null;
+  guest_email?: string | null;
+  responsavel_id?: string | null;
+  contact_name?: string | null;
+  contact_phone?: string | null;
   conversation_id: string | null;
   outcome_source_kind: string | null;
   outcome_recorded_at: string | null;
@@ -66,6 +72,9 @@ export function DetalheDoCompromisso({
       (await apiClient.get<{ data: Detalhe }>(`/api/v1/agenda/agendamentos/${id}`)).data,
   });
   const a = query.data;
+  const { data: pessoas = [] } = usePessoasDaAgenda();
+  const responsavel = pessoas.find((p) => p.id === a?.responsavel_id);
+  const [pauta, setPauta] = useState<string | null>(null);
   const formatoDeData =
     a &&
     new Intl.DateTimeFormat(tagDoIdioma, {
@@ -100,6 +109,7 @@ export function DetalheDoCompromisso({
       void qc.invalidateQueries({ queryKey: ["agenda"] });
       void qc.invalidateQueries({ queryKey: ["agent-inbox"] });
       resetDraft();
+      setPauta(null);
     },
     onError: mutationFailed,
   });
@@ -137,41 +147,85 @@ export function DetalheDoCompromisso({
           </div>
         ) : a && formatoDeData ? (
           <div className="mt-5 space-y-5">
-            <p data-testid="compromisso-horario">
-              {formatoDeData.formatRange(new Date(a.starts_at), new Date(a.ends_at))}
-            </p>
-            <p>
-              {t(
-                (
-                  {
-                    pending: "Aguardando confirmação",
-                    confirmed: "Agendado",
-                    completed: "Compareceu",
-                    no_show: "Faltou",
-                    cancelled: "Cancelado",
-                  } as Record<string, string>
-                )[a.status] ?? a.status,
+            <div className="rounded-lg border border-border bg-surface p-4">
+              <div className="flex items-start justify-between gap-3">
+                <p data-testid="compromisso-horario" className="text-sm font-semibold first-letter:uppercase">
+                  {formatoDeData.formatRange(new Date(a.starts_at), new Date(a.ends_at))}
+                </p>
+                <span className="shrink-0 rounded-full bg-surface-elevated px-2.5 py-0.5 text-xs font-medium">
+                  {t(
+                    (
+                      {
+                        pending: "Aguardando confirmação",
+                        confirmed: "Agendado",
+                        completed: "Compareceu",
+                        no_show: "Faltou",
+                        cancelled: "Cancelado",
+                      } as Record<string, string>
+                    )[a.status] ?? a.status,
+                  )}
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-text-muted">
+                {a.outcome_recorded_at
+                  ? `${t("Presença registrada pela equipe")}: ${formatoDeData.format(new Date(a.outcome_recorded_at))}`
+                  : t("O horário sozinho não confirma falta. A equipe precisa registrar o que aconteceu.")}
+              </p>
+            </div>
+
+            <section data-testid="quem-participa">
+              <h3 className="mb-2 text-sm font-semibold">{t("Quem participa")}</h3>
+              <ul className="divide-y divide-border rounded-lg border border-border bg-surface text-sm">
+                <li className="flex items-center justify-between gap-3 px-3 py-2">
+                  <span className="text-text-muted">{t("Responsável")}</span>
+                  <span className="font-medium">{responsavel?.nome ?? t("Equipe")}</span>
+                </li>
+                <li className="flex items-center justify-between gap-3 px-3 py-2">
+                  <span className="text-text-muted">{t("Cliente")}</span>
+                  {a.contact_id ? (
+                    <Link href={`/app/contacts/${a.contact_id}`} className="text-right font-medium underline">
+                      {a.contact_name ?? t("Ver contato")}
+                      {a.contact_phone ? <span className="block text-xs font-normal text-text-muted">{a.contact_phone}</span> : null}
+                    </Link>
+                  ) : (
+                    <span className="text-text-muted">{t("Compromisso pessoal, sem cliente vinculado.")}</span>
+                  )}
+                </li>
+                {a.guest_email ? (
+                  <li className="flex items-center justify-between gap-3 px-3 py-2">
+                    <span className="text-text-muted">{t("Convidado")}</span>
+                    <span className="font-medium">{a.guest_email}</span>
+                  </li>
+                ) : null}
+              </ul>
+            </section>
+
+            <section data-testid="pauta-do-compromisso">
+              <h3 className="mb-2 text-sm font-semibold">{t("O que será tratado")}</h3>
+              {podeEditar && a.status !== "cancelled" ? (
+                <div className="space-y-2">
+                  <textarea
+                    rows={4}
+                    maxLength={2000}
+                    value={pauta ?? a.notes ?? ""}
+                    onChange={(e) => setPauta(e.target.value)}
+                    placeholder={t("Ex.: apresentar a proposta, tirar dúvidas sobre o frete, fechar o pedido")}
+                    className="w-full resize-y rounded-md border border-border bg-surface p-2 text-sm outline-hidden focus:border-border-strong"
+                  />
+                  {pauta !== null && pauta !== (a.notes ?? "") ? (
+                    <Button
+                      size="sm"
+                      disabled={mutation.isPending}
+                      onClick={() => mutation.mutate({ revision: a.revision, patch: { notes: pauta } })}
+                    >
+                      {t("Salvar")}
+                    </Button>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="whitespace-pre-wrap text-sm text-text-muted">{a.notes || t("Nada anotado.")}</p>
               )}
-            </p>
-            {a.contact_id ? (
-              <Link href={`/app/contacts/${a.contact_id}`} className="underline">
-                {t("Ver contato")}
-              </Link>
-            ) : (
-              <p>{t("Compromisso pessoal, sem cliente vinculado.")}</p>
-            )}
-            {a.outcome_recorded_at ? (
-              <p>
-                {t("Presença registrada pela equipe")}:{" "}
-                {formatoDeData.format(new Date(a.outcome_recorded_at))}
-              </p>
-            ) : (
-              <p>
-                {t(
-                  "O horário sozinho não confirma falta. A equipe precisa registrar o que aconteceu.",
-                )}
-              </p>
-            )}
+            </section>
             {a.recovery ? (
               <div className="rounded-lg border p-3" role="status">
                 <p>

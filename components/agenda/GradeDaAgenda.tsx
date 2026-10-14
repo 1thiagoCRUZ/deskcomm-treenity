@@ -29,6 +29,8 @@ import {
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/i18n/useT";
 
+import { JANELA_PADRAO, type JanelaDaGrade } from "@/lib/agenda/janela-da-grade";
+
 import { corDaTrilha, fundoDaTrilha } from "./paleta";
 import type { Agendamento, Pessoa, VisaoDaAgenda } from "./tipos";
 
@@ -43,14 +45,18 @@ import type { Agendamento, Pessoa, VisaoDaAgenda } from "./tipos";
  */
 const ALTURA_DA_HORA = 48;
 
-/** A janela que a grade desenha. Fora dela, rola. */
-const PRIMEIRA_HORA = 7;
-const ULTIMA_HORA = 21;
+/**
+ * A janela que a grade desenha. Fora dela, rola.
+ *
+ * O padrão (7h–21h) é só o ponto de partida: quem renderiza a grade passa
+ * `janela` com o expediente de verdade, porque a loja que abre às 10h e fecha às
+ * 16h não quer 14 linhas vazias — e a que atende à noite não quer o fim cortado.
+ */
+const JanelaCtx = React.createContext<JanelaDaGrade>(JANELA_PADRAO);
+const useJanela = () => React.useContext(JanelaCtx);
 
-const HORAS = Array.from(
-  { length: ULTIMA_HORA - PRIMEIRA_HORA + 1 },
-  (_, i) => PRIMEIRA_HORA + i,
-);
+const horasDa = (j: JanelaDaGrade) =>
+  Array.from({ length: j.ultima - j.primeira + 1 }, (_, i) => j.primeira + i);
 
 /**
  * O que transforma a grade de DESENHO em AGENDA.
@@ -105,8 +111,8 @@ interface PropostaDeRemarcacao {
   razao: string;
 }
 
-function minutosDesdeOTopo(d: Date): number {
-  return (d.getHours() - PRIMEIRA_HORA) * 60 + d.getMinutes();
+function minutosDesdeOTopo(d: Date, primeiraHora: number): number {
+  return (d.getHours() - primeiraHora) * 60 + d.getMinutes();
 }
 
 function pixelsDe(minutos: number): number {
@@ -133,10 +139,11 @@ function instanteDoMinuto(dia: Date, minuto: number): Date {
 }
 
 /** Os começos de célula que a camada de marcação desenha, em minutos do dia. */
-const CELULAS = Array.from(
-  { length: ((ULTIMA_HORA - PRIMEIRA_HORA + 1) * 60) / PASSO_DA_CELULA_MIN },
-  (_, i) => PRIMEIRA_HORA * 60 + i * PASSO_DA_CELULA_MIN,
-);
+const celulasDa = (j: JanelaDaGrade) =>
+  Array.from(
+    { length: ((j.ultima - j.primeira + 1) * 60) / PASSO_DA_CELULA_MIN },
+    (_, i) => j.primeira * 60 + i * PASSO_DA_CELULA_MIN,
+  );
 
 function diasDaSemanaDe(ancora: Date): Date[] {
   const inicio = startOfWeek(ancora, { weekStartsOn: 0 });
@@ -227,6 +234,8 @@ function CamadaDeMarcacao({
   interacao: InteracaoDaGrade;
 }) {
   const localeDaData = useLocaleDeData();
+  const janela = useJanela();
+  const CELULAS = React.useMemo(() => celulasDa(janela), [janela]);
   const chave = chaveDoDia(dia);
   const publicados = interacao.horariosPorDia[chave] ?? [];
 
@@ -271,7 +280,7 @@ function CamadaDeMarcacao({
                   // mouse, no cursor e no motivo escrito.
                   "cursor-default",
             )}
-            style={{ top: pixelsDe(minuto - PRIMEIRA_HORA * 60), height: pixelsDe(PASSO_DA_CELULA_MIN) }}
+            style={{ top: pixelsDe(minuto - janela.primeira * 60), height: pixelsDe(PASSO_DA_CELULA_MIN) }}
           />
         );
       })}
@@ -318,6 +327,7 @@ function BlocoDeAgendamento({
     moveu: () => boolean;
   };
 }) {
+  const janela = useJanela();
   const t = useT();
   const comeca = new Date(agendamento.comeca);
   const termina = new Date(agendamento.termina);
@@ -397,7 +407,7 @@ function BlocoDeAgendamento({
         arraste?.ativo && "opacity-40",
       )}
       style={{
-        top: pixelsDe(minutosDesdeOTopo(comeca)),
+        top: pixelsDe(minutosDesdeOTopo(comeca, janela.primeira)),
         height: Math.max(pixelsDe(duracao) - 2, 18),
         // `calc` em vez de porcentagem crua para os 2px de respiro entre
         // colunas vizinhas não saírem da largura útil de cada bloco.
@@ -433,8 +443,9 @@ function BlocoDeAgendamento({
 
 /** A régua do agora — a linha que faz a tela parecer viva em vez de impressa. */
 function ReguaDoAgora({ agora }: { agora: Date }) {
-  const minutos = minutosDesdeOTopo(agora);
-  if (minutos < 0 || minutos > (ULTIMA_HORA - PRIMEIRA_HORA + 1) * 60) return null;
+  const janela = useJanela();
+  const minutos = minutosDesdeOTopo(agora, janela.primeira);
+  if (minutos < 0 || minutos > (janela.ultima - janela.primeira + 1) * 60) return null;
   return (
     <div
       data-testid="regua-do-agora"
@@ -453,6 +464,7 @@ function ReguaDoAgora({ agora }: { agora: Date }) {
 }
 
 function ColunaDeHoras() {
+  const HORAS = horasDa(useJanela());
   return (
     <div className="w-12 shrink-0 select-none border-r border-border" aria-hidden>
       <div className="h-8 border-b border-border" />
@@ -491,6 +503,7 @@ function FantasmaDoArraste({
   proposta: PropostaDeRemarcacao;
   duracaoMin: number;
 }) {
+  const janela = useJanela();
   const localeDaData = useLocaleDeData();
   const valido = proposta.instante !== null;
   return (
@@ -504,7 +517,7 @@ function FantasmaDoArraste({
         valido ? "border-accent bg-accent-soft" : "border-error bg-error-bg",
       )}
       style={{
-        top: pixelsDe(proposta.minuto - PRIMEIRA_HORA * 60),
+        top: pixelsDe(proposta.minuto - janela.primeira * 60),
         height: Math.max(pixelsDe(duracaoMin) - 2, 18),
       }}
     >
@@ -542,6 +555,7 @@ function ColunaDeDia({
     moveu: () => boolean;
   };
 }) {
+  const janela = useJanela();
   const localeDaData = useLocaleDeData();
   const doDia = agendamentos.filter((c) => isSameDay(new Date(c.comeca), dia));
   const ehHoje = isSameDay(dia, agora);
@@ -564,8 +578,8 @@ function ColunaDeDia({
         </span>
         <span
           className={cn(
-            "flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] tabular-nums",
-            ehHoje ? "bg-accent text-accent-fg font-semibold" : "text-text",
+            "flex h-6 min-w-6 items-center justify-center rounded-md border-2 border-transparent px-1 text-[11px] tabular-nums",
+            ehHoje ? "border-accent font-semibold text-accent" : "text-text",
           )}
         >
           {format(dia, "d")}
@@ -582,9 +596,9 @@ function ColunaDeDia({
         // corpo de dia é determinístico e independe do que está desenhado por
         // cima — que é exatamente o que muda durante um arraste.
         data-corpo-do-dia={chaveDoDia(dia)}
-        style={{ height: HORAS.length * ALTURA_DA_HORA }}
+        style={{ height: horasDa(janela).length * ALTURA_DA_HORA }}
       >
-        {HORAS.map((h) => (
+        {horasDa(janela).map((h) => (
           <div
             key={h}
             className="border-b border-border/50"
@@ -628,11 +642,13 @@ function VisaoDeMes({
   agora,
   agendamentos,
   pessoas,
+  onAbrir,
 }: {
   ancora: Date;
   agora: Date;
   agendamentos: Agendamento[];
   pessoas: Pessoa[];
+  onAbrir?: (id: string) => void;
 }) {
   const t = useT();
   const localeDaData = useLocaleDeData();
@@ -670,14 +686,15 @@ function VisaoDeMes({
               className={cn(
                 "min-h-20 border-b border-r border-border p-1",
                 !doMes && "bg-surface-elevated/30",
+                isSameDay(d, agora) && "bg-accent-soft/40",
               )}
             >
               <div className="mb-1 flex items-center justify-between px-0.5">
                 <span
                   className={cn(
-                    "flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] tabular-nums",
+                    "flex h-6 min-w-6 items-center justify-center rounded-md border-2 border-transparent px-1 text-[11px] tabular-nums",
                     isSameDay(d, agora)
-                      ? "bg-accent font-semibold text-accent-fg"
+                      ? "border-accent font-semibold text-accent"
                       : doMes
                         ? "text-text"
                         : "text-text-subtle",
@@ -695,10 +712,12 @@ function VisaoDeMes({
                 {doDia.slice(0, 2).map((c) => {
                   const trilha = pessoas.find((p) => p.id === c.responsavelId)?.trilha ?? 1;
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={c.id}
                       data-testid={`chip-mes-${c.id}`}
-                      className="flex items-center gap-1 rounded-sm px-1 py-0.5"
+                      onClick={() => onAbrir?.(c.id)}
+                      className="flex w-full items-center gap-1 rounded-sm px-1 py-0.5 text-left transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-500"
                       style={{ background: fundoDaTrilha(trilha, 14) }}
                     >
                       <span
@@ -709,7 +728,7 @@ function VisaoDeMes({
                       <span className="truncate text-[10px] leading-4 text-text">
                         {format(new Date(c.comeca), "HH:mm")} {c.titulo}
                       </span>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -729,8 +748,10 @@ export function GradeDaAgenda({
   agendamentos,
   onAbrirAgendamento,
   interacao,
+  janela = JANELA_PADRAO,
   className,
 }: {
+  janela?: JanelaDaGrade;
   visao: VisaoDaAgenda;
   /** O período que a grade mostra. */
   ancora: Date;
@@ -770,7 +791,7 @@ export function GradeDaAgenda({
     moveu: boolean;
   } | null>(null);
 
-  const limites = { primeiro: PRIMEIRA_HORA * 60, ultimo: (ULTIMA_HORA + 1) * 60 };
+  const limites = { primeiro: janela.primeira * 60, ultimo: (janela.ultima + 1) * 60 };
 
   /** A proposta para um instante — a mesma conta para o ponteiro e para o teclado. */
   const montarProposta = React.useCallback(
@@ -832,7 +853,7 @@ export function GradeDaAgenda({
       const bruto = minutoSobY({
         y: clientYDoTopo - r.top,
         alturaDaHoraPx: ALTURA_DA_HORA,
-        primeiraHora: PRIMEIRA_HORA,
+        primeiraHora: janela.primeira,
       });
       return montarProposta(
         id,
@@ -951,6 +972,7 @@ export function GradeDaAgenda({
     : undefined;
 
   return (
+    <JanelaCtx.Provider value={janela}>
     <div
       data-testid="grade-da-agenda"
       data-visao={visao}
@@ -960,7 +982,7 @@ export function GradeDaAgenda({
       )}
     >
       {visao === "mes" ? (
-        <VisaoDeMes ancora={ancora} agora={agora} agendamentos={agendamentos} pessoas={pessoas} />
+        <VisaoDeMes ancora={ancora} agora={agora} agendamentos={agendamentos} pessoas={pessoas} onAbrir={onAbrirAgendamento} />
       ) : (
         // A rolagem mora AQUI dentro, e não na página: `html, body` têm
         // `overflow-x: hidden` no globals.css, então uma grade que estourasse a
@@ -986,8 +1008,9 @@ export function GradeDaAgenda({
         </div>
       )}
     </div>
+    </JanelaCtx.Provider>
   );
 }
 
 export const ALTURA_DA_HORA_PX = ALTURA_DA_HORA;
-export const JANELA_DA_GRADE = { primeira: PRIMEIRA_HORA, ultima: ULTIMA_HORA };
+export const JANELA_DA_GRADE = JANELA_PADRAO;

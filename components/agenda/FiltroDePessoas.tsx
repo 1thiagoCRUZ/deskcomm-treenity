@@ -43,10 +43,10 @@ export function FiltroDePessoas({
       data-isolada={isolada ?? "todos"}
       className={cn("flex items-center gap-2", className)}
     >
-      <span className="text-xs text-text-muted">
+      <span className="text-xs font-medium text-text-muted" title={t("Clique em uma pessoa para ver só a agenda dela")}>
         {isolada === null
-          ? t("Equipe — clique em uma pessoa para ver só a agenda dela")
-          : `${t("Mostrando só a agenda de")} ${pessoas.find((p) => p.id === isolada)?.nome ?? ""}`}
+          ? t("Equipe")
+          : `${t("Só")} ${pessoas.find((p) => p.id === isolada)?.nome.split(" ")[0] ?? ""}`}
       </span>
       <div className="flex -space-x-2">
         {pessoas.map((p) => {
