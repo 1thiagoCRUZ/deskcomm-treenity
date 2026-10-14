@@ -29,7 +29,7 @@ import {
   useRemarcarAgendamento,
 } from "@/hooks/agenda/useRemarcarAgendamento";
 import { usePessoasDaAgenda } from "@/hooks/agenda/usePessoasDaAgenda";
-import { CalendarBlank, CalendarPlus, CaretLeft, CaretRight } from "@/lib/ui/icons";
+import { CalendarPlus, CaretLeft, CaretRight } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 const VISOES: Array<{ id: VisaoDaAgenda; rotulo: string }> = [
@@ -282,7 +282,7 @@ export function AgendaClient({
       data-testid="tela-agenda"
       data-fonte={agendamentosIniciais.length > 0 ? "api" : "api-sem-dado"}
       data-fuso={fusoDeApresentacao ?? "organizacao"}
-      className="flex h-full flex-col gap-4 p-6"
+      className="flex h-full flex-col gap-4 overflow-y-auto p-6 [&>*]:shrink-0"
     >
       {/*
         Em Suspense porque `useSearchParams` obriga: sem a fronteira, o Next
@@ -306,7 +306,7 @@ export function AgendaClient({
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight">{t("Agenda")}</h1>
           <p className="text-sm text-muted-foreground">
-            {t("O que está marcado, com quem, e quem atende — seu e da equipe.")}
+            {t("Seus atendimentos e os da equipe: o que está marcado, a que horas e com quem.")}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -356,6 +356,24 @@ export function AgendaClient({
           </Button>
         </div>
       </header>
+
+      <ul
+        data-testid="dicas-da-agenda"
+        className="flex flex-wrap gap-x-5 gap-y-1 rounded-lg border border-border bg-surface px-4 py-2.5 text-xs text-text-muted"
+      >
+        <li>
+          <span className="font-semibold text-text">{t("Marcar:")}</span>{" "}
+          {t("clique num horário livre da grade (ou em Novo agendamento).")}
+        </li>
+        <li>
+          <span className="font-semibold text-text">{t("Remarcar:")}</span>{" "}
+          {t("arraste o compromisso para outro horário.")}
+        </li>
+        <li>
+          <span className="font-semibold text-text">{t("Cores:")}</span>{" "}
+          {t("cada pessoa da equipe tem a sua. A linha vermelha é a hora de agora.")}
+        </li>
+      </ul>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
@@ -780,11 +798,18 @@ export function AgendaClient({
         não informa nada que a grade — que O DESENHA no horário — já não diga
         melhor. A ocupação continua inteira onde ela serve.
       */}
+      <section className="flex flex-col gap-2">
+        <div>
+          <h2 className="text-base font-semibold">{t("Seus compromissos")}</h2>
+          <p className="text-xs text-muted-foreground">
+            {t("A lista de tudo o que está marcado. Use as abas para separar o que vem pela frente, o que espera confirmação, o que já passou e o que foi cancelado.")}
+          </p>
+        </div>
       <HistoricoDaAgenda
         agendamentos={agendamentosAcionaveis}
         pessoas={pessoas}
         agora={new Date()}
-        className="max-h-[320px]"
+        className="max-h-[420px]"
         // ⚠️ ESTAS DUAS PROPS FALTAVAM, e a ausência tinha cara de permissão.
         // `HistoricoDaAgenda` usa `disabled={!onRemarcar}`; sem elas os botões
         // nasciam cinzas em toda linha, de toda organização — e o `title` dizia
@@ -809,6 +834,7 @@ export function AgendaClient({
         onRealizado={(id) => desfecho.mutate({ id,revision:agendamentos.find(a=>a.id===id)?.revision, status: "completed" })}
         onFaltou={(id) => desfecho.mutate({ id,revision:agendamentos.find(a=>a.id===id)?.revision, status: "no_show" })}
       />
+      </section>
 
       {/* ⚠️ O VAZIO NÃO ESCONDE MAIS A GRADE, e o achado veio do CI.
           Isto era um ternário: com zero agendamentos, `EmptyAgenda` entrava NO
@@ -825,19 +851,6 @@ export function AgendaClient({
           dados de execuções anteriores) e reprovou no CI, onde o banco nasce
           limpo. O mesmo formato do defeito que `agenda-tela-do-produto` já
           tinha pago: verde por banco sujo. */}
-      {agendamentos.length === 0 ? (
-        <div className="flex items-start gap-3 rounded-lg border border-border bg-surface px-4 py-3">
-          <CalendarBlank size={20} className="mt-0.5 shrink-0 text-muted-foreground" aria-hidden />
-          <div>
-            <h3 className="text-sm font-semibold">{t("Sua agenda está livre esta semana")}</h3>
-            <p className="text-xs text-muted-foreground">
-              {t(
-                "Agendamentos aparecem aqui quando alguém marca pela tela, quando o agente marca por você, ou quando chegam da agenda do Google conectada.",
-              )}
-            </p>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

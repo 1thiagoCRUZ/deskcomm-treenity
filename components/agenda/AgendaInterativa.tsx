@@ -214,7 +214,7 @@ export function AgendaInterativa({
           data-testid="tipo-da-grade"
           className="flex flex-wrap items-center gap-1.5 text-xs text-text-muted"
         >
-          <span className="shrink-0">{t("Horários livres de")}</span>
+          <span className="shrink-0">{t("Mostrar horários livres para:")}</span>
           {tipos.map((t) => (
             <button
               key={t.id}
@@ -229,7 +229,7 @@ export function AgendaInterativa({
                   : "border-border hover:border-border-strong hover:text-text",
               )}
             >
-              {t.nome}
+              {t.nome} · {t.duracaoMin} min
             </button>
           ))}
         </div>
