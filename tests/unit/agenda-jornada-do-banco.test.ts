@@ -47,20 +47,32 @@ import { describe, expect, it } from "vitest";
 import { lerJornadaDoBanco, RECUSA_PARA_O_CLIENTE } from "@/lib/agenda/jornada";
 
 describe("o que o banco devolve de verdade", () => {
-  it("`{}` — o DEFAULT da coluna — vira jornada válida sem horário publicado", () => {
+  it("`{}` — o DEFAULT da coluna — atende no horário comercial padrão", () => {
+    // Decisão do dono (14/10): a Agenda funciona sem passar por Equipe → Atendimento.
     const r = lerJornadaDoBanco({});
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    expect(r.jornada.windows).toEqual([]);
-    expect(r.publicouHorarios).toBe(false);
+    expect(r.jornada.timezone).toBe("America/Sao_Paulo");
+    expect(r.jornada.windows).toEqual(
+      [1, 2, 3, 4, 5].map((dow) => ({ dow, start: "08:00", end: "18:00" })),
+    );
+    expect(r.publicouHorarios).toBe(true);
   });
 
-  it("`windows` ausente não explode, e o fuso NÃO vem da máquina", () => {
+  it("`windows` ausente usa o horário padrão, e o fuso escolhido é respeitado", () => {
     const r = lerJornadaDoBanco({ timezone: "America/Manaus" });
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.jornada.timezone).toBe("America/Manaus");
+    expect(r.jornada.windows).toHaveLength(5);
+  });
+
+  it("quem PUBLICOU e esvaziou as janelas escolheu 'ninguém marca comigo' — respeitado", () => {
+    const r = lerJornadaDoBanco({ timezone: "America/Sao_Paulo", windows: [] });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
     expect(r.jornada.windows).toEqual([]);
+    expect(r.publicouHorarios).toBe(false);
   });
 
   it("TIMEZONE AUSENTE cai no padrão declarado, e nunca no fuso do processo", () => {
@@ -78,12 +90,8 @@ describe("o que o banco devolve de verdade", () => {
     );
   });
 
-  it("publicouHorarios distingue 'não publiquei' de 'não tenho vaga'", () => {
-    // A DECISÃO 1.1: sem janela publicada a tela NÃO diz "nenhum horário
-    // disponível" e cala — ela diz "você ainda não publicou seus horários de
-    // atendimento" e leva para lá. São estados diferentes e a rota precisa
-    // distingui-los, senão o dono conclui que está lotado.
-    const vazia = lerJornadaDoBanco({});
+  it("publicouHorarios distingue 'esvaziei as janelas' de 'tenho horário'", () => {
+    const vazia = lerJornadaDoBanco({ windows: [] });
     expect(vazia.ok && vazia.publicouHorarios).toBe(false);
     const cheia = lerJornadaDoBanco({ windows: [{ dow: 1, start: "09:00", end: "18:00" }] });
     expect(cheia.ok && cheia.publicouHorarios).toBe(true);
@@ -123,36 +131,20 @@ describe("o que o banco pode devolver e NÃO pode passar", () => {
     }
   });
 
-  it("null e undefined — a linha que não existe — são recusados sem explodir", () => {
-    expect(lerJornadaDoBanco(null).ok).toBe(false);
-    expect(lerJornadaDoBanco(undefined).ok).toBe(false);
-  });
-
-  it("a linha ausente diz ONDE configurar, e não vaza o jargão do Zod", () => {
-    // Antes desta guarda, `undefined` caía direto no `safeParse` e saía como
-    // "Invalid input: expected object, received undefined" — frase correta e
-    // inútil: não diz que é ISTO que está faltando, nem onde resolver.
+  it("null e undefined — a linha que não existe — usam o horário comercial padrão", () => {
     for (const semLinha of [lerJornadaDoBanco(null), lerJornadaDoBanco(undefined)]) {
-      expect(semLinha.ok).toBe(false);
-      if (semLinha.ok) continue;
-      expect(semLinha.motivoParaOperador).toMatch(/equipe/i);
-      expect(semLinha.motivoParaOperador).toMatch(/atendimento/i);
-      expect(semLinha.motivoParaOperador).not.toMatch(/expected|received|\bundefined\b/i);
+      expect(semLinha.ok).toBe(true);
+      if (!semLinha.ok) continue;
+      expect(semLinha.jornada.timezone).toBe("America/Sao_Paulo");
+      expect(semLinha.jornada.windows).toHaveLength(5);
+      expect(semLinha.publicouHorarios).toBe(true);
     }
   });
 
-  it("'ainda não configurou' e 'configurou errado' não podem virar a mesma frase", () => {
-    // São dois estados que a doutrina deste arquivo já separa em todo outro
-    // ponto (`publicouHorarios`, `fusoSuposto`) — a mensagem de erro não pode
-    // ser o lugar onde os dois colapsam de volta em um só.
-    const semLinha = lerJornadaDoBanco(undefined);
-    const corrompida = lerJornadaDoBanco({ windows: null });
-    expect(semLinha.ok).toBe(false);
-    expect(corrompida.ok).toBe(false);
-    if (semLinha.ok || corrompida.ok) return;
-    expect(semLinha.motivoParaOperador).not.toBe(corrompida.motivoParaOperador);
-    expect(semLinha.motivoParaOperador).not.toMatch(/mal configurada/i);
-    expect(corrompida.motivoParaOperador).toMatch(/mal configurada/i);
+  it("fuso escolhido e inválido, sem janelas, continua sendo 'errado' e é recusado", () => {
+    const r = lerJornadaDoBanco({ timezone: "X/Y" });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.motivoParaOperador).toMatch(/mal configurada/i);
   });
 });
 
@@ -180,7 +172,6 @@ describe("o erro tem duas plateias, e elas não podem receber a mesma frase", ()
       { windows: null },
       { timezone: "X/Y", windows: [] },
       { timezone: "UTC", windows: [{ dow: 9, start: "09:00", end: "10:00" }] },
-      null,
       "nem objeto é",
     ]) {
       const r = lerJornadaDoBanco(ruim);
@@ -201,8 +192,8 @@ describe("fusoSuposto — a distinção que o parse apaga", () => {
   it("quem NUNCA configurou e quem ESCOLHEU São Paulo são indistinguíveis DEPOIS do parse", () => {
     // Medido: os dois devolvem {timezone:"America/Sao_Paulo", windows:[]}.
     // Por isso a marca é capturada antes, e não derivada do resultado.
-    const nunca = lerJornadaDoBanco({});
-    const escolheu = lerJornadaDoBanco({ timezone: "America/Sao_Paulo" });
+    const nunca = lerJornadaDoBanco({ windows: [] });
+    const escolheu = lerJornadaDoBanco({ timezone: "America/Sao_Paulo", windows: [] });
     expect(nunca.ok && escolheu.ok).toBe(true);
     if (!nunca.ok || !escolheu.ok) return;
     expect(nunca.jornada).toEqual(escolheu.jornada);
