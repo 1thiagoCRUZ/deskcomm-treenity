@@ -46,6 +46,13 @@ export type AbaDoHistorico = (typeof ABAS)[number]["id"];
  *
  * O que é da TELA e fica: qual cor de selo cada situação recebe.
  */
+const EXPLICACAO_DA_ABA: Record<AbaDoHistorico, string> = {
+  proximos: "Compromissos marcados de agora para a frente.",
+  aguardando: "O cliente ainda não confirmou presença.",
+  passados: "Já aconteceram. Marque se foi realizado ou se o cliente faltou.",
+  cancelados: "Foram cancelados e liberaram o horário.",
+};
+
 const VARIANTE_DA_SITUACAO: Record<
   SituacaoDoAgendamento,
   "default" | "neutral" | "success" | "warning" | "error"
@@ -157,10 +164,19 @@ export function HistoricoDaAgenda({
         })}
       </div>
 
-      <div className="mt-3 min-h-0 flex-1 overflow-auto rounded-lg border border-border bg-surface">
+      <p data-testid="explicacao-da-aba" className="mt-2 text-xs text-text-muted">
+        {t(EXPLICACAO_DA_ABA[aba])}
+      </p>
+
+      <div className="mt-2 min-h-0 flex-1 overflow-auto rounded-lg border border-border bg-surface">
         {daAba.length === 0 ? (
-          <p data-testid="historico-vazio" className="p-8 text-center text-sm text-text-muted">
+          <p data-testid="historico-vazio" className="p-6 text-center text-sm text-text-muted">
             {aba === "proximos" && t("Nada marcado daqui para a frente.")}
+            {aba === "proximos" && (
+              <span className="mt-1 block text-xs">
+                {t("Os agendamentos aparecem aqui quando você marca pela tela, quando o CADU marca pelo WhatsApp ou quando chegam do Google Agenda.")}
+              </span>
+            )}
             {aba === "aguardando" && t("Ninguém esperando confirmação.")}
             {aba === "passados" && t("Ainda não há atendimentos concluídos.")}
             {aba === "cancelados" && t("Nenhum cancelamento.")}

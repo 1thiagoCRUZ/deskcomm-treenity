@@ -50,12 +50,25 @@ export function CartaoDaConexaoGoogle({
   const [desconectando, setDesconectando] = React.useState(false);
 
   if (!configurado) {
+    // Faixa de UMA linha: o Google é opcional e a agenda funciona sem ele, então
+    // o detalhe técnico (credenciais, endereço de retorno) fica atrás de um
+    // "Ver detalhes" em vez de ocupar o topo da tela de quem só quer marcar.
     return (
-      <div
+      <details
         data-testid="google-nao-configurado"
-        className="rounded-lg border border-border bg-surface-elevated/50 p-3"
+        className="group rounded-lg border border-border bg-surface-elevated/50 px-3 py-2"
       >
-        <p className="text-sm font-medium text-text">{t("Sincronizar com o Google ainda não está disponível")}</p>
+        <summary className="flex cursor-pointer list-none items-center gap-2 text-sm text-text-muted">
+          <GoogleLogo size={16} weight="bold" className="shrink-0" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="font-medium text-text">{t("Google Agenda: não conectado.")}</span>{" "}
+            {t("É opcional — a agenda funciona normalmente sem ele.")}
+          </span>
+          <span className="shrink-0 text-xs underline underline-offset-2 group-open:hidden">{t("Ver detalhes")}</span>
+          <span className="hidden shrink-0 text-xs underline underline-offset-2 group-open:inline">{t("Ocultar")}</span>
+        </summary>
+        <div className="mt-2 border-t border-border pt-2">
+          <p className="text-sm font-medium text-text">{t("Sincronizar com o Google ainda não está disponível")}</p>
         {/*
           DUAS FRASES, porque são duas pessoas.
           
@@ -114,7 +127,8 @@ export function CartaoDaConexaoGoogle({
         <p className="mt-2 text-xs leading-4 text-text-muted">
           {t("Até lá a agenda funciona normalmente, só não troca compromissos com o Google.")}
         </p>
-      </div>
+        </div>
+      </details>
     );
   }
 

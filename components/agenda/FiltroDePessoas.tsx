@@ -43,6 +43,11 @@ export function FiltroDePessoas({
       data-isolada={isolada ?? "todos"}
       className={cn("flex items-center gap-2", className)}
     >
+      <span className="text-xs text-text-muted">
+        {isolada === null
+          ? t("Equipe — clique em uma pessoa para ver só a agenda dela")
+          : `${t("Mostrando só a agenda de")} ${pessoas.find((p) => p.id === isolada)?.nome ?? ""}`}
+      </span>
       <div className="flex -space-x-2">
         {pessoas.map((p) => {
           const ativo = isolada === null || isolada === p.id;
@@ -79,7 +84,7 @@ export function FiltroDePessoas({
           onClick={() => onIsolar(null)}
           className="rounded-sm px-2 py-1 text-xs text-text-muted transition-colors duration-fast hover:bg-surface-elevated hover:text-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-500"
         >
-          {t("Todos")}
+          {t("Ver todos")}
         </button>
       )}
     </div>
