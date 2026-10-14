@@ -132,6 +132,16 @@ export type LeituraDaJornada =
  * é schedule corrompido — e essa conclusão errada não gera chamado nenhum, então
  * ninguém descobre.
  */
+/** Horário comercial que a Agenda assume enquanto ninguém publicou jornada. */
+const FUSO_PADRAO = "America/Sao_Paulo";
+const JANELAS_PADRAO = [1, 2, 3, 4, 5].map((dow) => ({ dow, start: "08:00", end: "18:00" }));
+
+function jornadaNuncaPublicada(scheduleDoBanco: unknown): boolean {
+  if (scheduleDoBanco === null || scheduleDoBanco === undefined) return true;
+  if (typeof scheduleDoBanco !== "object" || Array.isArray(scheduleDoBanco)) return false;
+  return !("windows" in scheduleDoBanco) || (scheduleDoBanco as { windows?: unknown }).windows === undefined;
+}
+
 export function lerJornadaDoBanco(scheduleDoBanco: unknown): LeituraDaJornada {
   // A LINHA QUE NÃO EXISTE (nenhuma disponibilidade cadastrada para este
   // responsável) é um estado diferente de "cadastrou errado": é "ainda não
@@ -143,12 +153,28 @@ export function lerJornadaDoBanco(scheduleDoBanco: unknown): LeituraDaJornada {
   // estado documentado como "o que uma instalação fresca produz"
   // (`app/app/agenda/_client.tsx`) — comum, não exceção — e por isso merece
   // nome próprio em vez do fallback genérico do Zod.
-  if (scheduleDoBanco === null || scheduleDoBanco === undefined) {
-    return {
-      ok: false,
-      motivoParaOperador: "ainda não foi configurada. Configure em Equipe → Atendimento.",
-      motivoParaCliente: RECUSA_PARA_O_CLIENTE,
-    };
+  //
+  // DECISÃO DO DONO (Treenity, 14/10): "ainda não cadastrou" deixou de ser
+  // recusa. A Agenda tem de funcionar sem a pessoa passar por Equipe →
+  // Atendimento — e o dono, que é quem mais abre a Agenda, nunca ia lá. Quem
+  // nunca publicou jornada (nenhuma linha, ou o `{}` default da coluna, sem
+  // `windows`) atende no horário comercial padrão. Quem PUBLICOU e esvaziou as
+  // janelas (`windows: []`) escolheu "ninguém marca comigo", e isso continua
+  // respeitado. Jornada com defeito (fuso inválido, janela invertida) segue
+  // recusando: não é "ainda não", é "errado".
+  if (jornadaNuncaPublicada(scheduleDoBanco)) {
+    const escolhido = (scheduleDoBanco as { timezone?: unknown } | null | undefined)?.timezone;
+    const fusoEscolhido = typeof escolhido === "string" && escolhido.trim() !== "" ? escolhido : null;
+    const fuso = fusoEscolhido ?? FUSO_PADRAO;
+    if (availabilityScheduleSchema.safeParse({ timezone: fuso, windows: [] }).success) {
+      return {
+        ok: true,
+        jornada: { timezone: fuso, windows: JANELAS_PADRAO.map((w) => ({ ...w })) },
+        publicouHorarios: true,
+        fusoSuposto: fusoEscolhido === null,
+      };
+    }
+    // Fuso escolhido e inválido: não é "ainda não", é "errado" — cai na recusa abaixo.
   }
 
   // ANTES do parse, e só aqui: depois dele o default já preencheu o fuso e a
