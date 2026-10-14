@@ -16,7 +16,6 @@ import { AgendaInterativa } from "@/components/agenda/AgendaInterativa";
 import { FiltroDePessoas } from "@/components/agenda/FiltroDePessoas";
 import { HistoricoDaAgenda } from "@/components/agenda/HistoricoDaAgenda";
 import type { Agendamento, HorarioLivre, VisaoDaAgenda } from "@/components/agenda/tipos";
-import { EmptyAgenda } from "@/components/empty";
 import { rotuloDoLocal } from "@/lib/agenda/locais";
 import { Button } from "@/components/ui/button";
 import { PainelDeMarcacao } from "@/components/agenda/PainelDeMarcacao";
@@ -30,7 +29,7 @@ import {
   useRemarcarAgendamento,
 } from "@/hooks/agenda/useRemarcarAgendamento";
 import { usePessoasDaAgenda } from "@/hooks/agenda/usePessoasDaAgenda";
-import { CalendarPlus, CaretLeft, CaretRight } from "@/lib/ui/icons";
+import { CalendarBlank, CalendarPlus, CaretLeft, CaretRight } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 const VISOES: Array<{ id: VisaoDaAgenda; rotulo: string }> = [
@@ -727,6 +726,31 @@ export function AgendaClient({
         </SheetContent>
       </Sheet>
 
+      {/* A GRADE VEM PRIMEIRO. Ela era a última peça da tela, depois da lista e
+          do aviso de vazio, e numa semana sem compromissos sobrava um pedaço
+          dela no rodapé — a Agenda parecia não ter calendário. */}
+      {/* A GRADE INTERATIVA — clicar num bloco livre marca ali, arrastar um card
+          remarca. Toda a fiação (a consulta de horários da janela desenhada, a
+          proposta de remarcação, o otimismo com volta atrás) mora em
+          `AgendaInterativa`; aqui fica só o que esta tela já sabia. */}
+      <AgendaInterativa
+        visao={visao}
+        ancora={ancora}
+        agora={new Date()}
+        pessoas={pessoas}
+        agendamentos={agendamentosDaGrade}
+        recorte={recorteDaGrade}
+        tipos={tiposIniciais.map((t) => ({ id: t.id, nome: t.nome, duracaoMin: t.duracaoMin }))}
+        tipo={tipo ? { id: tipo.id, duracaoMin: tipo.duracaoMin } : null}
+        onEscolherTipo={setTipoId}
+        onMarcarEm={(instante) => {
+          setHorarioEscolhido({ instante, rotulo: format(new Date(instante), "HH:mm") });
+          setRemarcandoId(null);
+          setMarcando(true);
+        }}
+        className="min-h-[640px] flex-1"
+      />
+
       {/*
         ⚠️ A LISTA DAQUI NÃO É A MESMA DA GRADE, e a diferença é uma linha.
 
@@ -802,32 +826,18 @@ export function AgendaClient({
           limpo. O mesmo formato do defeito que `agenda-tela-do-produto` já
           tinha pago: verde por banco sujo. */}
       {agendamentos.length === 0 ? (
-        <div className="rounded-lg border border-border bg-surface p-4">
-          <EmptyAgenda />
+        <div className="flex items-start gap-3 rounded-lg border border-border bg-surface px-4 py-3">
+          <CalendarBlank size={20} className="mt-0.5 shrink-0 text-muted-foreground" aria-hidden />
+          <div>
+            <h3 className="text-sm font-semibold">{t("Sua agenda está livre esta semana")}</h3>
+            <p className="text-xs text-muted-foreground">
+              {t(
+                "Agendamentos aparecem aqui quando alguém marca pela tela, quando o agente marca por você, ou quando chegam da agenda do Google conectada.",
+              )}
+            </p>
+          </div>
         </div>
       ) : null}
-      {/* A GRADE INTERATIVA — clicar num bloco livre marca ali, arrastar um card
-          remarca. Toda a fiação (a consulta de horários da janela desenhada, a
-          proposta de remarcação, o otimismo com volta atrás) mora em
-          `AgendaInterativa`; aqui fica só o que esta tela já sabia. */}
-      <AgendaInterativa
-        visao={visao}
-        ancora={ancora}
-        agora={new Date()}
-        pessoas={pessoas}
-        agendamentos={agendamentosDaGrade}
-        recorte={recorteDaGrade}
-        tipos={tiposIniciais.map((t) => ({ id: t.id, nome: t.nome, duracaoMin: t.duracaoMin }))}
-        tipo={tipo ? { id: tipo.id, duracaoMin: tipo.duracaoMin } : null}
-        onEscolherTipo={setTipoId}
-        onMarcarEm={(instante) => {
-          setHorarioEscolhido({ instante, rotulo: format(new Date(instante), "HH:mm") });
-          setRemarcandoId(null);
-          setMarcando(true);
-        }}
-        className="min-h-0 flex-1"
-      />
-
     </div>
   );
 }
