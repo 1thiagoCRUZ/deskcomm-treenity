@@ -13,6 +13,8 @@ import { useRemarcarAgendamento } from "@/hooks/agenda/useRemarcarAgendamento";
 import type { MotivoDaGradeTravada } from "@/lib/agenda/grade-interativa";
 import { cn } from "@/lib/utils";
 
+import type { JanelaDaGrade } from "@/lib/agenda/janela-da-grade";
+
 import { GradeDaAgenda } from "./GradeDaAgenda";
 import type { Agendamento, Pessoa, VisaoDaAgenda } from "./tipos";
 
@@ -51,8 +53,10 @@ export function AgendaInterativa({
   onEscolherTipo,
   onMarcarEm,
   onAbrirAgendamento,
+  janela,
   className,
 }: {
+  janela?: JanelaDaGrade;
   visao: VisaoDaAgenda;
   ancora: Date;
   /** INJETADO, como na grade: relógio lido aqui dentro daria dois relógios ao teste. */
@@ -320,6 +324,7 @@ export function AgendaInterativa({
         pessoas={pessoas}
         agendamentos={desenhados}
         onAbrirAgendamento={onAbrirAgendamento}
+        janela={janela}
         className="min-h-0 flex-1"
         interacao={
           tipo

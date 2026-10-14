@@ -7,12 +7,17 @@ import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
 
 import { addDays, endOfMonth, format, startOfDay, startOfMonth, startOfWeek } from "date-fns";
+import { useRouter } from "next/navigation";
 import * as React from "react";
 
 import { AvisoDaConexaoGoogle } from "./_components/AvisoDaConexaoGoogle";
 import { CartaoDaConexaoGoogle } from "./_components/CartaoDaConexaoGoogle";
 
 import { AgendaInterativa } from "@/components/agenda/AgendaInterativa";
+import { HorarioDeAtendimento } from "@/components/agenda/HorarioDeAtendimento";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useAttendants } from "@/hooks/team/useAttendants";
+import { janelaDaGrade } from "@/lib/agenda/janela-da-grade";
 import { FiltroDePessoas } from "@/components/agenda/FiltroDePessoas";
 import { HistoricoDaAgenda } from "@/components/agenda/HistoricoDaAgenda";
 import type { Agendamento, HorarioLivre, VisaoDaAgenda } from "@/components/agenda/tipos";
@@ -29,7 +34,7 @@ import {
   useRemarcarAgendamento,
 } from "@/hooks/agenda/useRemarcarAgendamento";
 import { usePessoasDaAgenda } from "@/hooks/agenda/usePessoasDaAgenda";
-import { CalendarPlus, CaretLeft, CaretRight } from "@/lib/ui/icons";
+import { CalendarPlus, CaretLeft, CaretRight, Clock, Question } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 const VISOES: Array<{ id: VisaoDaAgenda; rotulo: string }> = [
@@ -113,6 +118,8 @@ export function AgendaClient({
   // O CONVIDADO, opcional. Vazio mantém o comportamento de sempre: evento no
   // Google do atendente, sem `attendees` e sem convite saindo para ninguém.
   const [emailConvidado, setEmailConvidado] = React.useState("");
+  // O ASSUNTO do compromisso — o que será tratado. Vai em `notes` e aparece no detalhe.
+  const [pauta, setPauta] = React.useState("");
   const emailConvidadoLimpo = emailConvidado.trim();
   // A MESMA pergunta que a rota faz, feita aqui só para não gastar um 422 com
   // uma letra faltando no domínio. A rota continua sendo a dona da recusa — esta
@@ -264,6 +271,19 @@ export function AgendaClient({
     [agendamentos],
   );
 
+  const router = useRouter();
+  const [horarioAberto, setHorarioAberto] = React.useState(false);
+  // O expediente que a equipe publicou define as horas da grade. Com uma pessoa
+  // isolada, vale o expediente dela; sem isolar, a união de todos.
+  const { data: equipeDisponibilidade } = useAttendants();
+  const janela = React.useMemo(() => {
+    const quem = (equipeDisponibilidade?.data ?? []).filter((a) => isolada === null || a.user_id === isolada);
+    return janelaDaGrade(
+      quem.flatMap((a) => a.schedule?.windows ?? []),
+      agendamentosDaGrade,
+    );
+  }, [equipeDisponibilidade, isolada, agendamentosDaGrade]);
+
   const passo = visao === "mes" ? 30 : visao === "semana" ? 7 : 1;
   // O PADRÃO de formato também muda de idioma, não só o locale: em português
   // "d 'de' MMMM" tem a preposição escrita à mão dentro do padrão, e em
@@ -294,59 +314,68 @@ export function AgendaClient({
         <EntradaDaAgenda onContext={onContext}/>
       </React.Suspense>
 
-      <CartaoDaConexaoGoogle
-        configurado={googleConfigurado}
-        falta={faltaNoGoogle}
-        linkDeConfiguracao={linkDeConfiguracaoDoGoogle}
-        contaConectada={contaConectada}
-        enderecoDeRetorno={enderecoDeRetorno}
-      />
+      {/* Google é opcional: sem credenciais da instalação não há o que mostrar aqui. */}
+      {googleConfigurado ? (
+        <CartaoDaConexaoGoogle
+          configurado={googleConfigurado}
+          falta={faltaNoGoogle}
+          linkDeConfiguracao={linkDeConfiguracaoDoGoogle}
+          contaConectada={contaConectada}
+          enderecoDeRetorno={enderecoDeRetorno}
+        />
+      ) : null}
 
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight">{t("Agenda")}</h1>
           <p className="text-sm text-muted-foreground">
             {t("Seus atendimentos e os da equipe: o que está marcado, a que horas e com quem.")}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" data-testid="como-usar-a-agenda">
+                <Question size={16} aria-hidden />
+                <span>{t("Como usar")}</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-[360px] space-y-3 text-sm">
+              <p className="font-semibold">{t("Como a Agenda funciona")}</p>
+              <dl className="space-y-2.5 text-xs text-text-muted">
+                <div>
+                  <dt className="font-semibold text-text">{t("Marcar um horário")}</dt>
+                  <dd>{t("Clique em um espaço livre da grade, ou em Novo agendamento. Escolha o cliente, o tipo e o horário.")}</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-text">{t("Remarcar")}</dt>
+                  <dd>{t("Arraste o compromisso para outro horário, ou use o botão Remarcar na lista de compromissos.")}</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-text">{t("Ver os detalhes")}</dt>
+                  <dd>{t("Clique em um compromisso para ver quem participa, o que será tratado, o link da reunião e para registrar se foi realizado.")}</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-text">{t("Horários que aparecem")}</dt>
+                  <dd>{t("Vêm do Horário de atendimento. Se o seu expediente é diferente, ajuste no botão ao lado — a grade e o CADU passam a seguir ele.")}</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-text">{t("Cores e equipe")}</dt>
+                  <dd>{t("Cada pessoa da equipe tem uma cor. Clique no rosto dela para ver só a agenda dela. A linha vermelha é a hora de agora.")}</dd>
+                </div>
+              </dl>
+            </PopoverContent>
+          </Popover>
+          <Button variant="outline" size="sm" data-testid="abrir-horario-de-atendimento" onClick={() => setHorarioAberto(true)}>
+            <Clock size={16} aria-hidden />
+            <span>{t("Horário de atendimento")}</span>
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setAncora(new Date())}>
             {t("Hoje")}
           </Button>
-          {/*
-            DESABILITADO COM O MOTIVO À VISTA, e não ligado a um `onClick` vazio.
-            Enquanto a frente 1 não expõe `/api/v1/agenda` não há o que marcar, e
-            um botão primário, com cor de ação e sem `disabled`, que não faz nada
-            ao clique é pior do que não existir: quem clica conclui que o produto
-            está quebrado e não tem o que reportar além de "não abre". É o
-            anti-pattern de controle decorativo, e esta base já pagou por ele.
-
-            O motivo vai em texto ao lado, não só no `title`: atributo de
-            hover não existe para quem usa toque, que é o dono de clínica no
-            celular.
-          */}
-          {!tipo && (
-            // Sem NENHUM tipo de agendamento cadastrado não há o que marcar — e
-            // isto é diferente de "a API não existe": a ação faz sentido, falta
-            // configuração. Por isso o motivo à vista, e não um botão mudo.
-            <span
-              data-testid="motivo-novo-agendamento"
-              className="hidden text-xs text-text-subtle sm:inline"
-            >
-              {t("Cadastre um tipo de agendamento para começar")}
-            </span>
-          )}
           <Button
             size="sm"
             disabled={!tipo}
-            // `data-testid` porque o RÓTULO deixou de ser estável: até este PR
-            // ele era literal, e `agenda-escopo-da-organizacao.spec.ts` o acha
-            // por `getByRole("button", { name: /Novo agendamento/i })`. Com o
-            // texto passando por `t()`, casar por rótulo passa a depender do
-            // idioma da conta de teste — hoje passa porque a conta nasce em
-            // português, mas é acoplamento que não precisa existir. O testid é
-            // o caminho estável; trocar a spec para usá-lo é decisão de quem a
-            // escreveu, e vai anotada no PR.
             data-testid="novo-agendamento"
             title={tipo ? undefined : t("Cadastre um tipo de agendamento para começar")}
             onClick={() => setMarcando(true)}
@@ -356,24 +385,11 @@ export function AgendaClient({
           </Button>
         </div>
       </header>
-
-      <ul
-        data-testid="dicas-da-agenda"
-        className="flex flex-wrap gap-x-5 gap-y-1 rounded-lg border border-border bg-surface px-4 py-2.5 text-xs text-text-muted"
-      >
-        <li>
-          <span className="font-semibold text-text">{t("Marcar:")}</span>{" "}
-          {t("clique num horário livre da grade (ou em Novo agendamento).")}
-        </li>
-        <li>
-          <span className="font-semibold text-text">{t("Remarcar:")}</span>{" "}
-          {t("arraste o compromisso para outro horário.")}
-        </li>
-        <li>
-          <span className="font-semibold text-text">{t("Cores:")}</span>{" "}
-          {t("cada pessoa da equipe tem a sua. A linha vermelha é a hora de agora.")}
-        </li>
-      </ul>
+      {!tipo && (
+        <p data-testid="motivo-novo-agendamento" className="text-xs text-text-subtle">
+          {t("Cadastre um tipo de agendamento para começar")}
+        </p>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
@@ -465,6 +481,7 @@ export function AgendaClient({
             // não usado reapareceria na PRÓXIMA marcação, que é de outro
             // cliente — convite para a pessoa errada, sem ninguém ter pedido.
             setEmailConvidado("");
+            setPauta("");
           }
         }}
       >
@@ -505,75 +522,109 @@ export function AgendaClient({
           <SheetHeader>
             <SheetTitle>{remarcandoId ? t("Remarcar agendamento") : t("Novo agendamento")}</SheetTitle>
           </SheetHeader>
-            {!remarcandoId?<VinculoDaMarcacao contactId={contactId} conversationId={conversationId} onChange={(contact,conversation)=>{setContactId(contact);setConversationId(conversation);}}/>:null}
-          {tiposIniciais.length > 1 && (
-            <div className="mt-4" data-testid="tipos-de-agendamento">
-              <p className="mb-2 text-xs font-medium text-text-muted">{t("Tipo de agendamento")}</p>
-              <div className="flex flex-wrap gap-1.5">
-                {tiposIniciais.map((opcao) => (
-                  <button
-                    key={opcao.id}
-                    type="button"
-                    data-testid={`tipo-${opcao.id}`}
-                    aria-pressed={opcao.id === tipo?.id}
-                    onClick={() => setTipoId(opcao.id)}
-                    className={cn(
-                      "rounded-full border px-3 py-1 text-xs transition-colors duration-fast",
-                      opcao.id === tipo?.id
-                        ? "border-transparent bg-accent text-accent-foreground"
-                        : "border-border text-text-muted hover:border-border-strong hover:text-text",
-                    )}
-                  >
-                    {opcao.nome}
-                    <span className="ml-1 opacity-70 tabular-nums">{opcao.duracaoMin}min</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          {/*
-            O CONVIDADO — opcional, e é o que faz o convite do Google existir.
-            Sem e-mail aqui o evento nasce só na agenda do atendente, que é o
-            comportamento que este produto teve desde sempre.
+          <div className="mt-4 space-y-5">
+            {!remarcandoId ? (
+              <Passo n={1} titulo={t("Quem será atendido")} ajuda={t("Procure o cliente pelo nome ou telefone. Sem cliente, vira um compromisso pessoal.")}>
+                <VinculoDaMarcacao
+                  contactId={contactId}
+                  conversationId={conversationId}
+                  onChange={(contact, conversation) => {
+                    setContactId(contact);
+                    setConversationId(conversation);
+                  }}
+                />
+              </Passo>
+            ) : null}
 
-            Fica ACIMA do painel de horários de propósito: quem vai convidar
-            alguém decide isso ANTES de escolher o horário, e um campo abaixo de
-            uma lista rolável de horários é um campo que ninguém vê.
-          */}
-          <div className="mt-4">
-            <label className="block text-xs font-medium text-text-muted" htmlFor="email-do-convidado">
-              {t("E-mail do convidado")}{" "}
-              <span className="font-normal opacity-70">({t("opcional")})</span>
-            </label>
-            <input
-              id="email-do-convidado"
-              data-testid="email-do-convidado"
-              type="email"
-              inputMode="email"
-              autoComplete="off"
-              value={emailConvidado}
-              onChange={(e) => setEmailConvidado(e.target.value)}
-              className={cn(
-                // `outline-hidden`, não `outline-none`: no Tailwind 4 os dois
-                // trocaram de significado, e o `outline-none` do v4 apaga o
-                // contorno que o modo de alto contraste do sistema usa.
-                "mt-1 w-full rounded-md border bg-surface p-2 text-sm outline-hidden",
-                emailConvidadoInvalido
-                  ? "border-danger focus:border-danger"
-                  : "border-border focus:border-border-strong",
-              )}
-              placeholder={t("cliente@empresa.com")}
-              aria-invalid={emailConvidadoInvalido || undefined}
-              aria-describedby="ajuda-do-convidado"
-            />
-            <p id="ajuda-do-convidado" className="mt-1 text-xs text-text-muted">
-              {emailConvidadoInvalido
-                ? t("Endereço inválido — confira antes de marcar.")
-                : t("Preenchido, o Google envia o convite por e-mail para esta pessoa.")}
-            </p>
+            {tiposIniciais.length > 1 && (
+              <Passo
+                n={remarcandoId ? 1 : 2}
+                titulo={t("O que vai ser?")}
+                ajuda={t("O tipo define a duração e quais horários ficam livres.")}
+              >
+                <div className="flex flex-wrap gap-1.5" data-testid="tipos-de-agendamento">
+                  {tiposIniciais.map((opcao) => (
+                    <button
+                      key={opcao.id}
+                      type="button"
+                      data-testid={`tipo-${opcao.id}`}
+                      aria-pressed={opcao.id === tipo?.id}
+                      onClick={() => setTipoId(opcao.id)}
+                      className={cn(
+                        "rounded-full border px-3 py-1 text-xs transition-colors duration-fast",
+                        opcao.id === tipo?.id
+                          ? "border-transparent bg-accent text-accent-foreground"
+                          : "border-border text-text-muted hover:border-border-strong hover:text-text",
+                      )}
+                    >
+                      {opcao.nome}
+                      <span className="ml-1 opacity-70 tabular-nums">{opcao.duracaoMin} min</span>
+                    </button>
+                  ))}
+                </div>
+              </Passo>
+            )}
+
+            <Passo
+              n={(remarcandoId ? 0 : 1) + (tiposIniciais.length > 1 ? 1 : 0) + 1}
+              titulo={t("Detalhes")}
+              ajuda={t("Opcional. Quem participa e o que será tratado ficam visíveis ao abrir o compromisso.")}
+            >
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-text-muted" htmlFor="pauta-do-agendamento">
+                    {t("O que será tratado")}
+                  </label>
+                  <textarea
+                    id="pauta-do-agendamento"
+                    data-testid="pauta-do-agendamento"
+                    rows={3}
+                    maxLength={2000}
+                    value={pauta}
+                    onChange={(e) => setPauta(e.target.value)}
+                    placeholder={t("Ex.: apresentar a proposta, tirar dúvidas sobre o frete, fechar o pedido")}
+                    className="mt-1 w-full resize-y rounded-md border border-border bg-surface p-2 text-sm outline-hidden focus:border-border-strong"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-text-muted" htmlFor="email-do-convidado">
+                    {t("E-mail do convidado")}
+                  </label>
+                  <input
+                    id="email-do-convidado"
+                    data-testid="email-do-convidado"
+                    type="email"
+                    inputMode="email"
+                    autoComplete="off"
+                    value={emailConvidado}
+                    onChange={(e) => setEmailConvidado(e.target.value)}
+                    className={cn(
+                      "mt-1 w-full rounded-md border bg-surface p-2 text-sm outline-hidden",
+                      emailConvidadoInvalido
+                        ? "border-danger focus:border-danger"
+                        : "border-border focus:border-border-strong",
+                    )}
+                    placeholder={t("cliente@empresa.com")}
+                    aria-invalid={emailConvidadoInvalido || undefined}
+                    aria-describedby="ajuda-do-convidado"
+                  />
+                  <p id="ajuda-do-convidado" className="mt-1 text-xs text-text-muted">
+                    {emailConvidadoInvalido
+                      ? t("Endereço inválido — confira antes de marcar.")
+                      : t("Preenchido, o Google envia o convite por e-mail para esta pessoa.")}
+                  </p>
+                </div>
+              </div>
+            </Passo>
           </div>
           {tipo && (
-            <div className="mt-4 lg:min-h-0 lg:flex-1">
+            <div className="mt-5 lg:min-h-0 lg:flex-1">
+              <p className="mb-2 flex items-center gap-2 text-sm font-semibold">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-[11px] text-accent-fg">
+                  {(remarcandoId ? 0 : 1) + (tiposIniciais.length > 1 ? 1 : 0) + 2}
+                </span>
+                {t("Dia e horário")}
+              </p>
               <PainelDeMarcacao
                 className="lg:h-full"
                 ancora={new Date()}
@@ -637,11 +688,12 @@ export function AgendaClient({
                   const convidado = emailConvidadoLimpo || undefined;
                   if (remarcandoId) {
                     return remarcar
-                      .mutateAsync({ id: remarcandoId,revision:agendamentos.find(a=>a.id===remarcandoId)?.revision, starts_at: instante, guest_email: convidado })
+                      .mutateAsync({ id: remarcandoId,revision:agendamentos.find(a=>a.id===remarcandoId)?.revision, starts_at: instante, guest_email: convidado, notes: pauta.trim() || undefined })
                       .then((r) => {
                         setRemarcandoId(null);
                         setMarcando(false);
                         setEmailConvidado("");
+                        setPauta("");
                         return r;
                       });
                   }
@@ -652,9 +704,11 @@ export function AgendaClient({
                       conversation_id:conversationId||undefined,
                       starts_at: instante,
                       guest_email: convidado,
+                      notes: pauta.trim() || undefined,
                     })
                     .then((r) => {
                       setEmailConvidado("");
+                      setPauta("");
                       return r;
                     });
                 }}
@@ -766,8 +820,12 @@ export function AgendaClient({
           setRemarcandoId(null);
           setMarcando(true);
         }}
+        janela={janela}
+        onAbrirAgendamento={(id) => router.push(`/app/agenda?compromisso=${id}`)}
         className="min-h-[640px] flex-1"
       />
+
+      <HorarioDeAtendimento aberto={horarioAberto} onFechar={() => setHorarioAberto(false)} />
 
       {/*
         ⚠️ A LISTA DAQUI NÃO É A MESMA DA GRADE, e a diferença é uma linha.
@@ -852,5 +910,31 @@ export function AgendaClient({
           limpo. O mesmo formato do defeito que `agenda-tela-do-produto` já
           tinha pago: verde por banco sujo. */}
     </div>
+  );
+}
+
+/** Um passo numerado do painel de marcação: número, título e uma linha de ajuda. */
+function Passo({
+  n,
+  titulo,
+  ajuda,
+  children,
+}: {
+  n: number;
+  titulo: string;
+  ajuda?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section>
+      <p className="flex items-center gap-2 text-sm font-semibold">
+        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-[11px] text-accent-fg">
+          {n}
+        </span>
+        {titulo}
+      </p>
+      {ajuda ? <p className="mb-2 ml-7 mt-0.5 text-xs text-text-muted">{ajuda}</p> : null}
+      <div className="ml-7">{children}</div>
+    </section>
   );
 }
