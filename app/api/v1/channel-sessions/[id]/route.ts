@@ -310,9 +310,14 @@ export async function DELETE(
     last_status_change_at: now,
   };
 
+  // Número que NUNCA foi pareado (sem telefone): não há aparelho a desconectar.
+  // Sem esta exceção, quem clica em "Conectar novo WhatsApp" por engano num
+  // ambiente sem WAHA fica com um canal fantasma que não dá para excluir: a
+  // limpeza no serviço falhava e levava a exclusão inteira junto.
+  const nuncaPareado = !session.phone_number;
   if (session.provider === CHANNEL_PROVIDER_WAHA) {
     const waha = getWahaClient();
-    if (!waha) {
+    if (!waha && !nuncaPareado) {
       return fail(
         "waha_not_configured",
         t("O WhatsApp (WAHA) não está configurado neste ambiente (faltam WAHA_API_BASE_URL e/ou WAHA_API_KEY) — sem ele o número não pode ser desconectado do aparelho."),
@@ -320,15 +325,20 @@ export async function DELETE(
         { requestId },
       );
     }
-    try {
-      await assertWahaConnectionIdle(createAdminClient(), activeOrg.orgId, id);
-      await waha.logoutSession(session.waha_session_name as string);
-      await waha.deleteSession(session.waha_session_name as string);
-    } catch (err) {
-      if (err instanceof ChannelConnectionError) return fail(err.code, "Uma conexão está em andamento. Aguarde e tente novamente.", err.status, { requestId });
-      await supabase.from("channel_sessions").update({ status: "FAILED", status_reason: "connection_repair_required", last_status_change_at: now })
-        .eq("organization_id", activeOrg.orgId).eq("id", id);
-      return fail("waha_error", wahaFriendlyError(err), 502, { requestId });
+    if (waha) {
+      try {
+        await assertWahaConnectionIdle(createAdminClient(), activeOrg.orgId, id);
+        await waha.logoutSession(session.waha_session_name as string);
+        await waha.deleteSession(session.waha_session_name as string);
+      } catch (err) {
+        if (err instanceof ChannelConnectionError) return fail(err.code, "Uma conexão está em andamento. Aguarde e tente novamente.", err.status, { requestId });
+        if (!nuncaPareado) {
+          await supabase.from("channel_sessions").update({ status: "FAILED", status_reason: "connection_repair_required", last_status_change_at: now })
+            .eq("organization_id", activeOrg.orgId).eq("id", id);
+          return fail("waha_error", wahaFriendlyError(err), 502, { requestId });
+        }
+        // Nunca pareado: a limpeza no serviço é só cortesia; a exclusão segue.
+      }
     }
   } else {
     // Revogação do canal oficial: a credencial some e a URL do webhook muda, então
