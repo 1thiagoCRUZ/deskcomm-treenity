@@ -517,7 +517,7 @@ export function AgendaClient({
         */}
         <SheetContent
           side="right"
-          className="flex w-full flex-col overflow-y-auto sm:max-w-3xl lg:max-w-[1040px] lg:overflow-hidden"
+          className="flex w-full flex-col overflow-y-auto sm:max-w-3xl lg:max-w-[1040px]"
         >
           <SheetHeader>
             <SheetTitle>{remarcandoId ? t("Remarcar agendamento") : t("Novo agendamento")}</SheetTitle>
@@ -540,7 +540,7 @@ export function AgendaClient({
               <Passo
                 n={remarcandoId ? 1 : 2}
                 titulo={t("O que vai ser?")}
-                ajuda={t("O tipo define a duração e quais horários ficam livres.")}
+                ajuda={t("O tipo define a duração do compromisso (mostrada ao lado do nome) e quais horários ficam livres.")}
               >
                 <div className="flex flex-wrap gap-1.5" data-testid="tipos-de-agendamento">
                   {tiposIniciais.map((opcao) => (
@@ -562,13 +562,16 @@ export function AgendaClient({
                     </button>
                   ))}
                 </div>
+                <a href="/app/settings/tenant/agenda" className="mt-2 inline-block text-xs text-text-muted underline underline-offset-2 hover:text-text">
+                  {t("Mudar duração ou criar outro tipo")}
+                </a>
               </Passo>
             )}
 
             <Passo
               n={(remarcandoId ? 0 : 1) + (tiposIniciais.length > 1 ? 1 : 0) + 1}
               titulo={t("Detalhes")}
-              ajuda={t("Opcional. Quem participa e o que será tratado ficam visíveis ao abrir o compromisso.")}
+              ajuda={t("Opcional. O que for escrito aqui aparece ao abrir o compromisso.")}
             >
               <div className="space-y-3">
                 <div>
@@ -586,6 +589,7 @@ export function AgendaClient({
                     className="mt-1 w-full resize-y rounded-md border border-border bg-surface p-2 text-sm outline-hidden focus:border-border-strong"
                   />
                 </div>
+                {contaConectada ? (
                 <div>
                   <label className="block text-xs font-medium text-text-muted" htmlFor="email-do-convidado">
                     {t("E-mail do convidado")}
@@ -614,11 +618,12 @@ export function AgendaClient({
                       : t("Preenchido, o Google envia o convite por e-mail para esta pessoa.")}
                   </p>
                 </div>
+                ) : null}
               </div>
             </Passo>
           </div>
           {tipo && (
-            <div className="mt-5 lg:min-h-0 lg:flex-1">
+            <div className="mt-5 shrink-0">
               <p className="mb-2 flex items-center gap-2 text-sm font-semibold">
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-[11px] text-accent-fg">
                   {(remarcandoId ? 0 : 1) + (tiposIniciais.length > 1 ? 1 : 0) + 2}
@@ -626,7 +631,7 @@ export function AgendaClient({
                 {t("Dia e horário")}
               </p>
               <PainelDeMarcacao
-                className="lg:h-full"
+                className="lg:h-[460px]"
                 ancora={new Date()}
                 agora={new Date()}
                 responsavel={

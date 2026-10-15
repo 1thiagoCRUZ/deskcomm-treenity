@@ -6383,6 +6383,15 @@ export const DICIONARIO: Traducoes = {
 
   // ─── Agenda interativa (PR #382, entrou pela main durante este PR) ───
   "Horários livres de": { es: "Horarios libres de" },
+  "O tipo define a duração do compromisso (mostrada ao lado do nome) e quais horários ficam livres.": { es: "El tipo define la duración del compromiso (junto al nombre) y qué horarios quedan libres." },
+  "Mudar duração ou criar outro tipo": { es: "Cambiar la duración o crear otro tipo" },
+  "Opcional. O que for escrito aqui aparece ao abrir o compromisso.": { es: "Opcional. Lo que escribas aquí aparece al abrir el compromiso." },
+  "Cliente escolhido": { es: "Cliente elegido" },
+  "Trocar cliente": { es: "Cambiar cliente" },
+  "Digite o nome ou o telefone do cliente": { es: "Escribe el nombre o el teléfono del cliente" },
+  "Buscando…": { es: "Buscando…" },
+  "Sem escolher um cliente, o compromisso fica só seu (pessoal).": { es: "Sin elegir un cliente, el compromiso queda solo tuyo (personal)." },
+  "Conversa do WhatsApp (opcional)": { es: "Conversación de WhatsApp (opcional)" },
   "Como usar": { es: "Cómo usar" },
   "Como a Agenda funciona": { es: "Cómo funciona la Agenda" },
   "Marcar um horário": { es: "Agendar un horario" },
