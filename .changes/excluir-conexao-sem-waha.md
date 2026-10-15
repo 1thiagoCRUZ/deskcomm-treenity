@@ -1,5 +1,5 @@
 ---
-impacto: correcao
+impacto: nada_mudou
 secao: corrigido
 titulo: Dá para excluir uma conexão de WhatsApp criada por engano que nunca chegou a conectar
 ---
