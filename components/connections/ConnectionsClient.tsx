@@ -332,7 +332,7 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
             // não acontece. O canal oficial não passa pelo transporte e continua
             // podendo ser excluído.
             const vivaNoTransporte = dependeDoTransporte(c);
-            const podeExcluir = wahaConfigured || !vivaNoTransporte;
+            const podeExcluir = wahaConfigured || !vivaNoTransporte || !c.phone_number;
             return (
               <Card key={c.id} className="flex flex-col gap-3 p-4">
                 <div className="flex items-start justify-between gap-2">
