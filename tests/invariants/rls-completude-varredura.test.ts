@@ -75,6 +75,13 @@ interface Excecao {
  * linhas da OUTRA organização, não uma leitura como superusuário.
  */
 const PROVA_PROPRIA: readonly Excecao[] = [
+  // Tabelas ÓRFÃS do recurso de anúncios, cuja tela e código saíram (15/10/2026).
+  // Seguem no banco até a etapa de limpeza de schema, que exige backup. Estão
+  // deny-all (RLS ligada, zero policies, privilégio só para service_role), e a
+  // prova disto é a própria migração 0213/0214. Remover junto com a tabela.
+  { tabela: "ad_platform_connections", razao: "órfã, deny-all (migração 0213); sai na etapa de schema" },
+  { tabela: "ad_insights_connections", razao: "órfã, deny-all (migração 0214); sai na etapa de schema" },
+  { tabela: "ad_conversion_dispatches", razao: "órfã, deny-all (migração 0213); sai na etapa de schema" },
   { tabela: "channel_routing_policies", razao: "tests/invariants/channel-routing.test.ts — dois tenants reais, leitura positiva local e negativa cruzada por JWT; FK composta rejeita canal de outra org" },
   { tabela: "channel_routing_responsibles", razao: "tests/invariants/channel-routing.test.ts — JWT do tenant B não lê responsáveis de A; revogação remove vínculo e claim revalida membro ativo" },
   { tabela: "channel_connection_requests", razao: "tests/invariants/channel-routing.test.ts — recibo privado sem SELECT authenticated; reserva admin com MFA e finalização service-only cercada por org e lease" },
@@ -172,44 +179,6 @@ const PROVA_PROPRIA: readonly Excecao[] = [
   //
   // ⚠️ PROVA DE OUTRO TIPO, e a diferença está escrita de propósito: as demais
   // entradas desta lista citam um teste que SIMULA JWT e CONTA linhas cross-org.
-  // Estas três não contam linha nenhuma — elas provam que `authenticated` não
-  // alcança a tabela DE JEITO NENHUM (privilégio NENHUM em
-  // `role_table_grants` + `permission denied` medido sob `set role`), que é a
-  // postura de `platform_google_oauth` (0201): RLS ligada, ZERO policies,
-  // grants revogados de anon/authenticated.
-  //
-  // É MAIS restritivo que isolamento por tenant, não menos: sem privilégio não
-  // há regra para errar. E é por isso que elas não podem entrar em `TABLES` —
-  // lá o `countAs` receberia `permission denied` em vez de `0`, o caso ficaria
-  // vermelho, e a "correção" natural seria criar uma policy: isto é, passar a
-  // SERVIR pelo PostgREST justamente a tabela que guarda o token da conta de
-  // anúncios do cliente. O teste citado tem um caso que reprova essa migração.
-  //
-  // NÃO é DEBITO_CONHECIDO: há prova comportamental, escrita no mesmo PR.
-  {
-    tabela: "ad_platform_connections",
-    razao:
-      "tests/invariants/credencial-de-anuncios-e-server-side.test.ts — privilégio " +
-      "NENHUM para anon e authenticated, `permission denied` medido sob `set role`, " +
-      "RLS ligada, zero policies, e `organization_id` NOT NULL com FK em cascata. " +
-      "Deny-all em vez de policy de tenant porque a linha guarda o token que ESCREVE " +
-      "conversões na conta de anúncios do cliente.",
-  },
-  {
-    tabela: "ad_insights_connections",
-    razao:
-      "tests/invariants/credencial-de-anuncios-e-server-side.test.ts — mesmo " +
-      "`describe.each` da linha acima. Guarda o token `ads_read`, que expõe " +
-      "orçamento, criativo e performance de quem anuncia.",
-  },
-  {
-    tabela: "ad_conversion_dispatches",
-    razao:
-      "tests/invariants/credencial-de-anuncios-e-server-side.test.ts — mesmo " +
-      "`describe.each`. Não guarda segredo, mas é o livro-razão de quais leads " +
-      "da organização viraram venda, e quem o lê é o servidor com o admin client " +
-      "filtrando organization_id à mão (a tela `/app/settings/conversoes`).",
-  },
 ];
 
 /**

@@ -524,22 +524,6 @@ export const NAV_CATALOG = [
     sidebar: true,
   },
   {
-    // Logo abaixo de Desempenho porque responde a metade da MESMA pergunta: lá
-    // está o que aconteceu depois que a pessoa chegou; aqui, quanto custou
-    // trazê-la. Ler as duas juntas é o que fecha a conta do custo por cliente.
-    href: "/app/ads/meta",
-    label: "Meta Ads",
-    description: "Quanto custou cada resultado das campanhas que trazem gente para cá.",
-    icon: "Megaphone",
-    group: "analise",
-    section: "Os números do período",
-    // `manager`, e não o `viewer` de Desempenho: aqui não há recorte por
-    // pessoa — orçamento e criativo são da empresa inteira. Mesmo grau dos
-    // outros dois vizinhos do grupo.
-    minRole: "manager",
-    // Sem `sidebar` na Treenity: Meta Ads não é usado por enquanto.
-  },
-  {
     // Irmã de "Desempenho", não a mesma coisa: lá é DESFECHO (funil agora,
     // ganho/perdido por atendente); aqui é o TRABALHO que aconteceu no
     // período, com quem fez cada coisa. Um mês inteiro atendido pela IA e um
@@ -626,43 +610,6 @@ export const NAV_CATALOG = [
     icon: "Buildings",
     group: "organizacao",
     section: "Sua empresa",
-    minRole: "admin",
-  },
-  {
-    // Mora em Organização e não em Canais de propósito: o que se configura aqui
-    // é a CONTA DE ANÚNCIOS da empresa — dinheiro e identidade comercial, ao lado
-    // de billing e API tokens. Canais é por onde se FALA com o cliente, e os dois
-    // eixos são independentes (dá para receber lead de anúncio num número servido
-    // por qualquer transporte). Ver `lib/plataformas-de-anuncio/types.ts`.
-    href: "/app/settings/conversoes",
-    label: "Conversões",
-    description:
-      "Devolver ao anúncio as vendas que ele trouxe, para ele aprender a procurar mais clientes parecidos.",
-    icon: "ChartLineUp",
-    group: "organizacao",
-    section: "Sua empresa",
-    // `admin` pelo mesmo critério das vizinhas: o token grava na conta de
-    // anúncios da empresa, e quem o troca decide para onde vai o dinheiro de
-    // mídia. Um `manager` ficaria acima de billing na mesma prancheta.
-    minRole: "admin",
-  },
-  {
-    // Vizinha de Conversões, e SEPARADA dela de propósito. As duas conectam "a
-    // Meta" e a tentação de fundi-las é real — mas são credenciais de escopos
-    // diferentes, em tabelas diferentes (0214), com consequências opostas
-    // quando vencem: o token de leitura vencido deixa uma tela vazia, o de
-    // conversões vencido faz a empresa parar de reportar vendas sem sintoma.
-    // Uma tela só, com dois campos de token parecidos, é como se cola o token
-    // errado no campo errado e se perde uma semana achando que quebrou.
-    href: "/app/settings/meta-ads",
-    label: "Meta Ads",
-    description: "Conectar a conta de anúncios para ler o desempenho das campanhas.",
-    icon: "Megaphone",
-    group: "organizacao",
-    section: "Sua empresa",
-    // `admin` pelo mesmo critério da vizinha, mesmo o token sendo só de
-    // leitura: ele expõe orçamento e performance da conta inteira, e quem
-    // apenas LÊ a tela (`manager`) não precisa poder trocar a credencial.
     minRole: "admin",
   },
   {
