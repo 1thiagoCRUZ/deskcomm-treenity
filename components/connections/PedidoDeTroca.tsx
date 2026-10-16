@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useCriarPedidoDeTroca, usePedidos } from "@/hooks/gestao/usePedidos";
+import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
 import type { PedidoDto, StatusDePedido } from "@/lib/gestao/pedidos";
 
@@ -25,8 +26,8 @@ const ROTULO_DO_STATUS: Record<StatusDePedido, string> = {
   cancelado: "Cancelado",
 };
 
-const dataCurta = (iso: string) =>
-  new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+const dataCurta = (iso: string, tag: string) =>
+  new Date(iso).toLocaleDateString(tag, { day: "2-digit", month: "2-digit" });
 
 /**
  * O Dono pede a troca de número. A Meta (verificação do número, webhook) é feita pela equipe
@@ -34,6 +35,7 @@ const dataCurta = (iso: string) =>
  */
 export function PedidoDeTroca() {
   const t = useT();
+  const tag = useTagDeIdioma();
   const { data: pedidos } = usePedidos();
   const criar = useCriarPedidoDeTroca();
   const [aberto, setAberto] = useState(false);
@@ -62,7 +64,7 @@ export function PedidoDeTroca() {
           </div>
           <p className="text-sm text-muted-foreground">
             {t("Número novo:")} <span className="font-mono">{emAndamento.numero_novo}</span> ·{" "}
-            {t("pedido em")} {dataCurta(emAndamento.criado_em)}
+            {t("pedido em")} {dataCurta(emAndamento.criado_em, tag)}
           </p>
           <p className="text-xs text-muted-foreground">
             {t("Enquanto a troca não termina, o número atual continua funcionando.")}
@@ -80,7 +82,7 @@ export function PedidoDeTroca() {
         <ul className="flex flex-col gap-1 text-xs text-muted-foreground">
           {anteriores.map((p: PedidoDto) => (
             <li key={p.id}>
-              {dataCurta(p.criado_em)} · {t("troca para")} {p.numero_novo} · {t(ROTULO_DO_STATUS[p.status])}
+              {dataCurta(p.criado_em, tag)} · {t("troca para")} {p.numero_novo} · {t(ROTULO_DO_STATUS[p.status])}
             </li>
           ))}
         </ul>
