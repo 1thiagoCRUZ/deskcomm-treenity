@@ -162,7 +162,16 @@ describe("0087 · o canal da sessão chega ao clone", () => {
     const doTs = [...decl[1]!.matchAll(/["']([^"']+)["']/g)].map((m) => m[1]!).sort();
     expect(doTs.length).toBeGreaterThan(0);
 
-    expect(doTs).toEqual(doBanco);
+    // O código só conhece `meta_cloud`. O banco ainda aceita `waha` e `zernio`
+    // (transportes aposentados em 2026-10): a linha pode existir em produção e o
+    // CHECK só encolhe na etapa de schema, com backup. O que NÃO pode acontecer é
+    // o código aceitar um provider que o banco recusa (23514 no INSERT) — por isso
+    // todo valor do TypeScript tem de estar no CHECK.
+    const LEGADOS = ["waha", "zernio"];
+    expect(doBanco.filter((v) => !doTs.includes(v)).sort()).toEqual(
+      LEGADOS.filter((v) => doBanco.includes(v)),
+    );
+    for (const v of doTs) expect(doBanco).toContain(v);
   });
 
   it("sessões meta_cloud convivem: a UNIQUE de waha_session_name não barra NULLs", () => {

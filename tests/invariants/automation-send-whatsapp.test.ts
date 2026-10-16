@@ -2,6 +2,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: vi.fn() }));
+// Sem credencial da Meta para o número: o adapter lança `meta_not_configured` e a
+// mensagem fica na fila (`postponed`). É o que o teste mede — o dublê de banco
+// abaixo não sabe responder à consulta de credencial, e dela nada aqui depende.
+vi.mock("@/lib/channels/meta/credentials", async (orig) => ({
+  ...(await orig<Record<string, unknown>>()),
+  resolveMetaCreds: vi.fn(async () => null),
+}));
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAction } from "@/lib/automation/actions";
@@ -25,7 +32,7 @@ import { GOV_ORG, seedGov, sql, lastLine } from "./gov-helpers";
  * handler reuse a MESMA instância de double — sem isso ele abriria um client
  * real contra a URL fake do vitest.db.config.ts (falha rápida, engolida, mas
  * suja o console). WAHA não está configurado no ambiente (sem WAHA_API_KEY) —
- * `sendMessageHandler` cai no ramo `queued_reason='waha_not_configured'`, o
+ * `sendMessageHandler` cai no ramo `queued_reason='meta_not_configured'`, o
  * que prova o caminho inteiro (throttle → ensureConversation → insert →
  * "envio") sem rede.
  */
@@ -49,7 +56,7 @@ type RowResult = {
   error: { message: string; code?: string } | null;
 };
 
-type FilterOp = "eq" | "in";
+type FilterOp = "eq" | "in" | "gte";
 interface Filter {
   op: FilterOp;
   col: string;
@@ -111,6 +118,11 @@ class FakeQuery implements PromiseLike<QResult> {
     return this;
   }
 
+  gte(col: string, val: unknown): this {
+    this.filters.push({ op: "gte", col, val });
+    return this;
+  }
+
   order(col: string, opts: { ascending: boolean }): this {
     this.orderCol = col;
     this.orderAsc = opts.ascending;
@@ -152,6 +164,7 @@ class FakeQuery implements PromiseLike<QResult> {
         const vals = (f.val as unknown[]).map(sqlLiteral).join(", ");
         return `${prefix}${f.col} in (${vals})`;
       }
+      if (f.op === "gte") return `${prefix}${f.col} >= ${sqlLiteral(f.val)}`;
       return `${prefix}${f.col} = ${sqlLiteral(f.val)}`;
     });
     return ` where ${clauses.join(" and ")}`;
@@ -328,8 +341,8 @@ beforeAll(() => {
   seedGov();
   sql(`
     do $t11$ begin
-      insert into public.channel_sessions (id, organization_id, waha_session_name, webhook_secret_encrypted, status, daily_message_limit)
-        values ('${SESSION_ID}', '${GOV_ORG}', 'gov-inv-t11', '\\x00'::bytea, 'WORKING', 300);
+      insert into public.channel_sessions (id, organization_id, provider, meta_phone_number_id, webhook_secret_encrypted, status, daily_message_limit)
+        values ('${SESSION_ID}', '${GOV_ORG}', 'meta_cloud', 'gov-inv-t11', '\\x00'::bytea, 'WORKING', 300);
     exception when unique_violation then null; end $t11$;
     insert into public.contacts (id, organization_id, display_name, name, phone_number, is_blocked)
       values ('${CONTACT_ID}', '${GOV_ORG}', 'Gov Invariant Contact T11', 'Ana', '+5511999990001', false)
@@ -392,7 +405,7 @@ describe("send_whatsapp_message — execute (Task 11)", () => {
     // ⚠️ ESTA ASSERÇÃO DIZIA `success`, E ERA ELA QUE CODIFICAVA O DEFEITO.
     //
     // O próprio caso já sabia que a mensagem NÃO tinha saído — ele afirmava
-    // `queued_reason: "waha_not_configured"` na linha seguinte. Ou seja: o
+    // `queued_reason: "meta_not_configured"` na linha seguinte. Ou seja: o
     // invariante congelava "a automação chama de sucesso uma mensagem que
     // ficou na fila", que é exatamente o que um usuário relatou em 2026-08-24
     // (aba Atividade com ✓ verde, cliente sem receber nada).
@@ -406,7 +419,7 @@ describe("send_whatsapp_message — execute (Task 11)", () => {
     // corpo renderizado, e o motivo continua sendo cobrado — abaixo, na chave
     // `reason`, que é onde `desfechoDoEnvio` o publica.
     expect(result.status).toBe("postponed");
-    expect(result.detail?.reason).toBe("waha_not_configured");
+    expect(result.detail?.reason).toBe("meta_not_configured");
     const messageId = String(result.detail?.message_id);
     expect(messageId).toBeTruthy();
 
@@ -553,10 +566,10 @@ describe("send_whatsapp_message — gate de recusa de consentimento (achado 2026
     });
 
     // "Passa do gate" não é "entregou": este harness roda SEM WAHA de propósito
-    // (caso 2 acima), e todo envio termina `postponed`/`waha_not_configured`.
+    // (caso 2 acima), e todo envio termina `postponed`/`meta_not_configured`.
     expect(result.status).not.toBe("skipped");
     expect(result.status).toBe("postponed");
-    expect(result.detail?.reason).toBe("waha_not_configured");
+    expect(result.detail?.reason).toBe("meta_not_configured");
   });
 
   it("6b. granted_at null explícito, SEM declined_at: PASSA — é o default da coluna", async () => {
@@ -579,7 +592,7 @@ describe("send_whatsapp_message — gate de recusa de consentimento (achado 2026
     });
 
     expect(result.status).toBe("postponed");
-    expect(result.detail?.reason).toBe("waha_not_configured");
+    expect(result.detail?.reason).toBe("meta_not_configured");
   });
 
   it("7. recusa registrada (declined_at): skipped consent_declined, zero mensagens", async () => {
@@ -645,6 +658,6 @@ describe("send_whatsapp_message — gate de recusa de consentimento (achado 2026
     // a asserção nunca foi exercitada e congelava um desfecho impossível neste
     // harness.
     expect(result.status).toBe("postponed");
-    expect(result.detail?.reason).toBe("waha_not_configured");
+    expect(result.detail?.reason).toBe("meta_not_configured");
   });
 });

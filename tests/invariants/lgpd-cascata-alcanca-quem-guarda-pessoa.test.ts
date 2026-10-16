@@ -69,6 +69,14 @@ const DIVIDA_LGPD_CONHECIDA: Record<string, string> = {
     "estão aqui, as duas também já cobertas por trigger. Sai no dia em que " +
     "`tabelasNaCascata()` passar a derivar do catálogo também os triggers de " +
     "`contacts`, ou no dia em que a função ganhar o passo.",
+  contato_dados_de_nota:
+    "CPF cifrado, endereço, CEP e dados da propriedade do comprador. ⚠️ JÁ ESTÁ PROTEGIDA: " +
+    "o trigger `trg_contacts_anonimizado_limpa_dados_de_nota` (0239) apaga a linha na " +
+    "transição `is_anonymized false → true`, e `lib/lgpd/redact-cascade.ts` a apaga pela " +
+    "aplicação. `tests/invariants/dados-de-nota-so-agente.test.ts` prova o efeito pelo " +
+    "comportamento. A entrada existe só porque ESTE instrumento lê UMA função e não " +
+    "enxerga trigger (mesma razão de `crm_tasks`). Sai quando o instrumento derivar " +
+    "também os triggers de `contacts`.",
   webhook_lead_captures:
     "captured_name, captured_email e captured_phone — o payload cru de captação. " +
     "A própria migration 0174 escreveu que 'o cascade de anonimização precisa alcançar esta tabela' " +
