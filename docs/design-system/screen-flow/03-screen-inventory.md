@@ -8,7 +8,7 @@ date: 2026-04-28
 
 # 03 — Screen Inventory
 
-> Tabela exaustiva de todas as telas mapeadas. Cada linha = uma tela única. Estados explícitos por tela. Total 88 telas. Componentes-chave referenciados pelos Sub-PRDs.
+> Tabela exaustiva de todas as telas mapeadas. Cada linha = uma tela única. Estados explícitos por tela. Total 85 telas. Componentes-chave referenciados pelos Sub-PRDs.
 
 > **Este doc é um PLANO, não um mapa do que existe.** Foi escrito em 2026-04-28 e a
 > construção divergiu dele nos dois sentidos. O que o plano previu e ainda não existe, e o
@@ -34,16 +34,13 @@ date: 2026-04-28
 | 4 | `/login/recovery` | todos | default, error, used-code | `<RecoveryCodeForm>` | — | P1 | idem |
 | 5 | `/logout` | todos | redirect | — | — | P0 | — |
 
-## B. Onboarding (7 telas)
+## B. Onboarding (4 telas)
 
 | # | Path | Persona | Estados | Componentes | RT | Prio |
 |---|---|---|---|---|---|---|
 | 6 | `/onboarding/welcome` | P3 | default, terms-not-accepted | `<TermsCheckbox>`, `<SetPasswordForm>` | — | P0 |
 | 7 | `/onboarding/mfa-setup` | P3 admin, P2 | default, qr-loading, totp-invalid, success | `<TOTPSetup>`, `<RecoveryCodesPanel>` | — | P0 |
-| 9 | `/onboarding/connect-nuvemshop` | P3 | default, redirecting, callback-success, callback-error, scopes-missing | `<NuvemshopConnectButton>`, `<SyncProgressBar>` | — | P0 |
 | 10 | `/onboarding/configure-ai` | P3 | default, ingestion-pending, ingestion-success, error | `<PromptTemplateSelector>`, `<KnowledgeUploader>` | — | P1 |
-| 11 | `/onboarding/invite-team` | P3 | default, sending, sent, partial-failure | `<InviteForm>`, `<InviteList>` | — | P1 |
-| 12 | `/onboarding/done` | P3, P4 | default | `<OnboardingDone>`, `<NextStepsChecklist>` | — | P0 |
 | 13 | `/onboarding` (router resolve) | todos | redirect-by-state | — | — | P0 |
 
 ## C. App tenant — Inbox (2 telas + 1 sub-state)
@@ -200,9 +197,9 @@ Contados, não estimados. Os `~` saíram: os números abaixo são derivados das 
 por `scripts/inventario-de-telas.ts` e vigiados por `tests/unit/inventario-de-telas.test.ts`
 — mexer numa tabela sem mexer aqui reprova o `verify`.
 
-- **Total de telas únicas**: 88 (algumas têm sub-states relevantes mas mesma rota)
-- **P0** (semana 1–4): 40 telas
-- **P1** (semana 5–8): 42 telas
+- **Total de telas únicas**: 85 (algumas têm sub-states relevantes mas mesma rota)
+- **P0** (semana 1–4): 38 telas
+- **P1** (semana 5–8): 41 telas
 - **P2** (Fase 1.5+): 4 telas
 - **Entregues** fora da escala de prioridade (marcadas `**entregue**`): 2 telas
 - **Realtime obrigatório**: 24 telas

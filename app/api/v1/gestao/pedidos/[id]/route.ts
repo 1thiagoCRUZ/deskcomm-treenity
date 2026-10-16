@@ -8,6 +8,7 @@ import { randomUUID } from "node:crypto";
 import type { NextRequest } from "next/server";
 
 import { fail, ok } from "@/lib/api/wrappers";
+import { requireSupportWrite } from "@/lib/impersonate/support";
 import { audit } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/require-role";
 import { COLUNAS_DE_PEDIDO, pedidoParaDto, resolverPedidoSchema } from "@/lib/gestao/pedidos";
@@ -21,6 +22,10 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<Response> {
+  // Sessão de suporte somente leitura (ou encerrada) não cria nem decide nada.
+  const supportDenied = await requireSupportWrite();
+  if (supportDenied) return supportDenied;
+
   const requestId = randomUUID();
   const { id } = await params;
   const authz = await requireRole("admin", {
