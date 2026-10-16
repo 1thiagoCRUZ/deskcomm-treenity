@@ -12,7 +12,7 @@ import { useReleaseConversation } from "@/hooks/inbox/useReleaseConversation";
 import { useCloseConversation, useReopenConversation } from "@/hooks/inbox/useCloseConversation";
 import { useResumeAiAttendance } from "@/hooks/inbox/useResumeAiAttendance";
 import { usePauseAiAttendance } from "@/hooks/inbox/usePauseAiAttendance";
-import { useAutomaticoAtivo } from "@/hooks/ai/useAutomaticoAtivo";
+import { useAutomaticoAtivo } from "@/hooks/inbox/useAutomaticoAtivo";
 import { OwnerBadge } from "@/components/kanban/OwnerBadge";
 import { comandoDaConversa, ROTULO_DO_MOTIVO } from "@/lib/inbox/comando-da-conversa";
 import { pedidoDeEspecialistaAberto } from "@/lib/treenity-bot/pediu-especialista";

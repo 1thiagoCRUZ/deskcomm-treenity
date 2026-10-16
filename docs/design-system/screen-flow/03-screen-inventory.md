@@ -8,7 +8,7 @@ date: 2026-04-28
 
 # 03 — Screen Inventory
 
-> Tabela exaustiva de todas as telas mapeadas. Cada linha = uma tela única. Estados explícitos por tela. Total 95 telas. Componentes-chave referenciados pelos Sub-PRDs.
+> Tabela exaustiva de todas as telas mapeadas. Cada linha = uma tela única. Estados explícitos por tela. Total 88 telas. Componentes-chave referenciados pelos Sub-PRDs.
 
 > **Este doc é um PLANO, não um mapa do que existe.** Foi escrito em 2026-04-28 e a
 > construção divergiu dele nos dois sentidos. O que o plano previu e ainda não existe, e o
@@ -34,13 +34,12 @@ date: 2026-04-28
 | 4 | `/login/recovery` | todos | default, error, used-code | `<RecoveryCodeForm>` | — | P1 | idem |
 | 5 | `/logout` | todos | redirect | — | — | P0 | — |
 
-## B. Onboarding (8 telas)
+## B. Onboarding (7 telas)
 
 | # | Path | Persona | Estados | Componentes | RT | Prio |
 |---|---|---|---|---|---|---|
 | 6 | `/onboarding/welcome` | P3 | default, terms-not-accepted | `<TermsCheckbox>`, `<SetPasswordForm>` | — | P0 |
 | 7 | `/onboarding/mfa-setup` | P3 admin, P2 | default, qr-loading, totp-invalid, success | `<TOTPSetup>`, `<RecoveryCodesPanel>` | — | P0 |
-| 8 | `/onboarding/connect-whatsapp` | P3 | qr-loading, scan-qr, expired (60s), connected, failed | `<ChannelSessionCard>`, `<QRCodePanel>` | sim | P0 |
 | 9 | `/onboarding/connect-nuvemshop` | P3 | default, redirecting, callback-success, callback-error, scopes-missing | `<NuvemshopConnectButton>`, `<SyncProgressBar>` | — | P0 |
 | 10 | `/onboarding/configure-ai` | P3 | default, ingestion-pending, ingestion-success, error | `<PromptTemplateSelector>`, `<KnowledgeUploader>` | — | P1 |
 | 11 | `/onboarding/invite-team` | P3 | default, sending, sent, partial-failure | `<InviteForm>`, `<InviteList>` | — | P1 |
@@ -86,20 +85,15 @@ date: 2026-04-28
 | 30 | `/app/orders` | P1, P3, P4 | default, empty, sync-pending | `<OrdersTable>`, `<NuvemshopBadge>` | — | P1 |
 | 31 | `/app/orders/[id]` | idem | default, loading, payload-stale | `<OrderDetail>`, `<OrderTimeline>` | — | P1 |
 
-## G. App tenant — IA (11 telas)
+## G. App tenant — IA (6 telas)
 
 | # | Path | Persona | Estados | Componentes | RT | Prio |
 |---|---|---|---|---|---|---|
-| 32 | `/app/ai/agents` | P3 admin | default, empty (1 default), inactive | `<AgentsList>` | — | P1 |
-| 33 | `/app/ai/agents/[id]` | P3 admin | default, edit-mode, save-error, diff-vs-prod | `<AgentEditor>`, `<SystemPromptEditor>`, `<GuardrailsEditor>` | — | P1 |
-| 34 | `/app/ai/agents/new` | P3 admin | default, validation-error | `<AgentWizard>` | — | P2 |
 | 35 | `/app/ai/knowledge` | manager+ | default, source-counts | `<KnowledgeOverview>` | — | P1 |
-| 36 | `/app/ai/knowledge/sources` | manager+ | default, indexing, indexing-failed | `<SourcesList>` | sim (status) | P1 |
 | 37 | `/app/ai/knowledge/sources/faq` | manager+ | default, edit, version-history | `<FAQEditor>`, `<VersionTimeline>` | — | P1 |
 | 38 | `/app/ai/knowledge/sources/policies` | manager+ | default, uploading, parse-failed | `<PolicyUploader>` | — | P1 |
 | 39 | `/app/ai/knowledge/sources/catalog` | manager+ | default, sync-paused, sync-active | `<CatalogSyncStatus>` | sim | P1 |
 | 40 | `/app/ai/knowledge/sources/conversations` | manager+ | default, opt-in-required, anonymization-pending | `<ConversationsRAGSelector>` | — | P1 |
-| 41 | `/app/ai/usage` | P3 admin | default, near-budget (80%), over-budget | `<UsageDashboard>`, `<CostChart>` | sim | P1 |
 | 42 | `/app/ai/budget` | P3 admin | default, edit, save-error | `<BudgetForm>` | — | P1 |
 
 ## H. App tenant — Integrações (10 telas)
@@ -142,7 +136,7 @@ date: 2026-04-28
 | 61 | `/app/lgpd/redact` | P3 admin | default, search-contact, confirm-irreversible, processing | `<RedactWizard>` | — | P0 |
 | 62 | `/app/lgpd/consent` | P3 admin | default, audit-trail | `<ConsentDashboard>` | — | P1 |
 
-## L. App tenant — Settings (10 telas)
+## L. App tenant — Settings (9 telas)
 
 | # | Path | Persona | Estados | Componentes | RT | Prio |
 |---|---|---|---|---|---|---|
@@ -155,7 +149,6 @@ date: 2026-04-28
 | 69 | `/app/settings/tenant/vocabulary` | manager+ | default, edit, propagating | `<VocabularyEditor>` | — | P1 |
 | 70 | `/app/settings/marca` | P3 admin | default, prévia-ao-digitar, hex-inválido (Salvar desabilitado), salvo | `app/app/settings/marca/_form.tsx` + `<TiraDeTons>` | — | **entregue** |
 | 71 | `/app/settings/api-tokens` | P3 admin | default, create-once-shown, revoked | `<APITokensList>`, `<TokenRevealDialog>` | — | P1 |
-| 72 | `/app/settings/billing` | P3 admin | default (Fase 2) | `<BillingDashboard>` | — | P2 |
 
 > **Correção de 2026-08-14 na linha 70.** Ela inventariava `/app/settings/tenant/branding` com
 > `<BrandingForm>` e upload de logo. **Essa rota nunca existiu**, e quem a procurasse concluiria
@@ -207,12 +200,12 @@ Contados, não estimados. Os `~` saíram: os números abaixo são derivados das 
 por `scripts/inventario-de-telas.ts` e vigiados por `tests/unit/inventario-de-telas.test.ts`
 — mexer numa tabela sem mexer aqui reprova o `verify`.
 
-- **Total de telas únicas**: 95 (algumas têm sub-states relevantes mas mesma rota)
-- **P0** (semana 1–4): 41 telas
-- **P1** (semana 5–8): 46 telas
-- **P2** (Fase 1.5+): 6 telas
+- **Total de telas únicas**: 88 (algumas têm sub-states relevantes mas mesma rota)
+- **P0** (semana 1–4): 40 telas
+- **P1** (semana 5–8): 42 telas
+- **P2** (Fase 1.5+): 4 telas
 - **Entregues** fora da escala de prioridade (marcadas `**entregue**`): 2 telas
-- **Realtime obrigatório**: 27 telas
+- **Realtime obrigatório**: 24 telas
 - **Cross-tenant (super-admin)**: 18 telas
 
 ## Reconciliação com o disco

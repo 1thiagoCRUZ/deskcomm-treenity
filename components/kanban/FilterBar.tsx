@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useUser } from "@/hooks/auth/AuthProvider";
 import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
-import { useAssignableAgents } from "@/hooks/kanban/useAssignableAgents";
 import type { Lead, OwnerKind } from "@/lib/types/leads";
 import { OwnerBadge } from "./OwnerBadge";
 import {
@@ -40,7 +39,6 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
   const t = useT();
   const user = useUser();
   const { data: members } = useAssignableMembers(true);
-  const { data: agents } = useAssignableAgents(true);
   const [searchInput, setSearchInput] = useState(filters.search ?? "");
 
   // Debounce search 250ms
@@ -59,8 +57,6 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
     for (const l of leads) for (const t of l.tags) set.add(t);
     return Array.from(set).sort();
   }, [leads]);
-
-  const filteredAgentId = parseAgentOwnerFilter(filters.owner);
 
   /**
    * Responsáveis atribuíveis numa lista única — humanos e agentes ordenados
@@ -85,27 +81,17 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
           kind: "user" as OwnerKind,
           version: null,
         })),
-      ...(agents ?? []).map((a) => ({
-        key: `a:${a.agent_id}`,
-        owner: agentOwnerFilter(a.agent_id),
-        name: a.name,
-        kind: "ai" as OwnerKind,
-        version: a.version_number,
-      })),
     ];
     return rows.sort((x, y) => x.name.localeCompare(y.name, "pt-BR"));
-  }, [members, agents, user.id, t]);
+  }, [members, user.id, t]);
   const ownerLabel =
     filters.owner === "unassigned"
       ? t("Sem responsável")
       : !filters.owner || filters.owner === "any"
         ? t("Todos")
-        : filteredAgentId
-          ? (agents?.find((a) => a.agent_id === filteredAgentId)?.name ?? t("Agente"))
-          : filters.owner === user.id
-            ? t("Eu")
-            : (members?.find((m) => m.user_id === filters.owner)?.full_name ??
-              t("Responsável"));
+        : filters.owner === user.id
+          ? t("Eu")
+          : (members?.find((m) => m.user_id === filters.owner)?.full_name ?? t("Responsável"));
 
   const statusLabel = t(
     STATUS_OPTIONS.find((o) => o.value === (filters.status ?? "all"))?.label ?? "Todos",

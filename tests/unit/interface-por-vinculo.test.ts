@@ -24,7 +24,7 @@ describe("interface por vínculo é apresentação", () => {
   it("simplificada tem operação e Conexões somente quando papel permite", () => {
     expect(hrefs(simplified)).toContain("/app/connections");
     expect(hrefs(simplified, "agent")).not.toContain("/app/connections");
-    expect(hrefs(simplified)).not.toContain("/app/ai/credentials");
+    expect(hrefs(simplified)).not.toContain("/app/radar");
     expect(hrefs(simplified)).toEqual(
       expect.arrayContaining([
         "/app/inbox",
@@ -36,7 +36,7 @@ describe("interface por vínculo é apresentação", () => {
     );
   });
   it("admin plataforma também respeita seleção; completa não promove atendente", () => {
-    expect(hrefs(simplified, "admin", true)).not.toContain("/app/ai/credentials");
+    expect(hrefs(simplified, "admin", true)).not.toContain("/app/radar");
     expect(hrefs(complete, "agent")).not.toContain("/app/settings/tenant");
   });
   it("granular hub-only tem porta, home e busca úteis, sem grupos vazios", () => {
@@ -72,7 +72,7 @@ describe("interface por vínculo é apresentação", () => {
       complete,
     );
     expect(
-      interfaceTemDestino({ preset: "completa", destinos: ["/app/ai/credentials"] }, "agent"),
+      interfaceTemDestino({ preset: "completa", destinos: ["/app/settings/marca"] }, "agent"),
     ).toBe(false);
   });
   it("token novo preserva escolha, token antigo omite e usa default na leitura", () => {

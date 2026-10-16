@@ -16,6 +16,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock("@/lib/channels/adapters/meta-cloud", async () => ({
+  metaCloudAdapter: (await import("../helpers/canal-de-teste")).canalDeTeste,
+}));
+
 import { sendMessageHandler } from '@/app/api/v1/messages/_handler';
 import type { HandlerCtx } from '@/lib/api/handlers/types';
 import type { SendMessageInput } from '@/lib/schemas';
@@ -25,7 +29,7 @@ const CONV = '22222222-2222-4222-8222-222222222222';
 const CONTACT = '33333333-3333-4333-8333-333333333333';
 const SESSION = '44444444-4444-4444-8444-444444444444';
 const USER = '55555555-5555-4555-8555-555555555555';
-const WAHA_BASE = 'http://localhost:3030';
+const CANAL_BASE = 'http://localhost:3030';
 
 // A URL assinada do Storage é montada com o admin client; ele valida env no
 // import, e o desfecho de mídia precisa controlar sucesso E falha da assinatura.
@@ -71,8 +75,8 @@ function conversationRow(shape: ConversationShape = {}): Row {
         : {
             // `provider` sai do banco desde a migration 0087 — o handler não
             // supõe mais o canal, então a linha falsa também não pode supor.
-            provider: shape.provider ?? 'waha',
-            waha_session_name: 'default',
+            provider: shape.provider ?? 'meta_cloud',
+            meta_phone_number_id: 'default',
             status: shape.sessionStatus ?? 'WORKING',
             archived_at: shape.archivedAt ?? null,
           },
@@ -192,10 +196,9 @@ function textInput(over: Partial<SendMessageInput> = {}): SendMessageInput {
   return { conversation_id: CONV, type: 'text', body: 'oi', ...over } as SendMessageInput;
 }
 
-function wahaConfigured(configured: boolean) {
-  vi.stubEnv('WAHA_API_BASE_URL', configured ? WAHA_BASE : '');
-  vi.stubEnv('WAHA_API_KEY', configured ? 'hash123' : '');
-}
+function canalConfigurado(configured: boolean) {
+  vi.stubEnv('CANAL_TESTE_URL', configured ? CANAL_BASE : '');
+  }
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -205,7 +208,7 @@ afterEach(() => {
 
 describe('sendMessageHandler — os 6 desfechos do envio', () => {
   it("revalida a lista no sink, inclusive para automação, sem transformar teste em opt-out", async () => {
-    wahaConfigured(true);
+    canalConfigurado(true);
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     for (const actor of [{ type: "ai_agent", id: USER, role: "agent" }, { type: "webhook_source", id: USER }] as const) {
@@ -217,7 +220,7 @@ describe('sendMessageHandler — os 6 desfechos do envio', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
   it("número autorizado passa pelo gate; resposta humana não depende da lista", async () => {
-    wahaConfigured(false);
+    canalConfigurado(false);
     const channelMetadata = { ai_gate: "allowlist", ai_gate_mode: "pre_go_live", ai_test_phone_numbers: ["+5531999998888"] };
     const tester = await sendMessageHandler(makeSupabase(conversationRow(), null, { channelMetadata }),
       { ...ctx, actor: { type: "ai_agent", id: USER, role: "agent" } }, textInput());
@@ -227,22 +230,22 @@ describe('sendMessageHandler — os 6 desfechos do envio', () => {
     }), ctx, textInput());
     expect(human.status).toBe("queued");
   });
-  it('1. WAHA não configurado: fica queued com queued_reason, nada sai pela rede', async () => {
-    wahaConfigured(false);
+  it('1. canal não configurado: fica queued com queued_reason, nada sai pela rede', async () => {
+    canalConfigurado(false);
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
     const msg = await sendMessageHandler(makeSupabase(conversationRow()), ctx, textInput());
 
     expect(msg.status).toBe('queued');
-    expect((msg.metadata as Record<string, unknown>).queued_reason).toBe('waha_not_configured');
+    expect((msg.metadata as Record<string, unknown>).queued_reason).toBe('canal_not_configured');
     expect(msg.error_code).toBeNull();
     expect(msg.external_id).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('2. sem destinatário resolvível: failed/missing_phone_number', async () => {
-    wahaConfigured(true);
+    canalConfigurado(true);
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
@@ -259,7 +262,7 @@ describe('sendMessageHandler — os 6 desfechos do envio', () => {
   });
 
   it('3. sessão fora de WORKING: fica queued com channel_session_not_working', async () => {
-    wahaConfigured(true);
+    canalConfigurado(true);
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
@@ -278,9 +281,9 @@ describe('sendMessageHandler — os 6 desfechos do envio', () => {
   // Os desfechos 4 e 5 gravam a MESMA linha final. O que os separa é o efeito
   // externo — por qual endpoint a mensagem saiu. Isso não é "sequência de
   // chamadas internas": é o que de fato deixa o processo, e o refactor das
-  // Tasks 4b–4d tem que preservá-lo (o adapter WAHA fala com o mesmo WAHA).
+  // Tasks 4b–4d tem que preservá-lo (o adapter fala com o mesmo transporte).
   it('4. com media_storage_path: sent + external_id + ack 0, pelo endpoint de mídia', async () => {
-    wahaConfigured(true);
+    canalConfigurado(true);
     const fetchMock = vi.fn(async (..._args: unknown[]) => Response.json({ id: { _serialized: 'MEDIA1' } }));
     vi.stubGlobal('fetch', fetchMock);
 
@@ -294,13 +297,13 @@ describe('sendMessageHandler — os 6 desfechos do envio', () => {
     expect(msg.external_id).toBe('MEDIA1');
     expect(msg.ack).toBe(0);
     expect(msg.error_code).toBeNull();
-    expect(fetchMock.mock.calls.some(([url]) => String(url) === `${WAHA_BASE}/api/sendImage`)).toBe(
+    expect(fetchMock.mock.calls.some(([url]) => String(url) === `${CANAL_BASE}/api/sendImage`)).toBe(
       true,
     );
   });
 
   it('5. texto puro: sent + external_id + ack 0, pelo endpoint de texto', async () => {
-    wahaConfigured(true);
+    canalConfigurado(true);
     const fetchMock = vi.fn(async (..._args: unknown[]) => Response.json({ key: { id: 'TEXT1' } }));
     vi.stubGlobal('fetch', fetchMock);
 
@@ -310,7 +313,7 @@ describe('sendMessageHandler — os 6 desfechos do envio', () => {
     expect(msg.external_id).toBe('TEXT1');
     expect(msg.ack).toBe(0);
     expect(msg.error_code).toBeNull();
-    const sendText = fetchMock.mock.calls.find(([url]) => String(url) === `${WAHA_BASE}/api/sendText`);
+    const sendText = fetchMock.mock.calls.find(([url]) => String(url) === `${CANAL_BASE}/api/sendText`);
     expect(sendText, 'sendText não foi chamado').toBeTruthy();
     // Task 7: a sessão que chega ao fio sai de `resolveSessionRef` (que escolhe a
     // COLUNA conforme o provider), não mais de um acesso direto à coluna do
@@ -322,15 +325,15 @@ describe('sendMessageHandler — os 6 desfechos do envio', () => {
     expect(body.session).toBe('default');
   });
 
-  it('6. envio lança: failed/waha_error com a mensagem do erro', async () => {
-    wahaConfigured(true);
+  it('6. envio lança: failed/canal_error com a mensagem do erro', async () => {
+    canalConfigurado(true);
     vi.stubGlobal('fetch', vi.fn(async () => new Response('boom', { status: 500 })));
 
     const msg = await sendMessageHandler(makeSupabase(conversationRow()), ctx, textInput());
 
     expect(msg.status).toBe('failed');
-    expect(msg.error_code).toBe('waha_error');
-    expect(msg.error_message).toBe('waha_500');
+    expect(msg.error_code).toBe('canal_error');
+    expect(msg.error_message).toBe('canal_500');
     expect(msg.external_id).toBeNull();
   });
 
@@ -338,7 +341,7 @@ describe('sendMessageHandler — os 6 desfechos do envio', () => {
   // valor vai para o banco, então trocá-lo é mudança de comportamento — ele saiu
   // do literal no handler para `adapter.codes`, com o mesmo texto.
   it('6c. throw que não é Error: error_message vem de adapter.codes.unknownError', async () => {
-    wahaConfigured(true);
+    canalConfigurado(true);
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => {
@@ -349,12 +352,12 @@ describe('sendMessageHandler — os 6 desfechos do envio', () => {
     const msg = await sendMessageHandler(makeSupabase(conversationRow()), ctx, textInput());
 
     expect(msg.status).toBe('failed');
-    expect(msg.error_code).toBe('waha_error');
-    expect(msg.error_message).toBe('waha_unknown');
+    expect(msg.error_code).toBe('canal_error');
+    expect(msg.error_message).toBe('canal_unknown');
   });
 
   // Task 6: o canal sai do banco (`channel_sessions.provider`, migration 0087) e
-  // não de um literal. Esta é a sabotagem que reprova o retorno do `getAdapter("waha")`
+  // não de um literal. Esta é a sabotagem que reprova o retorno do `getAdapter("...")`
   // fixo: com o literal de volta, a sessão enviaria pelo canal errado e o teste ficaria
   // vermelho por não ter lançado.
   //
@@ -364,7 +367,7 @@ describe('sendMessageHandler — os 6 desfechos do envio', () => {
   // não qual canal está pronto. Amarrar o caso a um canal específico o faria expirar de
   // novo na próxima fase.
   it('7. o canal vem da sessão: provider desconhecido falha fechado, não cai em nenhum canal', async () => {
-    wahaConfigured(true);
+    canalConfigurado(true);
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
@@ -378,31 +381,8 @@ describe('sendMessageHandler — os 6 desfechos do envio', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('7b. sessão meta_cloud agora RESOLVE adapter — a Fase 3b o criou', async () => {
-    // O par com o caso 7 é o que dá sentido aos dois: um prova que provider
-    // desconhecido não vaza para canal nenhum; este prova que o canal oficial
-    // deixou de ser desconhecido.
-    wahaConfigured(true);
-    vi.stubEnv('META_PHONE_NUMBER_ID', '1103328999528818');
-    vi.stubEnv('META_SYSTEM_USER_TOKEN', 'tok');
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ messages: [{ id: 'wamid.META' }] }),
-    });
-    vi.stubGlobal('fetch', fetchMock);
-
-    const msg = await sendMessageHandler(
-      makeSupabase(conversationRow({ provider: 'meta_cloud' })),
-      ctx,
-      textInput(),
-    );
-    expect((msg as { status: string }).status).toBe('sent');
-    expect(String(fetchMock.mock.calls[0]![0])).toContain('graph.facebook.com');
-  });
-
-  it('6b. assinatura do Storage falha: failed/storage_sign_failed, não waha_error', async () => {
-    wahaConfigured(true);
+  it('6b. assinatura do Storage falha: failed/storage_sign_failed, não canal_error', async () => {
+    canalConfigurado(true);
     signedUrl.mockResolvedValue({ data: null, error: { message: 'no_object' } });
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
@@ -421,9 +401,9 @@ describe('sendMessageHandler — os 6 desfechos do envio', () => {
 
   // A ORDEM entre os desfechos é comportamento, não detalhe: se o pre-check de
   // configuração descer para depois da resolução do destinatário, uma instalação
-  // sem WAHA passa a marcar a mensagem como `failed` em vez de deixá-la em fila.
-  it('ordem: sem WAHA E sem telefone → waha_not_configured, nunca missing_phone_number', async () => {
-    wahaConfigured(false);
+  // sem canal passa a marcar a mensagem como `failed` em vez de deixá-la em fila.
+  it('ordem: sem canal E sem telefone → canal_not_configured, nunca missing_phone_number', async () => {
+    canalConfigurado(false);
     vi.stubGlobal('fetch', vi.fn());
 
     const msg = await sendMessageHandler(
@@ -433,14 +413,14 @@ describe('sendMessageHandler — os 6 desfechos do envio', () => {
     );
 
     expect(msg.status).toBe('queued');
-    expect((msg.metadata as Record<string, unknown>).queued_reason).toBe('waha_not_configured');
+    expect((msg.metadata as Record<string, unknown>).queued_reason).toBe('canal_not_configured');
     expect(msg.error_code).toBeNull();
   });
 
   it('8. type=template envia pelo caminho do template e grava nome e idioma', async () => {
     // O ramo NOVO. Grava `template_name`/`template_language` porque o tipo sozinho
     // não responde "qual template custou o quê" — e template é cobrado por entrega.
-    wahaConfigured(true);
+    canalConfigurado(true);
     vi.stubEnv('META_PHONE_NUMBER_ID', '1103328999528818');
     vi.stubEnv('META_SYSTEM_USER_TOKEN', 'tok');
     const fetchMock = vi.fn().mockResolvedValue({
@@ -477,7 +457,7 @@ describe('sendMessageHandler — os 6 desfechos do envio', () => {
 
   it('8b. template ausente do espelho FALHA, não envia às cegas', async () => {
     // Sem esta guarda, um nome errado viraria 132000 na Meta — cobrado e tarde.
-    wahaConfigured(true);
+    canalConfigurado(true);
     vi.stubEnv('META_PHONE_NUMBER_ID', '1103328999528818');
     vi.stubEnv('META_SYSTEM_USER_TOKEN', 'tok');
     const fetchMock = vi.fn();
@@ -508,7 +488,7 @@ describe('sendMessageHandler — os 6 desfechos do envio', () => {
    * ledger do agente lê `queued` como algo a reconciliar mais tarde.
    */
   it('8. canal ARQUIVADO: failed/channel_archived, nada sai pela rede', async () => {
-    wahaConfigured(true);
+    canalConfigurado(true);
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
@@ -531,7 +511,7 @@ describe('sendMessageHandler — os 6 desfechos do envio', () => {
    * exato, não um paliativo.
    */
   it('9. banco sem a coluna archived_at (migration não aplicada): o envio segue normalmente', async () => {
-    wahaConfigured(true);
+    canalConfigurado(true);
     const fetchMock = vi.fn(async (..._args: unknown[]) => Response.json({ key: { id: 'TEXT9' } }));
     vi.stubGlobal('fetch', fetchMock);
 

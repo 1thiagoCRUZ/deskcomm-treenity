@@ -35,7 +35,6 @@ describe("passos visíveis", () => {
   it("a ordem é a mesma nos dois casos, menos o passo que não existe", () => {
     expect(passosVisiveis(SEM_LOJA).map((p) => p.segmento)).toEqual([
       "welcome",
-      "connect-whatsapp",
       "setup-ai",
       // O quadro de clientes vem DEPOIS de treinar: a sugestão sai da chave que
       // a pessoa acabou de confirmar funcionando, e é o mesmo modelo que vai
@@ -69,9 +68,9 @@ describe("próximo passo", () => {
   it("passo PULADO conta como resolvido — senão o wizard entra em laço", () => {
     const s: OnboardingState = {
       welcome: { accepted_at: "x", timezone: "America/Sao_Paulo", display_name: "N" },
-      whatsapp: { status: "skipped", skipped: true },
+      ai: { agent_id: "a", prompt_template: "p", skipped: true },
     };
-    expect(proximoPasso(s, SEM_LOJA)?.segmento).toBe("setup-ai");
+    expect(proximoPasso(s, SEM_LOJA)?.segmento).toBe("funil");
   });
 
   it("tudo resolvido = não falta nenhum", () => {
@@ -97,21 +96,20 @@ describe("resumo final", () => {
   it("distingue feito de pulado — pular é escolha, não falha", () => {
     const s: OnboardingState = {
       welcome: { accepted_at: "x", timezone: "America/Sao_Paulo", display_name: "N" },
-      whatsapp: { status: "skipped", skipped: true },
+      ai: { agent_id: "a", prompt_template: "p", skipped: true },
     };
     const resumo = resumoDoOnboarding(s, SEM_LOJA);
     const porSegmento = new Map(resumo.map((i) => [i.segmento, i]));
     expect(porSegmento.get("welcome")).toMatchObject({ feito: true, pulado: false });
-    expect(porSegmento.get("connect-whatsapp")).toMatchObject({ feito: false, pulado: true });
+    expect(porSegmento.get("setup-ai")).toMatchObject({ feito: false, pulado: true });
     // O que nem chegou a ser oferecido não é "pulado": é pendente.
-    expect(porSegmento.get("setup-ai")).toMatchObject({ feito: false, pulado: false });
+    expect(porSegmento.get("funil")).toMatchObject({ feito: false, pulado: false });
   });
 
   it("os rótulos nomeiam PEÇAS do funcionário, não telas do sistema", () => {
     // A moldura do redesenho. Um passo chamado "IA" não diz o que vai
     // acontecer ali; "Treinar" diz.
     const rotulos = resumoDoOnboarding(VAZIO, SEM_LOJA).map((i) => i.rotulo);
-    expect(rotulos).toContain("O telefone dele");
     expect(rotulos).toContain("Treinar");
     expect(rotulos).not.toContain("IA");
   });

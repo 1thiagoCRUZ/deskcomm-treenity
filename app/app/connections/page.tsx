@@ -19,11 +19,6 @@ export default async function ConnectionsPage() {
   const idioma = user.idioma;
   const gestao = ehGestaoTreenity(user);
 
-  const key = process.env.WAHA_API_KEY;
-  const wahaConfigured = Boolean(
-    process.env.WAHA_API_BASE_URL && key && key !== "dev_plaintext_change_me",
-  );
-
   return (
     <div className="flex h-full flex-col gap-6 p-6">
       <header>
@@ -31,13 +26,13 @@ export default async function ConnectionsPage() {
         <p className="text-sm text-muted-foreground">
           {gestao
             ? traduzir(
-                "Por onde seu negócio fala com o cliente. Conecte números por QR ou o número oficial da Meta, e acompanhe a saúde de cada um.",
+                "Por onde seu negócio fala com o cliente: o número oficial da Meta, a saúde dele e os templates.",
                 idioma,
               )
             : traduzir("Os números de WhatsApp da sua empresa e se estão funcionando.", idioma)}
         </p>
       </header>
-      {gestao ? <ConexoesShell wahaConfigured={wahaConfigured} /> : <ConexoesDoDono />}
+      {gestao ? <ConexoesShell /> : <ConexoesDoDono />}
     </div>
   );
 }

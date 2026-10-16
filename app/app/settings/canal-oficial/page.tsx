@@ -8,5 +8,5 @@ import { redirect } from "next/navigation";
  * economizaria um arquivo e cobraria isso do usuário.
  */
 export default function Page(): never {
-  redirect("/app/connections?aba=oficial");
+  redirect("/app/connections");
 }

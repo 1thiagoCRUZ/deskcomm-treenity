@@ -57,7 +57,6 @@ SEGREDO_SEGURO="$(printf '%s' "$INTERNAL_SECRET" | sed "s/'/'\\\\''/g")"
 # comentário, seria DADO — e crase em prosa dentro de aspas duplas o shell
 # EXECUTA. Foi o que quebrou o entrypoint na primeira tentativa desta linha.
 CRONS="
-* * * * *|25|api/v1/cron/agent-dispatcher
 * * * * *|25|api/v1/cron/followup-flow-worker
 * * * * *|45|api/v1/cron/event-log-drain
 * * * * *|25|api/v1/cron/routing-worker
@@ -67,7 +66,6 @@ CRONS="
 */5 * * * *|25|api/v1/cron/attendant-heartbeat
 */5 * * * *|60|api/v1/cron/webhook-log-retention
 */5 * * * *|45|api/v1/cron/channel-health
-*/10 * * * *|60|api/v1/cron/contact-avatars
 */10 * * * *|60|api/v1/cron/agenda-google-refresh
 */15 * * * *|90|api/v1/cron/agenda-google-sync
 # A IDA. Cadência mais curta que a volta de propósito: quem marcou pela tela
@@ -75,12 +73,8 @@ CRONS="
 # manda o que mudou). A volta é cara — varre calendário inteiro — e por isso
 # roda a cada 15.
 */5 * * * *|60|api/v1/cron/agenda-google-push
-*/15 * * * *|60|api/v1/cron/risk-watcher
-*/30 * * * *|60|api/v1/cron/contact-phones
 17 * * * *|60|api/v1/cron/contact-proposals-watcher
 0 12 * * *|60|api/v1/cron/lgpd-sla-watcher
-30 3 * * *|120|api/v1/cron/kb-conversations-batch
-15 4 * * *|60|api/v1/cron/sync-model-catalog
 40 4 * * *|120|api/v1/cron/data-retention
 "
 

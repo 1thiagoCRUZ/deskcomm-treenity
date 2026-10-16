@@ -34,7 +34,7 @@ describe("nome de provider de canal é vazamento", () => {
    * silencioso que a sabotagem expôs, só que um andar acima.
    */
   it("a fonte derivada não está vazia (senão o resto deste arquivo é vácuo)", () => {
-    expect(PROVIDERS.length).toBeGreaterThanOrEqual(2);
+    expect(PROVIDERS.length).toBeGreaterThanOrEqual(1);
   });
 
   it.each(PROVIDERS)("barra o nome do provider: %s", (p) => {

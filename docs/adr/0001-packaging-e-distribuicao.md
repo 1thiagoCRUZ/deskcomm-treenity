@@ -69,7 +69,7 @@ criaria matriz de compatibilidade sem consumidor para ela.
 
 ### D3 — `deskcomm-worker` é publicado, não fundido na imagem do app
 
-O worker roda TypeScript direto via `tsx` (`workers/agent-worker/main.ts`), enquanto a imagem
+O worker roda TypeScript direto via `tsx` (o ponto de entrada do worker, removido do fork da Treenity em 2026-10), enquanto a imagem
 do app é um `.next/standalone` — que não contém `tsx` nem o fonte TS.
 
 **Alternativa descartada:** fundir os dois numa imagem só, com `command:` diferente. Exigiria

@@ -252,13 +252,6 @@ describe("o espelho entre a tela e o motor", () => {
     }
   });
 
-  it("o worker legado segue com os três guards que esta função espelha", () => {
-    const fonte = readFileSync(join(RAIZ, "workers/ai-response-worker.ts"), "utf8");
-    expect(fonte).toContain('skip("force_human")');
-    expect(fonte).toContain('skip("assigned_to_human")');
-    expect(fonte).toContain('skip("silenced_post_handoff")');
-  });
-
   it("todo estado e todo motivo têm rótulo, e a palavra do estado é 'automático'", () => {
     expect(Object.keys(ROTULO_DO_COMANDO).sort()).toEqual(
       ["aguardando", "automatico", "encerrada", "humano", "ninguem"],

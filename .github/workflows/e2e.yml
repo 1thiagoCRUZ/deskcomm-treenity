@@ -571,12 +571,10 @@ jobs:
       # todas. Os 3 arquivos que o cancelamento impediu de medir vêm junto, porque
       # eles são justamente o fim da fila.
       SPECS_PARTE_3: >-
-        autonomia-assistida.spec.ts
         roteamento-por-canal.spec.ts
         central-avisos-destino.spec.ts
         agenda-presenca-recuperacao.spec.ts
         agenda-google-sync.spec.ts
-        agenda-google-meet.spec.ts
         encerramento-atendimento.spec.ts
         interface-por-vinculo.spec.ts
         olhar-telas-do-epico.spec.ts

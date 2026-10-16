@@ -40,15 +40,15 @@ describe("CommandPalette", () => {
   it("acha uma tela que o sidebar não mostra", async () => {
     const user = userEvent.setup();
     abrir();
-    await user.type(screen.getByRole("combobox"), "conhec");
-    expect(screen.getByRole("option", { name: /Conhecimento/ })).toBeTruthy();
+    await user.type(screen.getByRole("combobox"), "produt");
+    expect(screen.getByRole("option", { name: /Produtos/ })).toBeTruthy();
   });
 
   it("ignora acento, porque ninguém digita acento com pressa", async () => {
     const user = userEvent.setup();
     abrir();
-    await user.type(screen.getByRole("combobox"), "orcamento");
-    expect(screen.getByRole("option", { name: /Uso e orçamento/ })).toBeTruthy();
+    await user.type(screen.getByRole("combobox"), "distribuicao");
+    expect(screen.getByRole("option", { name: /Distribuição de atendimento/ })).toBeTruthy();
   });
 
   it("busca também na descrição, não só no rótulo", async () => {
@@ -70,9 +70,9 @@ describe("CommandPalette", () => {
   it("Enter navega para o item destacado", async () => {
     const user = userEvent.setup();
     abrir();
-    await user.type(screen.getByRole("combobox"), "conhec");
+    await user.type(screen.getByRole("combobox"), "produt");
     await user.keyboard("{Enter}");
-    expect(push).toHaveBeenCalledWith("/app/ai/knowledge/sources");
+    expect(push).toHaveBeenCalledWith("/app/products");
   });
 
   it("seta para baixo move o destaque antes do Enter", async () => {

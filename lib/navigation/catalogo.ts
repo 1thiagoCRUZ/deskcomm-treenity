@@ -70,7 +70,7 @@ export interface NavMetadata {
 export const NAV_GROUPS: NavGroup[] = [
   { id: "atendimento", label: "Atendimento" },
   { id: "crm", label: "CRM", hub: { href: "/app/crm", label: "Ver tudo em CRM" } },
-  { id: "ia", label: "Agente de IA", hub: { href: "/app/ai", label: "Ver tudo em IA" } },
+  { id: "ia", label: "Agente de IA" },
   { id: "canais", label: "Canais" },
   { id: "analise", label: "Análise", hub: { href: "/app/analise", label: "Ver tudo em Análise" } },
   {
@@ -280,138 +280,12 @@ export const NAV_CATALOG = [
 
   // ---- Agente de IA — montar, ensinar, acompanhar ----
   {
-    href: "/app/ai/agents",
-    label: "Agentes",
-    description: "Quem atende por você: instruções, modelo, ferramentas e publicação.",
-    icon: "Robot",
-    group: "ia",
-    section: "Montar o agente",
-    minRole: "manager",
-    sidebar: true,
-  },
-  {
-    href: "/app/ai/followups",
-    label: "Follow-ups",
-    description: "Como o agente retoma uma conversa que esfriou, para nenhuma morrer no silêncio.",
-    icon: "FlowArrow",
-    group: "ia",
-    section: "Montar o agente",
-    minRole: "manager",
-    sidebar: true,
-  },
-  {
-    href: "/app/ai/routers",
-    label: "Roteadores",
-    description: "Qual agente pega qual conversa, e quando o humano assume.",
-    icon: "Signpost",
-    group: "ia",
-    section: "Montar o agente",
-    minRole: "manager",
-    sidebar: true,
-  },
-  {
-    href: "/app/ai/credentials",
-    label: "Credenciais",
-    description: "A chave do provedor de IA que os agentes usam para pensar.",
-    icon: "Key",
-    group: "ia",
-    section: "Montar o agente",
-    minRole: "manager",
-  },
-  {
-    // O sistema chama modelo em 23 lugares e, até esta tela, a escolha vivia
-    // espalhada por três pilhas de código e sete variáveis de ambiente — não
-    // havia onde responder "quem usa IA aqui, e com qual chave?".
-    href: "/app/ai/providers",
-    label: "Provedores",
-    description: "Qual inteligência atende cada parte do sistema — e o que acontece se ela falhar.",
-    icon: "Plugs",
-    group: "ia",
-    section: "Montar o agente",
-    minRole: "manager",
-    // SEM `sidebar: true`, como as outras nove telas deste grupo. Adicionar as
-    // duas telas novas à sidebar estourou a dobra em 900px — medido pelo e2e
-    // `navegacao.spec.ts`, que existe justamente porque agrupar o menu o faz
-    // crescer. Configurar provedor é tarefa de poucas vezes; o caminho é o hub
-    // "Ver tudo em IA", igual a Credenciais, Conhecimento, Memória e Skills.
-  },
-  {
-    href: "/app/ai/knowledge/sources",
-    label: "Conhecimento",
-    description: "Os materiais que o agente consulta antes de responder sobre o seu negócio.",
-    icon: "BookOpen",
-    group: "ia",
-    section: "Ensinar o agente",
-    minRole: "manager",
-  },
-  {
-    href: "/app/ai/memory",
-    label: "Memória",
-    description: "O que o agente já aprendeu sobre a sua operação e reaproveita.",
-    icon: "Brain",
-    group: "ia",
-    section: "Ensinar o agente",
-    minRole: "manager",
-  },
-  {
-    href: "/app/ai/skills",
-    label: "Skills",
-    description: "As ações que o agente pode executar sozinho durante o atendimento.",
-    icon: "PuzzlePiece",
-    group: "ia",
-    section: "Ensinar o agente",
-    minRole: "manager",
-  },
-  {
-    href: "/app/ai/cases",
-    label: "Casos",
-    description: "Os atendimentos que o agente conduziu, do início ao desfecho.",
-    icon: "ClipboardText",
-    group: "ia",
-    section: "Acompanhar o agente",
-    minRole: "agent",
-  },
-  {
     href: "/app/ai/inbox",
     label: "Alertas",
     description: "O que a IA encontrou e precisa de uma decisão sua.",
     icon: "Flag",
     group: "ia",
     section: "Acompanhar o agente",
-  },
-  {
-    // Órfã: nenhum lugar do app linkava para cá. O flywheel gerava propostas de
-    // melhoria do agente e a fila só era vista por quem soubesse a URL.
-    href: "/app/ai/proposals",
-    label: "Propostas",
-    description: "Melhorias que a IA sugere para si mesma, esperando sua decisão.",
-    icon: "Lightbulb",
-    group: "ia",
-    section: "Acompanhar o agente",
-  },
-  {
-    // A tela de Uso responde "quanto gastei". Esta responde a pergunta que não
-    // tinha lugar nenhum: "o agente parou de responder, o que aconteceu?".
-    // Antes da migration 0128 ela seria impossível de construir com honestidade
-    // — llm_calls só registrava sucesso.
-    href: "/app/ai/runs",
-    label: "Execuções",
-    description: "O que a IA fez — e, quando falhou, o que aconteceu e o que fazer.",
-    icon: "ListChecks",
-    group: "ia",
-    section: "Acompanhar o agente",
-    minRole: "manager",
-    // Idem: fora da sidebar para o menu não passar da dobra. Quem vem para cá
-    // está diagnosticando, e chega pelo hub ou pelo link do aviso na Central.
-  },
-  {
-    href: "/app/ai/usage",
-    label: "Uso e orçamento",
-    description: "Quanto a IA consumiu e qual é o teto de gasto do mês.",
-    icon: "Gauge",
-    group: "ia",
-    section: "Acompanhar o agente",
-    minRole: "manager",
   },
 
   // ---- Canais — por onde as mensagens entram e saem ----
@@ -474,16 +348,6 @@ export const NAV_CATALOG = [
     minRole: "agent",
     sidebar: true,
   },
-  {
-    href: "/app/webhooks",
-    label: "Webhooks",
-    description: "Avise outros sistemas quando algo acontecer aqui dentro.",
-    icon: "WebhooksLogo",
-    group: "canais",
-    minRole: "manager",
-    // Sem `sidebar` na Treenity: integração técnica, não rotina do dono.
-    // Alcançável pelo ⌘K, como Nuvemshop.
-  },
 
   // ---- Análise — olhar o sistema funcionando ----
   //
@@ -527,16 +391,6 @@ export const NAV_CATALOG = [
     group: "analise",
     section: "Os números do período",
     sidebar: true,
-  },
-  {
-    // Observabilidade, não configuração: por isso não fica junto dos agentes.
-    href: "/app/ai/evolution",
-    label: "Evolução da IA",
-    description: "Se o agente está melhorando, onde ele erra e o que falta ensinar.",
-    icon: "ChartLineUp",
-    group: "analise",
-    section: "O histórico que se consulta",
-    minRole: "manager",
   },
   {
     href: "/app/audit",

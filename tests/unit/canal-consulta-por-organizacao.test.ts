@@ -124,7 +124,6 @@ describe("lib/channels: consulta a channel_sessions por identificador do provide
     // falha que `feedback_instrumento_quebrado_devolve_zero` descreve.
     expect(TODAS.length).toBeGreaterThanOrEqual(5);
     expect(COLUNAS_DE_REF).toContain("meta_phone_number_id");
-    expect(COLUNAS_DE_REF).toContain("zernio_account_id");
     expect(COLUNAS_DE_REF).not.toContain("provider");
   });
 
@@ -173,7 +172,6 @@ describe("lib/channels: o erro da resolução não pode virar caminho feliz", ()
   // falhar FECHADO na ação, ABERTO na informação.
   const fontes = [
     "lib/channels/meta/credentials.ts",
-    "lib/channels/zernio/credentials.ts",
     "lib/channels/meta/ingest.ts",
   ];
 

@@ -33,7 +33,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { comandosDaFila } from "@/lib/inbox/comando-da-conversa";
-import { useAutomaticoAtivo } from "@/hooks/ai/useAutomaticoAtivo";
+import { useAutomaticoAtivo } from "@/hooks/inbox/useAutomaticoAtivo";
 
 /**
  * QUAL COLUNA APARECE NO CELULAR — as duas saem da MESMA pergunta.

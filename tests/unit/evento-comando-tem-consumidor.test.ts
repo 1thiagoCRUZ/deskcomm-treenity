@@ -58,18 +58,7 @@ const CONSUMIDORES_FORA_DO_REGISTRY: Record<string, string> = {
  * Isto é dívida DECLARADA, não anistia: o teste abaixo cobra que a lista não
  * envelheça, então no dia em que alguém plugar o consumidor a entrada reprova.
  */
-const SEM_CONSUMIDOR_CONHECIDO: Record<string, string> = {
-  "message.send_requested":
-    "Emitido por workers/ai-response-worker.ts para um worker de despacho que " +
-    "nunca foi construído (S-06.x do EPIC-03). Hoje quem de fato responde o " +
-    "cliente numa instalação padrão é o agent-engine, por outro caminho " +
-    "(ai_agent.dispatch_requested → POST /api/v1/messages). Plugar um consumidor " +
-    "aqui SEM antes resolver a sobreposição entre os dois runtimes trocaria o " +
-    "problema atual por um pior: resposta em dobro ao cliente. A decisão de " +
-    "arquitetura está aberta na issue #129; enquanto ela não sai, a mensagem " +
-    "presa deixou de ser invisível — o cron recover-stuck-messages a marca como " +
-    "falha e abre aviso na Central.",
-};
+const SEM_CONSUMIDOR_CONHECIDO: Record<string, string> = {};
 
 function arquivos(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {

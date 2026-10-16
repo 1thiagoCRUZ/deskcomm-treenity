@@ -29,13 +29,9 @@ const AGORA = new Date("2026-08-10T18:00:00Z");
 const hMenos = (h: number) => new Date(AGORA.getTime() - h * 3_600_000).toISOString();
 
 describe("o estado da janela", () => {
-  it("canal SEM restrição não tem relógio — inventá-lo ensina a ignorá-lo", () => {
-    // O número por QR aceita texto livre a qualquer hora.
-    expect(estadoDaJanela("waha", hMenos(48), AGORA)).toEqual({ tipo: "sem_restricao" });
-  });
 
   it("canal com restrição e cliente recente: aberta, com o que resta", () => {
-    const e = estadoDaJanela("zernio", hMenos(1), AGORA);
+    const e = estadoDaJanela("meta_cloud", hMenos(1), AGORA);
     expect(e.tipo).toBe("aberta");
     if (e.tipo === "aberta") expect(Math.round(e.restanteMs / 3_600_000)).toBe(23);
   });
@@ -43,13 +39,13 @@ describe("o estado da janela", () => {
   it("passadas as 24h: fechada, e diz HÁ QUANTO fechou", () => {
     // Não é "desde a última mensagem": os dois diferem em exatamente 24h, e a
     // pergunta do operador é "passei muito?".
-    const e = estadoDaJanela("zernio", hMenos(25), AGORA);
+    const e = estadoDaJanela("meta_cloud", hMenos(25), AGORA);
     expect(e.tipo).toBe("fechada");
     if (e.tipo === "fechada") expect(Math.round((e.fechadaHaMs ?? 0) / 3_600_000)).toBe(1);
   });
 
   it("em 24h EXATAS já fechou — a borda é exclusiva, como a da plataforma", () => {
-    const e = estadoDaJanela("zernio", hMenos(24), AGORA);
+    const e = estadoDaJanela("meta_cloud", hMenos(24), AGORA);
     expect(e.tipo).toBe("fechada");
     if (e.tipo === "fechada") expect(e.fechadaHaMs).toBe(0);
   });
@@ -57,7 +53,7 @@ describe("o estado da janela", () => {
   it("cliente que NUNCA escreveu: fechada SEM prazo — nunca houve fechamento", () => {
     // Fail-closed, e `null` em vez de um número: inventar "fechada há 3 dias"
     // descreveria um prazo que nunca correu.
-    expect(estadoDaJanela("zernio", null, AGORA)).toEqual({ tipo: "fechada", fechadaHaMs: null });
+    expect(estadoDaJanela("meta_cloud", null, AGORA)).toEqual({ tipo: "fechada", fechadaHaMs: null });
   });
 
   it("sem canal resolvido não trava nada", () => {
@@ -93,41 +89,37 @@ describe("quanto tempo passou", () => {
 });
 
 describe("o selo na tela", () => {
-  it("não renderiza nada em canal sem restrição", () => {
-    const { container } = render(<JanelaSelo provider="waha" lastInboundAt={hMenos(1)} />);
-    expect(container).toBeEmptyDOMElement();
-  });
 
   it("mostra o tempo restante quando aberta", () => {
-    render(<JanelaSelo provider="zernio" lastInboundAt={new Date(Date.now() - 3_600_000).toISOString()} />);
+    render(<JanelaSelo provider="meta_cloud" lastInboundAt={new Date(Date.now() - 3_600_000).toISOString()} />);
     expect(screen.getByText(/Janela \d+h/)).toBeInTheDocument();
   });
 
   it("diz o que fazer quando fechada, não só que fechou", () => {
     // "Janela fechada" sozinho deixa o operador sem saída. O texto nomeia a
     // saída que existe: modelo aprovado.
-    render(<JanelaSelo provider="zernio" lastInboundAt={new Date(Date.now() - 30 * 3_600_000).toISOString()} />);
+    render(<JanelaSelo provider="meta_cloud" lastInboundAt={new Date(Date.now() - 30 * 3_600_000).toISOString()} />);
     expect(screen.getByText(/só modelo/i)).toBeInTheDocument();
   });
 
   it("e diz HÁ QUANTO fechou — 20 minutos e um mês pedem decisões diferentes", () => {
-    render(<JanelaSelo provider="zernio" lastInboundAt={new Date(Date.now() - 30 * 3_600_000).toISOString()} />);
+    render(<JanelaSelo provider="meta_cloud" lastInboundAt={new Date(Date.now() - 30 * 3_600_000).toISOString()} />);
     expect(screen.getByText(/fechada há 6h/i)).toBeInTheDocument();
   });
 
   it("cliente que nunca escreveu não ganha um prazo inventado", () => {
-    render(<JanelaSelo provider="zernio" lastInboundAt={null} />);
+    render(<JanelaSelo provider="meta_cloud" lastInboundAt={null} />);
     expect(screen.getByText(/nunca escreveu/i)).toBeInTheDocument();
   });
 });
 
 describe("os elos que somem sem barulho", () => {
   it("a regra mora no SEAM, não na tela", () => {
-    // Um `if (provider === "zernio")` no componente é o que o invariante 1 da
+    // Um `if (provider === "meta_cloud")` no componente é o que o invariante 1 da
     // doutrina proíbe, e o `lint:channels` reprova.
     const fonte = readFileSync("components/inbox/JanelaSelo.tsx", "utf8");
     expect(fonte).toMatch(/estadoDaJanela/);
-    expect(fonte, "a tela está decidindo por provider").not.toMatch(/"zernio"|"meta_cloud"|"waha"/);
+    expect(fonte, "a tela está decidindo por provider").not.toMatch(/"meta_cloud"|"waha"|"zernio"/);
   });
 
   it("a cabeçalho MONTA o selo — a regra sozinha não mostra nada", () => {

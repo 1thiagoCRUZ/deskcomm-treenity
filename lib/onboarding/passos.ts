@@ -57,15 +57,6 @@ export const PASSOS: readonly PassoDoOnboarding[] = [
     pulado: () => false,
   },
   {
-    segmento: "connect-whatsapp",
-    // O telefone é a primeira peça concreta do funcionário, e é o passo que
-    // pede o celular na mão — o instalador já avisa para deixá-lo aberto.
-    rotulo: "O telefone dele",
-    existe: () => true,
-    cumprido: (s) => marcado(s.whatsapp),
-    pulado: (s) => foiPulado(s.whatsapp),
-  },
-  {
     segmento: "connect-nuvemshop",
     rotulo: "Sua loja",
     existe: (ctx) => ctx.lojaLigada,

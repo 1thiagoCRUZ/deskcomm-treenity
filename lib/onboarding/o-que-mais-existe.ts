@@ -54,22 +54,6 @@ const CURADORIA: {
     ],
   },
   {
-    href: "/app/ai/followups",
-    comoChamar: "Voltar a falar com quem sumiu",
-    porQue: "Para nenhum cliente sumir no silêncio — ele volta a falar sozinho, na hora certa.",
-    // A peça mais técnica do produto, e a que mais assusta quem lê o nome. Os
-    // passos abaixo são o comportamento real: `reactivity.ts` reage a mensagem
-    // recebida, a pedido de parar e a atendimento humano; `intervencao.ts` é
-    // quem dá as quatro formas de mexer no meio do caminho.
-    comoFunciona: [
-      "O cliente para de responder no meio da conversa",
-      "Depois do tempo que você definir, ele manda uma mensagem puxando o assunto",
-      "Se o cliente responder, o retorno para na hora — ninguém é perseguido",
-      "Se o cliente pedir para parar, ele para e não volta a escrever",
-      "E você pode pausar, adiar, pular um passo ou cancelar quando quiser",
-    ],
-  },
-  {
     href: "/app/radar",
     comoChamar: "O que está esfriando",
     porQue: "Quem esfriou e ainda está aberto, para você agir antes de perder.",
@@ -87,19 +71,6 @@ const CURADORIA: {
       "Ele encontra algo que não pode decidir sozinho — um desconto, uma exceção, um caso estranho",
       "Em vez de inventar, ele para e abre um pedido aqui",
       "Você decide, e ele volta a andar com a sua resposta",
-    ],
-  },
-  {
-    href: "/app/ai/proposals",
-    comoChamar: "As ideias dele",
-    porQue: "Com o tempo ele sugere as próprias melhorias — e você decide se entram.",
-    // `apply-proposal.ts`: nada auto-aplica. O clique de aplicar é o gate humano,
-    // e o que ele faz é criar uma versão NOVA do agente — a publicada não muda
-    // até o ponteiro virar.
-    comoFunciona: [
-      "Ele acompanha os próprios atendimentos e percebe o que poderia ir melhor",
-      "Escreve a sugestão aqui, em português, e espera",
-      "Nada muda sozinho: só entra em vigor quando VOCÊ aprovar",
     ],
   },
 ];
