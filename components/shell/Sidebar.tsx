@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 import { toggleSidebar } from "@/app/actions/shell/toggleSidebar";
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import { ConnectionHealthDot } from "@/components/connections/ConnectionHealthDot";
-import { VersionFooter } from "@/components/shell/VersionFooter";
 import { logoEhSoSimbolo } from "@/lib/branding";
 import { useMarcaDaInstalacao } from "@/lib/branding/contexto";
 import { GRUPO_NO_RODAPE, sidebarGroups } from "@/lib/navigation/registry";
@@ -325,7 +324,6 @@ export function SidebarContent({
             {!collapsed && <span className="truncate">{t(rodape.label)}</span>}
           </LinkDoMenu>
         )}
-        <VersionFooter collapsed={collapsed} onNavigate={onNavigate} />
         {showCollapseControl && (
           <button
             type="button"

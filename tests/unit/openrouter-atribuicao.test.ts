@@ -65,7 +65,6 @@ describe("atribuição da OpenRouter sai da instalação, nunca do código", () 
     const arquivos = [
       "lib/agent-engine/edge/llm/providers.ts",
       "lib/ai/runtime/agent.ts",
-      "lib/instalacao/prova-de-credito.ts",
     ];
     for (const rel of arquivos) {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
