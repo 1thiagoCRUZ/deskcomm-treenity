@@ -196,6 +196,9 @@ export const AUDIT_ACTIONS = [
   // A auditoria precisa distinguir o que sumiu do que continua no banco.
   "channel.deleted",
   "channel.archived",
+  // Pedido do cliente à Gestão Treenity (tabela `pedidos_a_gestao`, migration 0240).
+  "gestao.pedido_criado",
+  "gestao.pedido_resolvido",
   // Contraparte de `archived`: a linha escondida voltou à vida (reconexão do
   // canal oficial, retomada do pareamento). Sem ela o histórico registra a
   // exclusão e cala sobre o canal ter voltado a receber e enviar. Emitida por

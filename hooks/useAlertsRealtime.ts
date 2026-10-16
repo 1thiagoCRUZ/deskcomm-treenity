@@ -7,6 +7,7 @@ import type { AlertKind } from "@/app/api/v1/admin/dashboard/kpis/route";
 
 const KIND_LABELS: Record<AlertKind, string> = {
   canal_caido: "Canal fora do ar",
+  pedido_gestao: "Pedido do cliente",
   lgpd_at_risk: "Prazo LGPD",
   ai_budget: "Budget IA",
   tenant_pending_overflow: "Overflow de conversas",

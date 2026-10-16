@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { channelLabel, useChannelSessions } from "@/hooks/channels/useChannelSessions";
 import { useT } from "@/hooks/i18n/useT";
 import { lerEstadoDoCanal } from "@/lib/channels/estado";
+import { PedidoDeTroca } from "./PedidoDeTroca";
 import { Phone } from "@/lib/ui/icons";
 
 /**
@@ -13,7 +14,7 @@ import { Phone } from "@/lib/ui/icons";
  * Só isso. Credencial da Meta, webhook, token e provedor são da equipe Treenity
  * (ver `ehGestaoTreenity`) — o Dono não tem o que fazer com eles, e a tela
  * técnica o levaria a mexer no que quebra o atendimento. Para conectar ou
- * trocar um número ele chama a Treenity.
+ * trocar um número ele PEDE (`PedidoDeTroca`) e a Treenity executa.
  */
 export function ConexoesDoDono() {
   const t = useT();
@@ -32,7 +33,7 @@ export function ConexoesDoDono() {
     <div className="flex max-w-2xl flex-col gap-4">
       {numeros.length === 0 ? (
         <Card className="p-6 text-sm text-muted-foreground">
-          {t("Nenhum número conectado ainda. Fale com a Treenity para conectar o seu.")}
+          {t("Nenhum número conectado ainda. Use o botão abaixo para pedir à Treenity que conecte o seu.")}
         </Card>
       ) : (
         numeros.map((c) => {
@@ -53,9 +54,7 @@ export function ConexoesDoDono() {
           );
         })
       )}
-      <p className="text-sm text-muted-foreground">
-        {t("Para conectar, trocar ou reconectar um número, fale com a Treenity.")}
-      </p>
+      <PedidoDeTroca />
     </div>
   );
 }

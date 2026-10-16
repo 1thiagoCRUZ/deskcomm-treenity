@@ -300,3 +300,5 @@ To re-apply on a fresh Supabase project, replay the migrations in version order 
 | `20261009120000` | `0238_nome_e_email_dos_dados_de_nota_no_contato` | Nome e e-mail dos dados de nota passam a morar em `contacts` (uma fonte só; a tela tinha dois de cada). Move o que já estava em `contato_dados_de_nota`; e-mail que já pertence a outro contato da empresa fica na reserva. Data migration idempotente. |
 
 | `20261016120000` | `0239_dados_de_nota_so_agente_e_lgpd` | `contato_dados_de_nota`: a policy passa de "qualquer membro da organização" para `agent`+ (o mesmo gate da rota), e um trigger em `contacts` apaga a linha quando o contato é anonimizado (cobre o caminho que não passa pela aplicação). Idempotente. |
+
+| `20261016180000` | `0240_pedidos_a_gestao` | Tabela `pedidos_a_gestao`: pedidos do cliente à Gestão Treenity (hoje, trocar número de WhatsApp). Ler: `agent`+ da organização e a Gestão; criar: só o `admin` da organização, em nome dele; mudar: só a Gestão. Idempotente. |
