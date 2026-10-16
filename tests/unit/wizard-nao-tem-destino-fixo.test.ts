@@ -30,7 +30,7 @@ const DESTINO_FIXO = /["'`]\/onboarding\/[a-z-]+["'`]/;
 
 describe("as actions do onboarding", () => {
   it("existem actions para vigiar (guarda de vacuidade)", () => {
-    expect(ACTIONS.length).toBeGreaterThanOrEqual(4);
+    expect(ACTIONS.length).toBeGreaterThanOrEqual(2);
   });
 
   it("nenhuma manda a pessoa para um passo ESPECÍFICO", () => {

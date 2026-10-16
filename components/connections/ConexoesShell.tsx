@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useT } from "@/hooks/i18n/useT";
 
 import { CanalOficialClient } from "./CanalOficialClient";
+import { PedidosParaAGestao } from "./PedidosParaAGestao";
 import { TemplatesClient } from "./TemplatesClient";
 
 /**
@@ -32,6 +33,8 @@ export function ConexoesShell() {
   };
 
   return (
+    <div className="flex flex-col gap-4">
+    <PedidosParaAGestao />
     <Tabs value={sub} onValueChange={irPara} className="flex flex-col gap-4">
       <TabsList>
         <TabsTrigger value="conexao">{t("Conexão")}</TabsTrigger>
@@ -44,5 +47,6 @@ export function ConexoesShell() {
         <TemplatesClient />
       </TabsContent>
     </Tabs>
+    </div>
   );
 }

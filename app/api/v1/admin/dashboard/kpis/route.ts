@@ -7,6 +7,7 @@ import { ok, fail } from "@/lib/api/wrappers";
 export type AlertSeverity = "critical" | "warning" | "info";
 export type AlertKind =
   | "canal_caido"
+  | "pedido_gestao"
   | "lgpd_at_risk"
   | "ai_budget"
   | "tenant_pending_overflow";
@@ -95,6 +96,7 @@ export async function GET(_req: NextRequest) {
     lgpdAlertsRes,
     aiBudgetAlertsRes,
     overflowAlertsRes,
+    pedidosAlertsRes,
   ] = await Promise.all([
     // Canais WhatsApp fora do ar, com o nome da organização
     admin
@@ -157,10 +159,34 @@ export async function GET(_req: NextRequest) {
       .select("organization_id, organizations!inner(display_name)")
       .eq("status", "pending")
       .limit(2000),
+
+    // Pedidos do cliente à Gestão (trocar número) ainda abertos, de todas as empresas
+    admin
+      .from("pedidos_a_gestao")
+      .select("id, tipo, detalhe, organization_id, criado_em, organizations!inner(display_name)")
+      .eq("status", "aberto")
+      .order("criado_em", { ascending: true })
+      .limit(20),
   ]);
 
   const alerts: AlertItem[] = [];
   const now = Date.now();
+
+  // Pedidos do cliente à Gestão
+  for (const row of pedidosAlertsRes.data ?? []) {
+    const org = (row as { organizations?: { display_name?: string } }).organizations;
+    const numero = (row.detalhe as { numero_novo?: string } | null)?.numero_novo;
+    alerts.push({
+      id: `pedido-${row.id}`,
+      severity: "warning",
+      kind: "pedido_gestao",
+      tenant_id: row.organization_id,
+      tenant_name: org?.display_name ?? row.organization_id,
+      message: `Pedido de troca de número${numero ? ` para ${numero}` : ""}`,
+      link: `/admin/tenants/${row.organization_id}`,
+      created_at: row.criado_em,
+    });
+  }
 
   // Canais WhatsApp fora do ar
   for (const row of canaisAlertsRes.data ?? []) {

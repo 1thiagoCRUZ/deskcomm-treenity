@@ -8,6 +8,7 @@ import { useT } from "@/hooks/i18n/useT";
 
 const KIND_ICONS: Record<AlertKind, ElementType> = {
   canal_caido: WifiSlash,
+  pedido_gestao: Warning,
   lgpd_at_risk: Scales,
   ai_budget: ChartBar,
   tenant_pending_overflow: Clock,
@@ -15,6 +16,7 @@ const KIND_ICONS: Record<AlertKind, ElementType> = {
 
 const KIND_LABELS: Record<AlertKind, string> = {
   canal_caido: "Canal",
+  pedido_gestao: "Pedido",
   lgpd_at_risk: "LGPD",
   ai_budget: "IA Budget",
   tenant_pending_overflow: "Overflow",

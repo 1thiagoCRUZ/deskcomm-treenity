@@ -239,6 +239,13 @@ beforeAll(() => {
             values (v_org, v_contact, '17500000');
         end if;
 
+        -- pedidos_a_gestao (0240): o pedido do Dono à Gestão. Leitura exige agent, que é o
+        -- papel do usuário semeado; criar/decidir são medidos em pedidos-a-gestao.test.ts.
+        if not exists (select 1 from public.pedidos_a_gestao where organization_id = v_org) then
+          insert into public.pedidos_a_gestao (organization_id, tipo, detalhe)
+            values (v_org, 'trocar_numero', '{"numero_novo":"+5511900000000"}');
+        end if;
+
         if not exists (select 1 from public.push_subscriptions where organization_id = v_org) then
           insert into public.push_subscriptions
             (organization_id, user_id, endpoint, p256dh, auth)
@@ -304,6 +311,9 @@ export const TABLES = [
   // positivo é válido. O gate de papel (viewer fora) é medido em
   // `dados-de-nota-so-agente.test.ts`.
   "contato_dados_de_nota",
+  // 0240 — pedidos do cliente à Gestão. Leitura por `agent`+ (o semeado aqui); criar só
+  // `admin` e decidir só a Gestão, medidos em `pedidos-a-gestao.test.ts`.
+  "pedidos_a_gestao",
   // 0227 — texto de sugestões: org + visibilidade da conversa por authenticated.
   "ai_reply_drafts",
   // ⚠️ `webhook_lead_captures` (migration 0174) NÃO entra nesta lista, e a

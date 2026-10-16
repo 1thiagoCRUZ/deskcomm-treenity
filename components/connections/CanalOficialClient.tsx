@@ -12,6 +12,7 @@ import {
   useOfficialChannel,
 } from "@/hooks/channels/useOfficialChannel";
 import { copyToClipboard } from "@/lib/clipboard";
+import { useRemoverNumero } from "@/hooks/gestao/usePedidos";
 import { useT } from "@/hooks/i18n/useT";
 
 /** Campo somente-leitura com botão de copiar — o que o operador cola na Meta. */
@@ -55,6 +56,7 @@ export function CanalOficialClient() {
   const t = useT();
   const { data, isPending } = useOfficialChannel();
   const conectar = useConnectOfficialChannel();
+  const remover = useRemoverNumero();
   const [form, setForm] = useState({ phone_number_id: "", waba_id: "", token: "" });
 
   const estado = data?.data;
@@ -91,6 +93,31 @@ export function CanalOficialClient() {
             WABA <span className="font-mono">{estado.wabaId}</span> · {t("número")}{" "}
             <span className="font-mono">{estado.phoneNumberId}</span>
           </p>
+          {estado.channel_session_id ? (
+            <div className="mt-3">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={remover.isPending}
+                data-testid="btn-remover-numero"
+                onClick={async () => {
+                  // Corta o webhook do número e apaga a credencial: confirmar é a única barreira.
+                  if (
+                    !window.confirm(
+                      t(
+                        "Remover este número? Ele deixa de receber e enviar mensagens agora, e a credencial guardada é apagada. O histórico de conversas continua.",
+                      ),
+                    )
+                  )
+                    return;
+                  await remover.mutateAsync(estado.channel_session_id!);
+                  toast.success(t("Número removido. Conecte o novo abaixo."));
+                }}
+              >
+                {remover.isPending ? t("Removendo…") : t("Remover este número")}
+              </Button>
+            </div>
+          ) : null}
         </Card>
       ) : null}
 
@@ -138,6 +165,8 @@ export function CanalOficialClient() {
             <Label htmlFor="pnid">{t("ID do número de telefone")}</Label>
             <Input
               id="pnid"
+              name="meta-phone-number-id"
+              autoComplete="off"
               value={form.phone_number_id}
               onChange={(e) => setForm((f) => ({ ...f, phone_number_id: e.target.value }))}
               placeholder="1103328999528818"
@@ -148,6 +177,8 @@ export function CanalOficialClient() {
             <Label htmlFor="waba">{t("ID da conta do WhatsApp Business")}</Label>
             <Input
               id="waba"
+              name="meta-waba-id"
+              autoComplete="off"
               value={form.waba_id}
               onChange={(e) => setForm((f) => ({ ...f, waba_id: e.target.value }))}
               placeholder="2434045433735175"
@@ -158,6 +189,8 @@ export function CanalOficialClient() {
             <Label htmlFor="tok">{t("Token de acesso")}</Label>
             <Input
               id="tok"
+              name="meta-access-token"
+              autoComplete="new-password"
               type="password"
               value={form.token}
               onChange={(e) => setForm((f) => ({ ...f, token: e.target.value }))}
