@@ -16,6 +16,10 @@ import { createServer } from 'node:http';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock("@/lib/channels/adapters/meta-cloud", async () => ({
+  metaCloudAdapter: (await import("../helpers/canal-de-teste")).canalDeTeste,
+}));
+
 import { sendMessageHandler } from '@/app/api/v1/messages/_handler';
 import type { HandlerCtx } from '@/lib/api/handlers/types';
 import type { SendMessageInput } from '@/lib/schemas';
@@ -57,7 +61,7 @@ function conversationRow(botSilencedUntil: string | null): Row {
     group_chat_id: null,
     bot_silenced_until: botSilencedUntil,
     contacts: { phone_number: '+5531999998888', wa_identity: null, is_blocked: false },
-    channel_sessions: { provider: 'waha', waha_session_name: 'default', status: 'WORKING' },
+    channel_sessions: { provider: 'meta_cloud', meta_phone_number_id: 'default', status: 'WORKING' },
   };
 }
 
@@ -128,10 +132,9 @@ function makeSupabase(botSilencedUntil: string | null, snapshot?: () => Record<s
 
 const input = { conversation_id: CONV, type: 'text', body: 'oi' } as SendMessageInput;
 
-function wahaConfigured() {
-  vi.stubEnv('WAHA_API_BASE_URL', 'http://localhost:3030');
-  vi.stubEnv('WAHA_API_KEY', 'hash123');
-  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ id: { id: 'BARE1' } }), { status: 200 })));
+function canalConfigurado() {
+  vi.stubEnv('CANAL_TESTE_URL', 'http://localhost:3030');
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ id: { id: 'BARE1' } }), { status: 200 })));
 }
 
 afterEach(() => {
@@ -142,7 +145,7 @@ afterEach(() => {
 
 describe('sendMessageHandler — silêncio da IA de 5min após resposta manual humana', () => {
   it('humano manda mensagem numa conversa sem silêncio → bot_silenced_until vira ~agora+5min', async () => {
-    wahaConfigured();
+    canalConfigurado();
     const ctx: HandlerCtx = { organization_id: ORG, actor: { type: 'user', id: USER }, requestId: 'req-1' };
     const { supabase, patches } = makeSupabase(null);
 
@@ -158,7 +161,7 @@ describe('sendMessageHandler — silêncio da IA de 5min após resposta manual h
   });
 
   it('IA envia mensagem (ai_agent) → NÃO mexe em bot_silenced_until', async () => {
-    wahaConfigured();
+    canalConfigurado();
     const ctx: HandlerCtx = { organization_id: ORG, actor: { type: 'ai_agent', id: AGENT_RUN, role: 'agent' }, requestId: 'req-2', serviceBoundary: { organization_id: ORG, contact_id: CONTACT, conversation_id: CONV, service_revision: 1, demanda_id: null, demanda_revision: null } };
     const { supabase, patches } = makeSupabase(null);
 
@@ -169,7 +172,7 @@ describe('sendMessageHandler — silêncio da IA de 5min após resposta manual h
   });
 
   it('handoff permanente (infinity) já ativo → resposta manual NÃO encurta para 5min', async () => {
-    wahaConfigured();
+    canalConfigurado();
     const ctx: HandlerCtx = { organization_id: ORG, actor: { type: 'user', id: USER }, requestId: 'req-3' };
     const { supabase, patches } = makeSupabase('infinity');
 
@@ -180,7 +183,7 @@ describe('sendMessageHandler — silêncio da IA de 5min após resposta manual h
   });
 
   it('silêncio finito já maior que 5min (ex.: 30min) → resposta manual não encurta', async () => {
-    wahaConfigured();
+    canalConfigurado();
     const ctx: HandlerCtx = { organization_id: ORG, actor: { type: 'user', id: USER }, requestId: 'req-4' };
     const trintaMin = new Date(Date.now() + 30 * 60 * 1000).toISOString();
     const { supabase, patches } = makeSupabase(trintaMin);
@@ -192,7 +195,7 @@ describe('sendMessageHandler — silêncio da IA de 5min após resposta manual h
   });
 
   it('silêncio finito menor que 5min (ex.: 1min) → resposta manual estende (sliding window)', async () => {
-    wahaConfigured();
+    canalConfigurado();
     const ctx: HandlerCtx = { organization_id: ORG, actor: { type: 'user', id: USER }, requestId: 'req-5' };
     const umMin = new Date(Date.now() + 60 * 1000).toISOString();
     const { supabase, patches } = makeSupabase(umMin);
@@ -207,16 +210,15 @@ describe('sendMessageHandler — silêncio da IA de 5min após resposta manual h
   });
 });
 
-// A guarda do sink é exercitada além da guarda inicial; fetch/WAHA são reais.
+// A guarda do sink é exercitada além da guarda inicial; fetch/canal são reais.
 it('sink recusa close/reopen ocorrido depois da primeira leitura e receiver recebe zero', async () => {
   const received: string[] = [];
   const receiver = createServer((req, res) => { received.push(req.url ?? ""); res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ id: { id: 'REAL1' } })); });
   await new Promise<void>((resolve) => receiver.listen(0, '127.0.0.1', resolve));
   try {
     const address = receiver.address(); if (!address || typeof address === 'string') throw new Error('receiver');
-    vi.stubEnv('WAHA_API_BASE_URL', `http://127.0.0.1:${address.port}`);
-    vi.stubEnv('WAHA_API_KEY', 'local-test');
-    const boundary = { organization_id: ORG, contact_id: CONTACT, conversation_id: CONV, service_revision: 1, demanda_id: null, demanda_revision: null };
+    vi.stubEnv('CANAL_TESTE_URL', `http://127.0.0.1:${address.port}`);
+        const boundary = { organization_id: ORG, contact_id: CONTACT, conversation_id: CONV, service_revision: 1, demanda_id: null, demanda_revision: null };
     const ctx: HandlerCtx = { organization_id: ORG, actor: { type: 'ai_agent', id: AGENT_RUN, role: 'agent' }, requestId: 'sink-test', serviceBoundary: boundary };
     for (const changed of [{ status: 'closed', service_revision: 2 }, { status: 'open', service_revision: 3 }]) {
       let reads = 0;
@@ -245,9 +247,8 @@ it("ação de automação conserva origem durante pacing e dois envios vigentes 
   await new Promise<void>((resolve) => receiver.listen(0, "127.0.0.1", resolve));
   try {
     const address = receiver.address(); if (!address || typeof address === "string") throw new Error("receiver");
-    vi.stubEnv("WAHA_API_BASE_URL", `http://127.0.0.1:${address.port}`);
-    vi.stubEnv("WAHA_API_KEY", "local-test");
-    const boundary = { organization_id: ORG, contact_id: CONTACT, conversation_id: CONV, service_revision: 1, demanda_id: null, demanda_revision: null };
+    vi.stubEnv("CANAL_TESTE_URL", `http://127.0.0.1:${address.port}`);
+        const boundary = { organization_id: ORG, contact_id: CONTACT, conversation_id: CONV, service_revision: 1, demanda_id: null, demanda_revision: null };
     let revision = 1;
     const { supabase } = makeSupabase(null, () => ({ ...boundary, service_revision: revision, status: "open", demanda_fechada_em: null }));
     const ctx = { admin: supabase, organizationId: ORG, ruleId: USER, ruleName: "Teste", requestId: "rule-test",

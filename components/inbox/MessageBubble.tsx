@@ -7,17 +7,11 @@ import { ArrowBendUpLeft, Check, Checks, Robot, WarningOctagon } from "@/lib/ui/
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Message } from "@/lib/types/messaging";
-import { CitationButton } from "@/components/ai/CitationButton";
 import { MediaRenderer } from "@/components/inbox/media/MediaRenderer";
 import { ContactCard } from "@/components/inbox/media/ContactCard";
-import {
-  extractCitations,
-  isAiGeneratedMessage,
-} from "@/lib/ai/citations/types";
 
 interface Props {
   message: Message;
-  debugCitations?: boolean;
   /** Escolher esta mensagem para responder "em cima" dela. */
   onResponder?: (m: Message) => void;
   /** A mensagem citada por ESTA, quando houver — desenha o fio. */
@@ -37,7 +31,7 @@ function AckIndicator({ status, t }: { status: string; t: (texto: string) => str
   return null;
 }
 
-export function MessageBubble({ message, debugCitations, onResponder, citada }: Props) {
+export function MessageBubble({ message, onResponder, citada }: Props) {
   const localeDaData = useLocaleDeData();
   const t = useT();
   const isOutbound = message.direction === "outbound";
@@ -54,10 +48,6 @@ export function MessageBubble({ message, debugCitations, onResponder, citada }: 
   // para tirar do ar.
   const apagada = Boolean(message.revoked_at);
   const editada = Boolean(message.edited_at) && !apagada;
-  const aiGenerated = isAiGeneratedMessage(message.metadata);
-  const citations = extractCitations(message.metadata);
-  const showCitationButton =
-    isOutbound && aiGenerated && (debugCitations ?? false);
   const senderLabel = (() => {
     if (!isOutbound) return null;
     if (message.sent_via === "ai") return "IA";
@@ -209,9 +199,6 @@ export function MessageBubble({ message, debugCitations, onResponder, citada }: 
             <span title={t("O autor editou esta mensagem")}>{t("editada")}</span>
           )}
           <span>{time}</span>
-          {showCitationButton && (
-            <CitationButton citations={citations} messageId={message.id} />
-          )}
           {isOutbound && !isFailed && <AckIndicator status={message.status} t={t} />}
           {isFailed && (
             // Provider local: o painel do inbox não tem TooltipProvider ancestral e

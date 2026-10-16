@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import { extrairAtribuicaoMeta } from "@/lib/channels/atribuicao-de-anuncio-oficial";
 import { estamparAtribuicaoDoContato } from "@/lib/leads/atribuicao-de-anuncio";
-import { extrairAtribuicaoWaha } from "@/lib/waha/atribuicao-de-anuncio";
 
 describe("extrairAtribuicaoMeta — referral do webhook oficial", () => {
   it("extrai um referral de anúncio na forma documentada (snake_case)", () => {
@@ -52,83 +51,6 @@ describe("extrairAtribuicaoMeta — referral do webhook oficial", () => {
     expect(extrairAtribuicaoMeta(undefined)).toBeNull();
     expect(extrairAtribuicaoMeta("string crua")).toBeNull();
     expect(extrairAtribuicaoMeta([])).toBeNull();
-  });
-});
-
-describe("extrairAtribuicaoWaha — externalAdReplyInfo do Baileys", () => {
-  it("extrai de extendedTextMessage.contextInfo.externalAdReplyInfo", () => {
-    const r = extrairAtribuicaoWaha({
-      extendedTextMessage: {
-        text: "Olá, vim do anúncio",
-        contextInfo: {
-          externalAdReplyInfo: {
-            title: "Agende sua consulta",
-            body: "Clique e fale com a gente",
-            sourceId: "ad-999",
-            sourceUrl: "https://fb.me/anuncio123",
-            ctwaClid: "clid-999",
-          },
-        },
-      },
-    });
-    expect(r).toEqual({
-      plataforma: "meta_ads",
-      sourceId: "clid-999",
-      titulo: "Agende sua consulta",
-      corpo: "Clique e fale com a gente",
-      sourceUrl: "https://fb.me/anuncio123",
-      bruto: expect.objectContaining({ ctwaClid: "clid-999" }),
-    });
-  });
-
-  it("também procura em imageMessage/videoMessage.contextInfo", () => {
-    const r = extrairAtribuicaoWaha({
-      imageMessage: {
-        contextInfo: { externalAdReplyInfo: { sourceId: "ad-1", title: "X" } },
-      },
-    });
-    expect(r?.sourceId).toBe("ad-1");
-  });
-
-  it("nulo quando é uma mensagem comum, sem contextInfo de anúncio", () => {
-    expect(extrairAtribuicaoWaha({ conversation: "oi, tudo bem?" })).toBeNull();
-    expect(
-      extrairAtribuicaoWaha({ extendedTextMessage: { text: "oi", contextInfo: {} } }),
-    ).toBeNull();
-  });
-
-  it("post ORGÂNICO compartilhado não é anúncio — o mesmo filtro do irmão oficial", () => {
-    // Sem este filtro, o primeiro compartilhamento de um post carimba
-    // `meta_ads` no contato — e a guarda de primeiro toque torna isso
-    // irreversível pelo caminho normal. O extrator da API oficial já filtrava
-    // por `source_type`; este não, e a assimetria não tinha razão escrita.
-    expect(
-      extrairAtribuicaoWaha({
-        extendedTextMessage: {
-          text: "oi",
-          contextInfo: {
-            externalAdReplyInfo: { sourceType: "post", title: "Promo", ctwaClid: "x" },
-          },
-        },
-      }),
-    ).toBeNull();
-
-    expect(
-      extrairAtribuicaoWaha({
-        extendedTextMessage: {
-          text: "oi",
-          contextInfo: {
-            externalAdReplyInfo: { sourceType: "ad", title: "Promo", ctwaClid: "x" },
-          },
-        },
-      }),
-    ).toMatchObject({ plataforma: "meta_ads", sourceId: "x", titulo: "Promo" });
-  });
-
-  it("nulo pra payload ausente/tipo errado", () => {
-    expect(extrairAtribuicaoWaha(null)).toBeNull();
-    expect(extrairAtribuicaoWaha(undefined)).toBeNull();
-    expect(extrairAtribuicaoWaha("string crua")).toBeNull();
   });
 });
 

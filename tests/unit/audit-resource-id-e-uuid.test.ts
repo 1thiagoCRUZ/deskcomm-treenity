@@ -52,9 +52,6 @@ const RAIZ = process.cwd();
  * dívida volta pela porta de serviço.
  */
 const EXCECOES: Record<string, string> = {
-  "pid": "parâmetro de rota /proposals/[pid] — é o uuid da proposta, o nome curto vem do path",
-  "vid": "parâmetro de rota /versions/[vid] — uuid da versão",
-  "String(lead.id)": "uuid do lead, convertido porque a origem é jsonb do webhook",
   "string | null | undefined":
     "falso positivo do parser: é uma ANOTAÇÃO DE TIPO num componente, não uma chamada de audit",
 };

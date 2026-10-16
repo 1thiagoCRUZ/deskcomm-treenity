@@ -19,7 +19,6 @@
  * plataforma: é o que permite testar sem mexer no `process.env` do processo.
  */
 import { IDS_DE_PROVEDOR } from "@/lib/ai/pontos/provedores";
-import { lerTransporteDeWhatsapp, type TransporteDeWhatsapp } from "@/lib/channels/transporte";
 
 /**
  * A fonte é um mapa simples, e não `NodeJS.ProcessEnv`: o tipo global é
@@ -35,16 +34,6 @@ export interface AmbienteDaInstalacao {
   gateway: boolean;
   /** Envio de e-mail configurado — falso em toda instalação pelo kit hoje. */
   email: boolean;
-  /**
-   * O transporte de WhatsApp está apontado e com chave?
-   *
-   * ⚠️ O CAMPO TINHA O NOME DO PROVEDOR, e a leitura vivia aqui. A doutrina de
-   * restrição de canal proíbe nomear provider fora de `lib/channels/` — e a
-   * proibição tinha razão de produto: uma instalação com OUTRO transporte seria
-   * descrita pela tela como "o WhatsApp desta instalação ainda não subiu" mesmo
-   * com o dela funcionando. Quem responde agora é `lib/channels/transporte.ts`.
-   */
-  transporteDeWhatsapp: TransporteDeWhatsapp;
 }
 
 /** O nome da variável de chave de plataforma de cada provedor. */
@@ -75,7 +64,6 @@ export function lerAmbiente(source: FonteDeAmbiente = process.env): AmbienteDaIn
     chavesDeProvedor,
     gateway: preenchida(source, "AI_GATEWAY_API_KEY"),
     email: preenchida(source, "RESEND_API_KEY"),
-    transporteDeWhatsapp: lerTransporteDeWhatsapp(source),
   };
 }
 

@@ -68,23 +68,11 @@ const KNOWN_DEBT: { reason: string; files: string[] }[] = [
       "duas linhas da união e dublar o cliente do transporte — sai quando a " +
       "rota que ele cobre sair.",
     files: [
-      "app/api/v1/channel-sessions/[id]/qr/route.ts",
-      "app/api/v1/channel-sessions/[id]/reconnect/route.ts",
-      "app/api/v1/channel-sessions/[id]/route.test.ts",
-      "app/api/v1/channel-sessions/[id]/route.ts",
-      "app/api/v1/channel-sessions/route.ts",
       "app/api/v1/health/route.ts",
       "app/api/v1/messages/[id]/media/route.ts",
-      "app/api/v1/onboarding/whatsapp/qr/route.ts",
-      "app/api/v1/onboarding/whatsapp/session/route.ts",
-      "app/api/v1/webhooks/waha/[token]/route.ts",
-      "app/api/v1/webhooks/waha/route.ts",
       // (#118) Lê `process.env.WAHA_API_BASE_URL`/`WAHA_API_KEY` só para
       // decidir se o transporte está configurado — o nome está no ENV, não
       // numa pergunta de identidade. Sai quando o env virar config de canal.
-      "app/app/connections/page.tsx",
-      "app/onboarding/connect-whatsapp/page.tsx",
-      "lib/agent-engine/edge/crm/session-reconciler.ts",
       "workers/media-persist-worker.ts",
     ],
   },
@@ -98,20 +86,10 @@ const KNOWN_DEBT: { reason: string; files: string[] }[] = [
       "canal da Fase 3a, que é quando o usuário passa a ter mais de um canal " +
       "para distinguir.",
     files: [
-      "app/api/v1/admin/dashboard/kpis/route.ts",
-      "app/api/v1/admin/tenants/[id]/health/route.ts",
       // (#118) Emite `waha_sessions_count` na resposta do admin.
-      "app/api/v1/admin/tenants/[id]/route.ts",
       "app/design/sections/SectionPatterns.tsx",
-      "app/onboarding/connect-whatsapp/_client.tsx",
-      "components/admin/dashboard/AlertItem.tsx",
-      "components/admin/dashboard/KPICards.tsx",
-      "components/admin/tenants/HealthGrid.tsx",
       // (#118) Fixture do teste do componente logo abaixo, que já é dívida:
       // sai junto com ele, pelo mesmo motivo.
-      "components/admin/tenants/TenantOverview.test.tsx",
-      "components/admin/tenants/TenantOverview.tsx",
-      "components/connections/ConnectionsClient.tsx",
       // (#118) `waha_error` no catálogo de códigos de erro da API pública.
       "lib/api/errors.ts",
     ],
@@ -126,26 +104,16 @@ const KNOWN_DEBT: { reason: string; files: string[] }[] = [
       "ao absorver `lib/waha/`. Consertar aqui, antes disso, espalharia um " +
       "alias por 3 arquivos sem tirar o nome de lugar nenhum.",
     files: [
-      "app/api/v1/ai/pacing/route.ts",
-      "app/api/v1/cron/contact-avatars/route.ts",
       // (#573) Fixture do teste do reconciliador de sessão: monta a linha que
       // `session-reconciler.ts` (dívida de TRANSPORTE, logo acima) seleciona, e
       // a linha traz a coluna. É a ÚNICA menção do arquivo — medida linha a
       // linha: `wahaBaseUrl`/`wahaApiKey` do mesmo teste não casam com o padrão
       // (letra colada em letra não é fronteira). Sai quando a coluna sair.
-      "lib/agent-engine/edge/crm/session-reconciler.test.ts",
       // `components/connections/AntiBanSheet.tsx` SAIU desta lista: ele lia
       // `waha_session_name` como último degrau do NOME que o usuário vê, e por
       // isso um canal sem apelido aparecia no painel como `org_2dd5e6ea`. Agora
       // usa `nomeDoCanal`, que não conhece provedor nenhum. A catraca só encolhe.
     ],
-  },
-  {
-    reason:
-      "`WahaChannelAdapter` — o ChannelAdapter PRÉ-seam do agent-engine (F2-25), " +
-      "abstração paralela à de `lib/channels/`. Unificar as duas é decisão de " +
-      "arquitetura com superfície própria, não passo de um lint.",
-    files: ["lib/agent-engine/agent/followup-turn.ts", "lib/agent-engine/agent/inbound-turn.ts"],
   },
   {
     reason:
@@ -156,15 +124,10 @@ const KNOWN_DEBT: { reason: string; files: string[] }[] = [
       "correta ('o container converte o áudio no servidor') para escapar de um " +
       "regex PIORA o código — por isso a decisão é registrar, não reescrever.",
     files: [
-      "app/api/v1/ai/agents/[id]/versions/[vid]/test/route.ts",
       "app/api/v1/conversations/[id]/media/route.ts",
-      "app/api/v1/webhook-sources/route.ts",
-      "app/api/v1/webhooks/in/[token]/route.ts",
-      "app/app/ai/agents/[id]/_components/TestPanel.tsx",
       "components/inbox/media/media-utils.ts",
       "lib/agent-engine/channel-adapter.ts",
       "lib/agent-engine/cron/scheduler.ts",
-      "lib/agent-engine/edge/channel/waha-adapter.ts",
       "lib/agent-engine/edge/crm/mcp-client.ts",
       "lib/agent-engine/edge/crm/send-message.ts",
       "lib/agent-engine/edge/crm/session-watchdog.ts",
@@ -178,13 +141,10 @@ const KNOWN_DEBT: { reason: string; files: string[] }[] = [
       "lib/env.ts",
       "lib/followup/reactivity.ts",
       "lib/messaging/media/types.ts",
-      "lib/messaging/media/waha-source.ts",
       "lib/schemas/channels.ts",
       "lib/supabase/admin.ts",
       "lib/types/messaging.ts",
       "lib/webhooks/secrets.ts",
-      "workers/agent-worker/main.ts",
-      "workers/ai-response-worker.ts",
     ],
   },
   {

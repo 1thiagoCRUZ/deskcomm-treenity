@@ -7,14 +7,14 @@ import type { ElementType } from "react";
 import { useT } from "@/hooks/i18n/useT";
 
 const KIND_ICONS: Record<AlertKind, ElementType> = {
-  waha_ban: WifiSlash,
+  canal_caido: WifiSlash,
   lgpd_at_risk: Scales,
   ai_budget: ChartBar,
   tenant_pending_overflow: Clock,
 };
 
 const KIND_LABELS: Record<AlertKind, string> = {
-  waha_ban: "WAHA",
+  canal_caido: "Canal",
   lgpd_at_risk: "LGPD",
   ai_budget: "IA Budget",
   tenant_pending_overflow: "Overflow",

@@ -40,7 +40,6 @@ const PERMITIDOS: Record<string, string> = {
   "lib/database.types.ts": "tipos gerados do schema; a tabela ainda existe como histórico",
   "lib/ai/log-invocation.ts": "o docblock explica a migração de tabela; o insert é em llm_calls",
   "lib/ai/usage/aggregate.ts": "o comentário descreve a origem histórica do shape agregado",
-  "app/api/v1/ai/usage/route.ts": "o comentário registra POR QUE a rota parou de somar as duas",
   "scripts/qa-wave-10.ts": "script de QA histórico, fora do caminho de produção",
 };
 

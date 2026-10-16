@@ -14,7 +14,6 @@ import { NoteCard } from "./NoteCard";
 import { useMessagesRealtime } from "@/hooks/inbox/useMessagesRealtime";
 import { useConversationNotes } from "@/hooks/inbox/useConversationNotes";
 import { useDeleteNote } from "@/hooks/inbox/useDeleteNote";
-import { useDebugToggle } from "@/hooks/ai/useDebugToggle";
 import { useActiveOrg, useUser } from "@/hooks/auth/AuthProvider";
 import { ROLE_RANK } from "@/lib/auth/types";
 import type { Message, Note } from "@/lib/types/messaging";
@@ -62,7 +61,6 @@ export function ChatThread({ conversationId, onResponder, nomeDoContato }: Props
   const currentUser = useUser();
   const deleteNote = useDeleteNote(conversationId ?? "");
   const canManage = activeOrg != null && ROLE_RANK[activeOrg.role] >= ROLE_RANK.manager;
-  const { enabled: debugCitations } = useDebugToggle(activeOrg?.role ?? null);
 
   const messages: Message[] = useMemo(
     () => q.data?.pages.flatMap((p) => p.data) ?? [],
@@ -244,7 +242,6 @@ export function ChatThread({ conversationId, onResponder, nomeDoContato }: Props
                 <MessageBubble
                   key={`msg-${item.data.id}`}
                   message={item.data}
-                  debugCitations={debugCitations}
                   onResponder={onResponder}
                   // A citada sai da MESMA lista já carregada: buscar no servidor
                   // por cada citação faria uma consulta por bolha. Quando a

@@ -37,11 +37,7 @@ export type FonteDeTemplates = "oficial" | "parceiro";
  * lista vazia em silêncio — que foi exatamente o defeito de origem.
  */
 const FONTE: Record<ChannelProvider, FonteDeTemplates | null> = {
-  // Manda texto livre a qualquer hora: não há definição a listar, e um seletor
-  // ali ofereceria solução para um problema que este canal não tem.
-  waha: null,
   meta_cloud: "oficial",
-  zernio: "parceiro",
 };
 
 /** `null` quando este canal não trabalha com definições aprovadas. */

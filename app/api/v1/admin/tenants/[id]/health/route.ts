@@ -16,17 +16,17 @@ import { randomUUID } from "node:crypto";
 
 export type HealthStatus = "ok" | "warning" | "critical";
 
-export interface WahaSession {
+export interface CanalWhatsapp {
   id: string;
-  waha_session_name: string | null;
+  display_name: string | null;
   status: string | null;
   last_status_change_at: string | null;
   updated_at: string | null;
 }
 
 export interface TenantHealthResponse {
-  waha: {
-    sessions: WahaSession[];
+  canais: {
+    sessions: CanalWhatsapp[];
     overall_status: HealthStatus;
   };
   nuvemshop: {
@@ -60,7 +60,7 @@ export interface TenantHealthResponse {
 // Status computation
 // ---------------------------------------------------------------------------
 
-function wahaOverallStatus(sessions: WahaSession[]): HealthStatus {
+function canaisOverallStatus(sessions: CanalWhatsapp[]): HealthStatus {
   if (sessions.length === 0) return "warning";
   // `channel_sessions_status_check` só admite STARTING/SCAN_QR_CODE/WORKING/
   // STOPPED/FAILED. Comparar com "CONNECTED" (que não existe) era um ramo morto.
@@ -186,13 +186,13 @@ export async function GET(
 
   // 5 parallel queries — service-role, intentional cross-tenant reads.
   // organization_id is resolved from path (trusted), never from body.
-  const [wahaRes, nuvemshopRes, aiRes, gastoRes, auditRes] = await Promise.all([
+  const [canaisRes, nuvemshopRes, aiRes, gastoRes, auditRes] = await Promise.all([
     admin
       .from("channel_sessions")
       // `last_qr_at` não existe em channel_sessions; o equivalente real é
       // `last_status_change_at` (quando a sessão mudou de estado pela última
       // vez — inclusive ao entrar em SCAN_QR_CODE).
-      .select("id, waha_session_name, status, last_status_change_at, updated_at")
+      .select("id, display_name, status, last_status_change_at, updated_at")
       .eq("organization_id", id),
 
     admin
@@ -226,9 +226,9 @@ export async function GET(
       .maybeSingle(),
   ]);
 
-  // --- WAHA ---
-  const sessions = (wahaRes.data ?? []) as WahaSession[];
-  const wahaStatus = wahaOverallStatus(sessions);
+  // --- Canais WhatsApp ---
+  const sessions = (canaisRes.data ?? []) as CanalWhatsapp[];
+  const canaisStatus = canaisOverallStatus(sessions);
 
   // --- Nuvemshop ---
   type NuvemshopRow = {
@@ -290,7 +290,7 @@ export async function GET(
   const auditStatus = auditOverallStatus(lagSeconds);
 
   const health: TenantHealthResponse = {
-    waha: { sessions, overall_status: wahaStatus },
+    canais: { sessions, overall_status: canaisStatus },
     nuvemshop: {
       connected: nuConnected,
       expires_at: nuExpiresAt,

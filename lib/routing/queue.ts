@@ -7,7 +7,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { orgTemAutomatico } from "@/lib/ai/agents/org-tem-automatico";
+import { orgTemAutomatico } from "@/lib/atendimento/automatico";
 import { comandosDaFila } from "@/lib/inbox/comando-da-conversa";
 
 import { loadEligibleAttendants } from "./eligibles";

@@ -12,7 +12,7 @@ import { fail, ok } from "@/lib/api/wrappers";
 import { loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { CONVERSATION_TERMINAL_STATUSES } from "@/lib/schemas";
-import { orgTemAutomatico } from "@/lib/ai/agents/org-tem-automatico";
+import { orgTemAutomatico } from "@/lib/atendimento/automatico";
 import { comandosDaFila } from "@/lib/inbox/comando-da-conversa";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";

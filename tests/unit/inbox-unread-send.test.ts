@@ -5,6 +5,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@/lib/channels/adapters/meta-cloud", async () => ({
+  metaCloudAdapter: (await import("../helpers/canal-de-teste")).canalDeTeste,
+}));
+
 /**
  * `.eq()` do duble: encadeável E aguardável. Precisa de nome próprio porque a
  * função se referencia dentro do próprio inicializador — sem a anotação, o
@@ -112,9 +116,8 @@ describe("sendMessageHandler — unread zera ao responder", () => {
   });
 
   it("atualiza unread_count_for_assignee = 0 junto com last_outbound_at", async () => {
-    vi.stubEnv("WAHA_API_BASE_URL", "http://localhost:3030");
-    vi.stubEnv("WAHA_API_KEY", "hash123");
-
+    vi.stubEnv("CANAL_TESTE_URL", "http://localhost:3030");
+    
     const supabase = makeSupabase({
       id: CONV,
       organization_id: ORG,
@@ -123,7 +126,7 @@ describe("sendMessageHandler — unread zera ao responder", () => {
       is_group: false,
       group_chat_id: null,
       contacts: { phone_number: "+5531999998888", wa_identity: null, is_blocked: false },
-      channel_sessions: { provider: "waha", waha_session_name: "default", status: "WORKING", archived_at: null },
+      channel_sessions: { provider: "meta_cloud", meta_phone_number_id: "default", status: "WORKING", archived_at: null },
     });
 
     await sendMessageHandler(

@@ -15,7 +15,6 @@ import { Button } from "@/components/ui/button";
 import { DotsThree, PencilSimple, Users } from "@/lib/ui/icons";
 import { useWinLead, useEditLead } from "@/hooks/kanban/useUpdateLead";
 import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
-import { useAssignableAgents } from "@/hooks/kanban/useAssignableAgents";
 import { usePermission } from "@/hooks/auth/AuthProvider";
 import { LoseLeadDialog } from "./LoseLeadDialog";
 import { EditLeadDialog } from "./EditLeadDialog";
@@ -36,18 +35,10 @@ export function KanbanCardActions({ lead, pipelineId }: KanbanCardActionsProps) 
   // PATCH também recusa; aqui é só não oferecer o que seria negado).
   const canAssign = usePermission("pipeline.move_card");
   const { data: members } = useAssignableMembers(canAssign);
-  // A rota já devolve só agente ativo e não arquivado — é o picker.
-  const { data: agents } = useAssignableAgents(canAssign);
 
   const reassignToUser = (ownerUserId: string | null) => {
     if (ownerUserId === lead.owner_user_id) return;
     editMutation.mutate({ leadId: lead.id, patch: { owner_user_id: ownerUserId } });
-  };
-
-  /** Transferir para um agente: o handler zera o dono humano e deriva owner_kind. */
-  const reassignToAgent = (agentId: string) => {
-    if (agentId === lead.owner_agent_id) return;
-    editMutation.mutate({ leadId: lead.id, patch: { owner_agent_id: agentId } });
   };
 
   const clearOwner = () => {
@@ -106,21 +97,6 @@ export function KanbanCardActions({ lead, pipelineId }: KanbanCardActionsProps) 
                     onSelect={() => reassignToUser(m.user_id)}
                   >
                     {m.full_name ?? t("Sem nome")}
-                  </DropdownMenuItem>
-                ))}
-                {(agents ?? []).length > 0 && <DropdownMenuSeparator />}
-                {(agents ?? []).map((a) => (
-                  <DropdownMenuItem
-                    key={a.agent_id}
-                    disabled={editMutation.isPending || a.agent_id === lead.owner_agent_id}
-                    onSelect={() => reassignToAgent(a.agent_id)}
-                  >
-                    {a.name}
-                    {a.version_number != null && (
-                      <span className="ml-1.5 font-mono text-[10px] text-text-muted">
-                        v{a.version_number}
-                      </span>
-                    )}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuSubContent>

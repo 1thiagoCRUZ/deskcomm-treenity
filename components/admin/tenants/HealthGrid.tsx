@@ -57,21 +57,21 @@ interface HealthGridProps {
 export function HealthGrid({ health }: HealthGridProps) {
   const tagDoIdioma = useTagDeIdioma();
   const t = useT();
-  const { waha, nuvemshop, ai, audit } = health;
+  const { canais, nuvemshop, ai, audit } = health;
 
-  // WAHA card
+  // Canais WhatsApp
   // Vocabulário real de channel_sessions.status: STARTING/SCAN_QR_CODE/WORKING/
   // STOPPED/FAILED. "CONNECTED" nunca chegava aqui — o CHECK do schema o proíbe.
-  const wahaConnected = waha.sessions.filter((s) => s.status === "WORKING").length;
-  const wahaPrimary =
-    waha.sessions.length === 0
+  const canaisConectados = canais.sessions.filter((s) => s.status === "WORKING").length;
+  const canaisPrimario =
+    canais.sessions.length === 0
       ? t("Sem sessões")
-      : `${wahaConnected}/${waha.sessions.length} ${
-          waha.sessions.length !== 1 ? t("conectadas") : t("conectada")
+      : `${canaisConectados}/${canais.sessions.length} ${
+          canais.sessions.length !== 1 ? t("conectadas") : t("conectada")
         }`;
 
-  const wahaDetails = waha.sessions.slice(0, 4).map((s) => ({
-    label: s.waha_session_name ?? s.id.slice(0, 8),
+  const canaisDetalhes = canais.sessions.slice(0, 4).map((s) => ({
+    label: s.display_name ?? s.id.slice(0, 8),
     value: s.status ?? "—",
   }));
 
@@ -112,11 +112,11 @@ export function HealthGrid({ health }: HealthGridProps) {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
       <HealthCard
-        title="WAHA"
-        status={waha.overall_status}
+        title="WhatsApp (Meta)"
+        status={canais.overall_status}
         icon={<WifiHigh size={18} aria-hidden />}
-        primaryValue={wahaPrimary}
-        details={wahaDetails}
+        primaryValue={canaisPrimario}
+        details={canaisDetalhes}
       />
 
       <HealthCard

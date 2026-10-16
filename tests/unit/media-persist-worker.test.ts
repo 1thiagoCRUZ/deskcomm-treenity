@@ -39,24 +39,22 @@ vi.mock("@/lib/supabase/admin", () => ({
 /**
  * A sessão que o worker resolve para escolher QUEM baixa.
  *
- * `provider: "waha"` mantém este arquivo exercitando o mesmo caminho de sempre —
- * o que muda é que agora ele passa pelo adapter em vez de chamar o transporte
- * fixo. Se o dublê não existisse, o worker sairia em "canal sem mídia" e todos
+ * O worker resolve o adapter pela sessão. Se o dublê não existisse, o worker sairia em "canal sem mídia" e todos
  * os casos abaixo passariam por AUSÊNCIA.
  */
 const sessionRow = {
-  provider: "waha",
-  waha_session_name: "default",
-  meta_phone_number_id: null,
-  zernio_account_id: null,
+  provider: "meta_cloud",
+  meta_phone_number_id: "123456",
 };
 
-vi.mock("@/lib/messaging/media/waha-source", () => ({
-  fetchWahaMedia: vi.fn(async () => ({ buffer: Buffer.from([1, 2, 3]), mime: "image/jpeg" })),
+// O download é do adapter do canal: o worker só pede o adapter e chama o método.
+const fetchInboundMedia = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/channels", async (orig) => ({
+  ...(await orig<typeof import("@/lib/channels")>()),
+  getAdapter: () => ({ fetchInboundMedia }),
 }));
 
 import { persistMessageMedia } from "@/workers/media-persist-worker";
-import { fetchWahaMedia } from "@/lib/messaging/media/waha-source";
 
 function eventRow(attempts = 0) {
   return {
@@ -78,7 +76,7 @@ describe("persistMessageMedia", () => {
     updateEqMock.mockReset();
     rpcMock.mockReset().mockResolvedValue({ error: null });
     messageRow.media_storage_path = null;
-    vi.mocked(fetchWahaMedia).mockResolvedValue({
+    fetchInboundMedia.mockResolvedValue({
       buffer: Buffer.from([1, 2, 3]),
       mime: "image/jpeg",
     });
@@ -113,14 +111,14 @@ describe("persistMessageMedia", () => {
   });
 
   it("retorna error em falha de download com poucas tentativas, sem marcar failed", async () => {
-    vi.mocked(fetchWahaMedia).mockRejectedValue(new Error("waha_media_503"));
+    fetchInboundMedia.mockRejectedValue(new Error("media_503"));
     const result = await persistMessageMedia(eventRow(1));
     expect(result.status).toBe("error");
     expect(updateEqMock).not.toHaveBeenCalled();
   });
 
   it("marca failed quando o download falha na última tentativa (drain dead-letra em seguida)", async () => {
-    vi.mocked(fetchWahaMedia).mockRejectedValue(new Error("waha_media_503"));
+    fetchInboundMedia.mockRejectedValue(new Error("media_503"));
     const result = await persistMessageMedia(eventRow(4));
     expect(result.status).toBe("error");
     expect(updateEqMock).toHaveBeenCalledWith(

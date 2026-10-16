@@ -60,7 +60,7 @@ const COUNTS: TenantCounts = {
   orders_count: 2,
   lgpd_requests_pending: 0,
   ai_invocations_30d: 42,
-  waha_sessions_count: 1,
+  canais_count: 1,
 };
 
 /**

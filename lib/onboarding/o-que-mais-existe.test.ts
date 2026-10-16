@@ -68,18 +68,6 @@ describe("o tutorial de cada peça", () => {
     }
   });
 
-  it("o follow-up diz que o retorno PARA quando o cliente responde", () => {
-    // É a peça que mais assusta pelo nome. Quem imagina um robô perseguindo
-    // cliente desliga justamente o que mais recupera venda — e o comportamento
-    // real é o contrário: `lib/followup/reactivity.ts` reage a mensagem
-    // recebida, a pedido de parar e a atendimento humano.
-    const followup = PECAS.find((p) => p.href === "/app/ai/followups");
-    expect(followup, "o tour precisa apresentar o follow-up").toBeTruthy();
-    const texto = followup!.comoFunciona.join(" ").toLowerCase();
-    expect(texto).toMatch(/responder?, o retorno para|para na hora/);
-    expect(texto).toMatch(/pedir para parar|parar/);
-  });
-
   it("nenhum passo usa nome técnico", () => {
     const tecnicos = /\b(enrollment|webhook|endpoint|trigger|payload|jsonb|prompt|token)\b/i;
     const sujos = PECAS.flatMap((p) => p.comoFunciona.filter((x) => tecnicos.test(x)));

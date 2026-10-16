@@ -43,12 +43,6 @@ export function JaEstaPronto({
             : t("Falta a chave da inteligência artificial"),
     },
     {
-      pronto: retrato.whatsapp.transporteApontado,
-      texto: retrato.whatsapp.transporteApontado
-        ? t("WhatsApp pronto para conectar seu número")
-        : t("O WhatsApp desta instalação ainda não subiu"),
-    },
-    {
       pronto: Boolean(retrato.funil),
       texto: retrato.funil
         ? `${t("Funil de vendas criado:")} ${retrato.funil.nome}`

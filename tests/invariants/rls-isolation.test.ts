@@ -232,6 +232,13 @@ beforeAll(() => {
                     (select id from public.crm_leads where organization_id = v_org limit 1));
         end if;
 
+        -- contato_dados_de_nota (0236/0239): CPF cifrado, endereço e propriedade do
+        -- comprador. O usuário semeado é agent, que é o papel mínimo da policy.
+        if not exists (select 1 from public.contato_dados_de_nota where organization_id = v_org) then
+          insert into public.contato_dados_de_nota (organization_id, contact_id, cep)
+            values (v_org, v_contact, '17500000');
+        end if;
+
         if not exists (select 1 from public.push_subscriptions where organization_id = v_org) then
           insert into public.push_subscriptions
             (organization_id, user_id, endpoint, p256dh, auth)
@@ -292,6 +299,11 @@ export const TABLES = [
   // controle positivo passaria por acerto. Quem mede a escrita é a rota, em
   // `tests/unit/tarefas-rota-nao-tem-porta-dos-fundos.test.ts`.
   "crm_tasks",
+  // 0236/0239 — dados para nota do comprador (CPF cifrado, endereço). A leitura e a
+  // escrita exigem `agent`; o usuário semeado aqui é `agent`, então o controle
+  // positivo é válido. O gate de papel (viewer fora) é medido em
+  // `dados-de-nota-so-agente.test.ts`.
+  "contato_dados_de_nota",
   // 0227 — texto de sugestões: org + visibilidade da conversa por authenticated.
   "ai_reply_drafts",
   // ⚠️ `webhook_lead_captures` (migration 0174) NÃO entra nesta lista, e a

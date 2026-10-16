@@ -84,6 +84,7 @@ export {
   ClockCountdown,
   // painéis de evolução / aprendizado
   ChartLineUp,
+  Receipt,
   Lightbulb,
   // theme
   Sun,
@@ -100,7 +101,6 @@ export {
   Note,
   FileText,
   Lock,
-  Receipt,
   Tag,
   Question,
   Keyboard,

@@ -141,7 +141,7 @@ export function TenantOverview({ organization, counts, integrations }: TenantOve
         </div>
       </div>
 
-      {/* Integrations + WAHA */}
+      {/* Integrations + canais */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-lg border bg-card p-5">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
@@ -160,7 +160,7 @@ export function TenantOverview({ organization, counts, integrations }: TenantOve
                 value={formatDate(integrations.nuvemshop_connected_at, tagDoIdioma)}
               />
             )}
-            <InfoRow label="WAHA sessions" value={counts.waha_sessions_count} />
+            <InfoRow label="Canais WhatsApp" value={counts.canais_count} />
           </div>
         </div>
 

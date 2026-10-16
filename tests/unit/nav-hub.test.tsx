@@ -13,27 +13,21 @@ import { NavHub } from "@/components/shell/NavHub";
 afterEach(cleanup);
 
 describe("NavHub", () => {
-  it("apresenta a IA nas três etapas da jornada, na ordem", () => {
-    render(<NavHub group="ia" isPlatformAdmin role={null} title="Agente de IA" subtitle="" />);
+  it("apresenta o CRM nas etapas da jornada, na ordem", () => {
+    render(<NavHub group="crm" isPlatformAdmin role={null} title="CRM" subtitle="" />);
     const secoes = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent?.trim());
-    expect(secoes).toEqual(["Montar o agente", "Ensinar o agente", "Acompanhar o agente"]);
+    expect(secoes).toEqual(["O dia a dia da venda", "Preparar a venda"]);
   });
 
-  it("desenterra Conhecimento, que só existia atrás das abas", () => {
-    render(<NavHub group="ia" isPlatformAdmin role={null} title="Agente de IA" subtitle="" />);
-    const link = screen.getByRole("link", { name: /Conhecimento/ });
-    expect(link).toHaveAttribute("href", "/app/ai/knowledge/sources");
-  });
-
-  it("cada card explica para que serve — é o que o sidebar não cabe dizer", () => {
-    render(<NavHub group="ia" isPlatformAdmin role={null} title="Agente de IA" subtitle="" />);
-    const link = screen.getByRole("link", { name: /Conhecimento/ });
-    expect(link.textContent).toMatch(/consulta antes de responder/i);
+  it("desenterra Produtos, que não está no sidebar", () => {
+    render(<NavHub group="crm" isPlatformAdmin role={null} title="CRM" subtitle="" />);
+    const link = screen.getByRole("link", { name: /Produtos/ });
+    expect(link).toHaveAttribute("href", "/app/products");
   });
 
   it("mostra também o que já está no sidebar — é inventário, não sobra", () => {
-    render(<NavHub group="ia" isPlatformAdmin role={null} title="Agente de IA" subtitle="" />);
-    expect(screen.getByRole("link", { name: /Agentes/ })).toBeTruthy();
+    render(<NavHub group="crm" isPlatformAdmin role={null} title="CRM" subtitle="" />);
+    expect(screen.getByRole("link", { name: /Funis/ })).toBeTruthy();
   });
 
   it("some com a seção inteira quando a permissão esvazia", () => {
@@ -46,9 +40,9 @@ describe("NavHub", () => {
   });
 
   it("agrupa os cards sob a própria seção, não numa lista solta", () => {
-    render(<NavHub group="ia" isPlatformAdmin role={null} title="Agente de IA" subtitle="" />);
-    const ensinar = screen.getByRole("region", { name: "Ensinar o agente" });
-    expect(within(ensinar).getByRole("link", { name: /Memória/ })).toBeTruthy();
-    expect(within(ensinar).queryByRole("link", { name: /Credenciais/ })).toBeNull();
+    render(<NavHub group="crm" isPlatformAdmin role={null} title="CRM" subtitle="" />);
+    const preparar = screen.getByRole("region", { name: "Preparar a venda" });
+    expect(within(preparar).getByRole("link", { name: /Produtos/ })).toBeTruthy();
+    expect(within(preparar).queryByRole("link", { name: /Contatos/ })).toBeNull();
   });
 });

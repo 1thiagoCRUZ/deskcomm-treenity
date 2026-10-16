@@ -1,21 +1,17 @@
 /**
- * A porta de entrada do seam. Feature nenhuma importa `lib/waha/*` direto —
+ * A porta de entrada do seam. Feature nenhuma importa o provider direto —
  * pede o adapter do provider da conversa e o descritor de capabilities.
  */
 import { metaCloudAdapter } from "./adapters/meta-cloud";
-import { wahaAdapter } from "./adapters/waha";
-import { zernioAdapter } from "./adapters/zernio";
 import type { ChannelAdapter, ChannelProvider } from "./types";
 
 const ADAPTERS: Record<ChannelProvider, ChannelAdapter | null> = {
-  waha: wahaAdapter,
   meta_cloud: metaCloudAdapter,
-  zernio: zernioAdapter,
 };
 
 /**
- * Fail-closed: provider sem adapter (ou fora da matriz) lança em vez de cair no
- * WAHA por default. Enviar pelo canal errado é pior que não enviar.
+ * Fail-closed: provider sem adapter (ou fora da matriz) lança em vez de cair num
+ * default. Enviar pelo canal errado é pior que não enviar.
  */
 export function getAdapter(provider: ChannelProvider): ChannelAdapter {
   const adapter = ADAPTERS[provider];

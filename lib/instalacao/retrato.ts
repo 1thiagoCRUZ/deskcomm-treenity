@@ -30,7 +30,7 @@ export interface RetratoDaInstalacao {
     modeloCurado: string | null;
     prontaParaPublicar: boolean;
   };
-  whatsapp: { transporteApontado: boolean; canais: { total: number; conectados: number } | null };
+  whatsapp: { canais: { total: number; conectados: number } | null };
   email: { configurado: boolean };
   funil: { id: string; nome: string } | null;
 }
@@ -145,7 +145,6 @@ export async function lerRetratoDaInstalacao(
       prontaParaPublicar: origemDaChave !== "nenhuma" && Boolean(modeloCurado),
     },
     whatsapp: {
-      transporteApontado: ambiente.transporteDeWhatsapp.apontado && ambiente.transporteDeWhatsapp.comChave,
       canais: deps.contarCanais ? await deps.contarCanais() : null,
     },
     email: { configurado: ambiente.email },

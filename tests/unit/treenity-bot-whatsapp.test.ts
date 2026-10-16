@@ -259,7 +259,7 @@ describe("o bot chamou o especialista", () => {
     });
     expect(r).toBe("marcada");
     expect(admin.updates[0]).toMatchObject({ bot_silenced_until: "infinity" });
-    expect(String(admin.updates[0].last_handoff_reason)).toContain("pediu desconto 3 vezes");
+    expect(String(admin.updates[0]!.last_handoff_reason)).toContain("pediu desconto 3 vezes");
     expect(admin.updates[0]).not.toHaveProperty("assigned_to_user_id");
   });
 

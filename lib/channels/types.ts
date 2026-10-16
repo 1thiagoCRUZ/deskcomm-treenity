@@ -1,15 +1,19 @@
 // `OutboundMedia` é reusado, não redefinido: um segundo tipo com os mesmos 4
 // campos diverge em silêncio na primeira vez que um lado ganhar um campo. Só o
 // TIPO atravessa (`import type` some na compilação) — o seam não carrega código
-// do provider. Quando a Fase 3 absorver `lib/waha/`, este é o único ponteiro a
-// mudar de casa.
+// do provider.
 import type { SendMessageInput } from "@/lib/schemas";
 import type { FetchedMedia } from "@/lib/messaging/media/types";
-import type { OutboundMedia } from "@/lib/waha/media-send";
 
-export type { OutboundMedia };
+/** Mídia a enviar: o arquivo já está hospedado em `url`. */
+export interface OutboundMedia {
+  url: string;
+  mime: string;
+  filename?: string | null;
+  caption?: string | null;
+}
 
-export type ChannelProvider = "waha" | "meta_cloud" | "zernio";
+export type ChannelProvider = "meta_cloud";
 
 export interface ChannelCapabilities {
   /** Pode enviar texto livre a qualquer momento? false = exige template fora da janela. */
@@ -169,22 +173,6 @@ export interface ChannelAdapter {
   readonly codes: { notConfigured: string; sendFailed: string; unknownError: string };
 
   /**
-   * URL da foto de perfil do contato, ou null quando não há (sem foto,
-   * privacidade fechada, canal fora do ar).
-   *
-   * OPCIONAL de propósito: nem todo canal expõe isso. Quem chama testa a
-   * presença do método antes de usar, em vez de perguntar QUAL provider é —
-   * que é justamente o que o lint de canal proíbe fora daqui.
-   *
-   * A URL devolvida costuma ser ASSINADA E TEMPORÁRIA (no WhatsApp, ~9 dias
-   * medidos). Quem chama deve BAIXAR e persistir, nunca guardar a URL.
-   */
-  fetchProfilePictureUrl?(input: ChannelTenantScope & {
-    sessionRef: string;
-    recipient: string;
-  }): Promise<string | null>;
-
-  /**
    * Todas as formas sob as quais ESTE canal pode ter registrado a MESMA mensagem
    * que acabou de ser enviada — para reconhecer o eco do próprio envio quando ele
    * volta pelo webhook.
@@ -201,24 +189,9 @@ export interface ChannelAdapter {
   echoExternalIds?(input: { externalId: string; recipient: string }): string[];
 
   /**
-   * O telefone por trás de um identificador opaco, quando o canal souber.
-   *
-   * OPCIONAL: nem todo canal tem identidade opaca, e nem todo que tem sabe
-   * traduzir. `null` significa "ainda não sei" — não "não existe" —, então quem
-   * chama pode tentar de novo depois sem tratar como erro.
-   *
-   * Existe porque um contato identificado só por id opaco fica sem número na
-   * tela, e o atendente não sabe para quem está falando. Quem pergunta não
-   * precisa saber QUAL canal traduz: testa a presença do método.
-   */
-  resolvePhoneForIdentity?(
-    input: ChannelTenantScope & { sessionRef: string; identity: string },
-  ): Promise<string | null>;
-
-  /**
    * Gestão das definições aprovadas — criar, editar, apagar.
    *
-   * OPCIONAL pelo mesmo motivo dos dois métodos acima: nem todo canal expõe
+   * OPCIONAL: nem todo canal expõe isso: nem todo canal expõe
    * isso, e quem chama testa a presença em vez de perguntar QUAL provider é.
    * A capability `canManageTemplates` é a resposta declarativa da mesma
    * pergunta, para quem precisa decidir ANTES de ter um adapter em mãos (uma

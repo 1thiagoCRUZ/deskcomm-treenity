@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useChannelSessions } from "@/hooks/channels/useChannelSessions";
 
-import { useAutomaticoAtivo } from "@/hooks/ai/useAutomaticoAtivo";
+import { useAutomaticoAtivo } from "@/hooks/inbox/useAutomaticoAtivo";
 
 import { ConversationListItem } from "./ConversationListItem";
 import { EmptyInbox } from "@/components/empty";

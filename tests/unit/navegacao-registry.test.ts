@@ -83,8 +83,8 @@ describe("sidebarGroups", () => {
 
   it("só inclui destino marcado como sidebar", () => {
     const hrefs = sidebarGroups(true, null).flatMap((g) => g.items.map((i) => i.href));
-    // Conhecimento existe no registro, mas é do hub — não do sidebar.
-    expect(hrefs).not.toContain("/app/ai/knowledge/sources");
+    // Produtos existe no registro, mas é do hub — não do sidebar.
+    expect(hrefs).not.toContain("/app/products");
     expect(hrefs).toContain("/app/kanban");
   });
 
@@ -128,14 +128,12 @@ describe("sidebarGroups", () => {
     expect(ids).toContain("atendimento");
   });
 
-  it("Treenity: o grupo Agente de IA sai do menu, e as telas seguem no hub e no ⌘K", () => {
-    // Na Treenity quem atende é o Treenity Bot (Canais); a IA nativa no menu
-    // confundia o dono. Ver `lib/treenity/menu.ts`.
+  it("Treenity: o grupo Agente de IA sai do menu, e a Central de avisos segue no ⌘K", () => {
+    // Na Treenity quem atende é o Treenity Bot (Canais). A única tela que sobrou
+    // do grupo é a Central de avisos, aberta pelo sino. Ver `lib/treenity/menu.ts`.
     const ids = sidebarGroups(true, null).map((g) => g.group.id);
     expect(ids).not.toContain("ia");
-    const hub = hubSections("ia", true, null).flatMap((s) => s.items.map((i) => i.href));
-    expect(hub).toContain("/app/ai/agents");
-    expect(searchable(true, null).map((d) => d.href)).toContain("/app/ai/agents");
+    expect(searchable(true, null).map((d) => d.href)).toContain("/app/ai/inbox");
   });
 
   it("Treenity: Webhooks e Vendas do bot não estão no menu (as vendas vivem no Treenity Bot)", () => {
@@ -162,15 +160,10 @@ describe("hubSections", () => {
     ]);
   });
 
-  it("agrupa a IA nas três etapas da jornada, na ordem", () => {
-    const secoes = hubSections("ia", true, null).map((s) => s.section);
-    expect(secoes).toEqual(["Montar o agente", "Ensinar o agente", "Acompanhar o agente"]);
-  });
-
   it("o hub mostra também o que já está no sidebar — é inventário, não sobra", () => {
-    const hrefs = hubSections("ia", true, null).flatMap((s) => s.items.map((i) => i.href));
-    expect(hrefs).toContain("/app/ai/agents");
-    expect(hrefs).toContain("/app/ai/knowledge/sources");
+    const hrefs = hubSections("crm", true, null).flatMap((s) => s.items.map((i) => i.href));
+    expect(hrefs).toContain("/app/kanban");
+    expect(hrefs).toContain("/app/products");
   });
 
   it("não vaza destino acima do papel", () => {
@@ -190,7 +183,7 @@ describe("hubSections", () => {
 describe("searchable", () => {
   it("expõe todo destino visível, do sidebar ou não", () => {
     const hrefs = searchable(ADMIN.platform, ADMIN.role).map((d) => d.href);
-    expect(hrefs).toContain("/app/ai/knowledge/sources");
+    expect(hrefs).toContain("/app/products");
     expect(hrefs).toContain("/app/inbox");
   });
 

@@ -1,5 +1,5 @@
 /**
- * GET /api/v1/health — Supabase, Redis e WAHA respondem?
+ * GET /api/v1/health — Supabase e Redis respondem?
  *
  * ─── Por que cada check diz a CAUSA, e não só "down" ─────────────────────────
  * A versão anterior devolvia `error: "fetch failed"` — a mensagem que o `fetch`
@@ -16,8 +16,8 @@
  *
  * ─── Por que o ENDEREÇO só sai autenticado ───────────────────────────────────
  * Esta rota é pública — é o que permite um monitor externo bater nela. O endereço
- * do Redis e do WAHA é superfície de ataque: publicá-lo entrega a quem varre a
- * internet o alvo exato de dois serviços que falam com o WhatsApp do cliente.
+ * do Redis é superfície de ataque: publicá-lo entrega a quem varre a
+ * internet o alvo exato do serviço.
  * Então `target` só sai com `?verbose=1` mais o mesmo segredo interno dos crons:
  * quem opera o sistema vê para onde ele tentou ir; quem só passa na frente, não.
  */
@@ -168,42 +168,6 @@ async function checkRedis(): Promise<Check> {
   }
 }
 
-async function checkWaha(): Promise<Check> {
-  const t0 = Date.now();
-  const base = env.WAHA_API_BASE_URL;
-  if (!base) {
-    return { status: "degraded", latency_ms: 0, error: "not_configured", reason: "nao_configurado" };
-  }
-  try {
-    // /api/sessions valida conectividade E autenticação num tiro só. O WAHA Core não
-    // expõe /api/health (daria 404 mesmo autenticado).
-    const res = await withTimeout(
-      fetch(`${base.replace(/\/$/, "")}/api/sessions`, {
-        headers: env.WAHA_API_KEY ? { "X-Api-Key": env.WAHA_API_KEY } : {},
-        cache: "no-store",
-      }),
-    );
-    if (!res.ok) {
-      return {
-        status: "down",
-        latency_ms: Date.now() - t0,
-        error: `http_${res.status}`,
-        reason: motivoDoStatusHttp(res.status),
-        target: alvoDe(base),
-      };
-    }
-    return { status: "ok", latency_ms: Date.now() - t0, target: alvoDe(base) };
-  } catch (e) {
-    return {
-      status: "down",
-      latency_ms: Date.now() - t0,
-      error: e instanceof Error ? e.message : String(e),
-      reason: classificarFalhaDeAlcance(e),
-      target: alvoDe(base),
-    };
-  }
-}
-
 /**
  * O segredo interno dos crons também abre o modo verboso. Mesmo contrato de
  * `/api/v1/system/agent`: Bearer, comparação em tempo constante, e segredo vazio
@@ -262,15 +226,11 @@ function semAlvo(check: Check): Check {
 }
 
 export async function GET(req: NextRequest) {
-  const [supabase, redis, waha] = await Promise.all([
-    checkSupabase(),
-    checkRedis(),
-    checkWaha(),
-  ]);
+  const [supabase, redis] = await Promise.all([checkSupabase(), checkRedis()]);
 
   const verboso = req.nextUrl.searchParams.get("verbose") === "1" && segredoInternoConfere(req);
   const filtrar = verboso ? (c: Check) => c : semAlvo;
-  const checks = { supabase: filtrar(supabase), redis: filtrar(redis), waha: filtrar(waha) };
+  const checks = { supabase: filtrar(supabase), redis: filtrar(redis) };
 
   const anyDown = Object.values(checks).some((c) => c.status === "down");
   const anyDegraded = Object.values(checks).some((c) => c.status === "degraded");

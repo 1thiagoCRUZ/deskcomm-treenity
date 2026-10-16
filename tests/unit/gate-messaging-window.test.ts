@@ -16,7 +16,7 @@ function baseCtx(over: Partial<GateContext> = {}): GateContext {
     now: AGORA,
     body: "oi",
     optedOut: false,
-    provider: "waha",
+    provider: "meta_cloud",
     pacing: {
       knobs: PACING_DEFAULTS,
       state: { lastSentAt: null, sentToday: 0, numberActivatedAt: null },
@@ -32,17 +32,6 @@ function baseCtx(over: Partial<GateContext> = {}): GateContext {
 }
 
 describe("gate messaging_window", () => {
-  it("canal de auto-restrição registra skipped — nunca pass silencioso", () => {
-    // WAHA fala livre a qualquer hora. O gate continua NA cadeia e continua sendo
-    // avaliado; o que muda é o veredito. É a diferença entre "não regrediu" e
-    // "consigo provar que não regrediu" (invariante 4 da doutrina).
-    const v = messagingWindowGate.evaluate(
-      baseCtx({ provider: "waha", messagingWindow: { lastInboundAt: horasAtras(99) } }),
-    );
-    expect(v.pass).toBe(true);
-    if (!v.pass) throw new Error("inalcançável");
-    expect(v.skipped).toBe("not_applicable");
-  });
 
   it("canal de hetero-restrição com janela ABERTA passa, sem skipped", () => {
     const v = messagingWindowGate.evaluate(

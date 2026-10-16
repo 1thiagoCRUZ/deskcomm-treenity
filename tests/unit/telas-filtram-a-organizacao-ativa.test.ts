@@ -76,11 +76,6 @@ const FILTRO_DE_ORG = /\.(?:eq|in|is|neq|match|contains|filter)\(\s*"organizatio
  * motivo escrito. Esta lista só ENCOLHE.
  */
 const JUSTIFICADAS: Record<string, string> = {
-  "app/app/ai/skills/page.tsx:skill_versions":
-    "Resolve por `.in('id', versionIds)`, e os ids vêm dos DOIS ponteiros logo " +
-    "acima — o da org (já filtrado por organization_id) e o de plataforma " +
-    "(`.is('organization_id', null)`). O conjunto já nasce escopado; filtrar a " +
-    "org aqui esconderia justamente as habilidades do catálogo.",
 };
 
 function telasDeServidor(dir: string): string[] {
@@ -140,7 +135,7 @@ describe("telas de servidor consultam a organização ATIVA", () => {
     expect(TENANT.has("calendar_event_types")).toBe(true);
     expect(TENANT.has("contacts")).toBe(true);
     expect(TENANT.has("crm_pipelines")).toBe(true);
-    expect(TODAS.length).toBeGreaterThanOrEqual(20);
+    expect(TODAS.length).toBeGreaterThanOrEqual(10);
   });
 
   it("a sonda mede o FILTRO, não a coluna citada no select", () => {

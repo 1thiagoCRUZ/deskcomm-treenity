@@ -47,7 +47,6 @@ describe("lerAmbiente", () => {
     expect(Object.values(a.chavesDeProvedor).some(Boolean)).toBe(false);
     expect(a.gateway).toBe(false);
     expect(a.email).toBe(false);
-    expect(a.transporteDeWhatsapp).toEqual({ apontado: false, comChave: false });
   });
 
   // O caso do placeholder mudou de arquivo: ele precisa nomear as VARIÁVEIS do
