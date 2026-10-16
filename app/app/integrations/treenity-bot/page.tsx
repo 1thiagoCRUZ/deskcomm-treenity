@@ -2,9 +2,7 @@
  * Treenity Bot — status da conexão + o que precisa de atenção agora.
  *
  * Página operacional (grupo "canais"): está funcionando? tem cliente esperando
- * humano? Números/histórico ficam à parte, em Análise › Treenity Bot
- * (app/app/analise/treenity-bot/page.tsx) — mesma divisão que o resto do
- * deskcomm já usa entre "Canais" e "Análise".
+ * humano? Números e histórico ficam em Análise › Desempenho.
  *
  * Três estados, no mesmo padrão de app/app/integrations/nuvemshop/page.tsx:
  *   1. not_configured — env vars vazias: mostra card "configure env".
@@ -39,6 +37,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
 import { roleAtLeast } from "@/lib/auth/types";
+import { ehGestaoTreenity } from "@/lib/treenity/papeis";
 import { isConfigured } from "@/lib/treenity-bot/config";
 import { carregarDadosTreenityBot, carregarPainelAdmin } from "@/lib/treenity-bot/client";
 import { normalizarIdioma } from "@/lib/i18n/idiomas";
@@ -59,6 +58,8 @@ export default async function TreenityBotIntegrationPage() {
   // e o token nunca vai para o navegador (ver `carregarPainelAdmin`).
   const activeOrg = configured && user ? await resolveActiveOrg(user) : null;
   const ehAdmin = roleAtLeast(activeOrg?.role, "admin");
+  // Automações (webhook, chave, funil) são da Treenity, não do Dono.
+  const ehGestao = user ? ehGestaoTreenity(user) : false;
   const usuarioDoBot = user ? { email: user.email, nome: user.full_name ?? user.email } : null;
 
   const [dados, painel] = await Promise.all([
@@ -126,7 +127,7 @@ export default async function TreenityBotIntegrationPage() {
             <TabsTrigger value="visao-geral" className={tabTriggerClass}>
               {traduzir("Visão geral", idioma)}
             </TabsTrigger>
-            {ehAdmin ? (
+            {ehGestao ? (
               <TabsTrigger value="automacoes" className={tabTriggerClass}>
                 {traduzir("Automações", idioma)}
               </TabsTrigger>
@@ -158,7 +159,7 @@ export default async function TreenityBotIntegrationPage() {
                   ) : null}
                 </div>
                 <Link
-                  href="/app/analise/treenity-bot"
+                  href="/app/metrics"
                   className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground hover:underline"
                 >
                   <ChartLineUp size={15} />
@@ -204,7 +205,7 @@ export default async function TreenityBotIntegrationPage() {
           {/* "Precisando de atenção" e "Atendimentos" viraram o Inbox (Fila e
               Todas) — "um lugar para cada coisa". O Chat interno ganhou item
               próprio no menu: "Chat da equipe" (/app/integrations/treenity-bot/chat). */}
-          {ehAdmin ? (
+          {ehGestao ? (
             <TabsContent value="automacoes" className="mt-0 min-h-0 flex-1 overflow-y-auto">
               <AutomacoesPainel />
             </TabsContent>

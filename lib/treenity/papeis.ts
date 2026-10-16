@@ -76,6 +76,20 @@ export const PAPEIS_DO_CLIENTE: Record<PapelDoCliente, DefinicaoDoPapel> = {
 
 export const ORDEM_DOS_PAPEIS: readonly PapelDoCliente[] = ["dono", "funcionario"];
 
+/**
+ * "Quem está olhando é a Gestão Treenity?" — a pergunta que separa o que o Dono
+ * vê do que só a equipe da Treenity opera (credenciais da Meta, webhook do bot,
+ * automações). Vale também na sessão de suporte, quando a Gestão entra na
+ * empresa de um cliente para ajudar: aí ela segue sendo Gestão, mesmo agindo
+ * com o papel temporário da empresa.
+ *
+ * Esconder a tela NÃO basta: toda rota que muda algo técnico confere isto no
+ * servidor, porque o Dono é `admin` da empresa e a rota, sozinha, o deixaria passar.
+ */
+export function ehGestaoTreenity(user: { is_platform_admin: boolean }): boolean {
+  return user.is_platform_admin;
+}
+
 export const GESTAO_TREENITY = {
   rotulo: "Gestão Treenity",
   descricao: "Equipe da Treenity: vê todas as empresas pelo painel da plataforma.",

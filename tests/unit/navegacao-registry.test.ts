@@ -138,11 +138,11 @@ describe("sidebarGroups", () => {
     expect(searchable(true, null).map((d) => d.href)).toContain("/app/ai/agents");
   });
 
-  it("Treenity: Webhooks sai do menu e Vendas do bot entra", () => {
+  it("Treenity: Webhooks e Vendas do bot não estão no menu (as vendas vivem no Treenity Bot)", () => {
     const hrefs = sidebarGroups(false, "admin").flatMap((g) => g.items.map((i) => i.href));
     expect(hrefs).not.toContain("/app/webhooks");
-    expect(hrefs).toContain("/app/analise/treenity-bot");
-    expect(dest("/app/analise/treenity-bot").label).toBe("Vendas do bot");
+    expect(hrefs).not.toContain("/app/analise/treenity-bot");
+    expect(hrefs).toContain("/app/integrations/treenity-bot");
   });
 });
 

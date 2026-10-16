@@ -12,6 +12,7 @@ import { randomUUID } from "node:crypto";
 import { audit } from "@/lib/audit";
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
+import { ehGestaoTreenity } from "@/lib/treenity/papeis";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { gerarChave, gravarConfigDoWhatsApp, lerConfigDoWhatsApp } from "@/lib/treenity-bot/whatsapp";
@@ -20,8 +21,15 @@ export const dynamic = "force-dynamic";
 
 export async function POST(): Promise<Response> {
   const requestId = randomUUID();
-  const authz = await requireRole("admin", { requestId, resource: "treenity_bot_config" });
+  const authz = await requireRole("admin", {
+    requestId,
+    resource: "treenity_bot_config",
+    allowPlatformAdmin: true,
+  });
   if (!authz.ok) return authz.response;
+  if (!ehGestaoTreenity(authz.user)) {
+    return fail("forbidden_role", traduzir("Esta configuração é da equipe Treenity.", authz.user.idioma), 403, { requestId });
+  }
   const t = (texto: string) => traduzir(texto, authz.user.idioma);
 
   const admin = createAdminClient();
