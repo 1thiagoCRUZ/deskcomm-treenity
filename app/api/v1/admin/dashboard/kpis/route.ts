@@ -6,7 +6,7 @@ import { ok, fail } from "@/lib/api/wrappers";
 
 export type AlertSeverity = "critical" | "warning" | "info";
 export type AlertKind =
-  | "waha_ban"
+  | "canal_caido"
   | "lgpd_at_risk"
   | "ai_budget"
   | "tenant_pending_overflow";
@@ -25,7 +25,7 @@ export interface AlertItem {
 export interface DashboardKPIs {
   tenants_active: number;
   conv_pending_10min: number;
-  waha_ban_alerts: number;
+  canais_com_problema: number;
   lgpd_at_risk: number;
   ai_budget_warnings: number;
   alerts: AlertItem[];
@@ -48,7 +48,7 @@ export async function GET(_req: NextRequest) {
   const [
     tenantsRes,
     convPendingRes,
-    wahaBanRes,
+    canaisRes,
     lgpdRiskRes,
   ] = await Promise.all([
     admin
@@ -65,9 +65,9 @@ export async function GET(_req: NextRequest) {
     admin
       .from("channel_sessions")
       .select("*", { count: "exact", head: true })
-      .or(
-        `status.in.(ban_suspected,disconnected_unexpected),and(status.eq.disconnected,updated_at.gt.${new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()})`,
-      ),
+      // Vocabulário real de `channel_sessions.status` (CHECK): só FAILED e STOPPED
+      // indicam canal que não está atendendo.
+      .in("status", ["FAILED", "STOPPED"]),
 
     admin
       .from("lgpd_requests")
@@ -91,12 +91,12 @@ export async function GET(_req: NextRequest) {
   const cutoff5d = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString();
 
   const [
-    wahaAlertsRes,
+    canaisAlertsRes,
     lgpdAlertsRes,
     aiBudgetAlertsRes,
     overflowAlertsRes,
   ] = await Promise.all([
-    // WAHA ban alerts with org name
+    // Canais WhatsApp fora do ar, com o nome da organização
     admin
       .from("channel_sessions")
       .select(`
@@ -107,9 +107,7 @@ export async function GET(_req: NextRequest) {
         updated_at,
         organizations!inner(display_name)
       `)
-      .or(
-        `status.in.(ban_suspected,disconnected_unexpected),and(status.eq.disconnected,updated_at.gt.${cutoff24h})`,
-      )
+      .in("status", ["FAILED", "STOPPED"])
       .order("updated_at", { ascending: false })
       .limit(20),
 
@@ -164,19 +162,19 @@ export async function GET(_req: NextRequest) {
   const alerts: AlertItem[] = [];
   const now = Date.now();
 
-  // WAHA alerts
-  for (const row of wahaAlertsRes.data ?? []) {
+  // Canais WhatsApp fora do ar
+  for (const row of canaisAlertsRes.data ?? []) {
     const org = (row as { organizations?: { display_name?: string } }).organizations;
     alerts.push({
-      id: `waha-${row.id}`,
-      severity: row.status === "ban_suspected" ? "critical" : "warning",
-      kind: "waha_ban",
+      id: `canal-${row.id}`,
+      severity: row.status === "FAILED" ? "critical" : "warning",
+      kind: "canal_caido",
       tenant_id: row.organization_id,
       tenant_name: (org as { display_name?: string })?.display_name ?? row.organization_id,
       message:
-        row.status === "ban_suspected"
-          ? "Sessão WAHA com suspeita de banimento"
-          : `Sessão desconectada inesperadamente${row.status_reason ? `: ${row.status_reason}` : ""}`,
+        row.status === "FAILED"
+          ? `Canal com falha${row.status_reason ? `: ${row.status_reason}` : ""}`
+          : "Canal parado",
       link: `/admin/tenants/${row.organization_id}/health`,
       created_at: row.updated_at,
     });
@@ -315,7 +313,7 @@ export async function GET(_req: NextRequest) {
   const kpis: DashboardKPIs = {
     tenants_active: tenantsRes.count ?? 0,
     conv_pending_10min: convPendingRes.count ?? 0,
-    waha_ban_alerts: wahaBanRes.count ?? 0,
+    canais_com_problema: canaisRes.count ?? 0,
     lgpd_at_risk: lgpdRiskRes.count ?? 0,
     ai_budget_warnings: aiBudgetWarnings,
     alerts: alerts.slice(0, 20),

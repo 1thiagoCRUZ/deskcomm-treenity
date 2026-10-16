@@ -550,6 +550,8 @@ export const DICIONARIO: Traducoes = {
 
   // ─── Estados e avisos que aparecem em várias telas ───
   "Carregando…": { es: "Cargando…" },
+  "Canais com problema": { es: "Canales con problema" },
+  "canais de WhatsApp fora do ar": { es: "canales de WhatsApp fuera de servicio" },
   "Não foi possível carregar seus números agora.": { es: "No se pudieron cargar tus números ahora." },
   "Nenhum número conectado ainda. Fale com a Treenity para conectar o seu.": { es: "Aún no hay ningún número conectado. Habla con Treenity para conectar el tuyo." },
   "Para conectar, trocar ou reconectar um número, fale com a Treenity.": { es: "Para conectar, cambiar o reconectar un número, habla con Treenity." },

@@ -86,18 +86,10 @@ const KNOWN_DEBT: { reason: string; files: string[] }[] = [
       "canal da Fase 3a, que é quando o usuário passa a ter mais de um canal " +
       "para distinguir.",
     files: [
-      "app/api/v1/admin/dashboard/kpis/route.ts",
-      "app/api/v1/admin/tenants/[id]/health/route.ts",
       // (#118) Emite `waha_sessions_count` na resposta do admin.
-      "app/api/v1/admin/tenants/[id]/route.ts",
       "app/design/sections/SectionPatterns.tsx",
-      "components/admin/dashboard/AlertItem.tsx",
-      "components/admin/dashboard/KPICards.tsx",
-      "components/admin/tenants/HealthGrid.tsx",
       // (#118) Fixture do teste do componente logo abaixo, que já é dívida:
       // sai junto com ele, pelo mesmo motivo.
-      "components/admin/tenants/TenantOverview.test.tsx",
-      "components/admin/tenants/TenantOverview.tsx",
       // (#118) `waha_error` no catálogo de códigos de erro da API pública.
       "lib/api/errors.ts",
     ],
