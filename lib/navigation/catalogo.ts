@@ -40,6 +40,8 @@ export interface NavMetadata {
   section?: string;
   /** Ausente = viewer. Ver a regra de escolha abaixo. */
   minRole?: Role;
+  /** `true` = só a Gestão Treenity (administrador da plataforma) enxerga e abre. */
+  soGestao?: boolean;
   /** Ausente = só no hub. `true` = uso diário, sobe para o sidebar. */
   sidebar?: boolean;
   healthDot?: boolean;
@@ -616,15 +618,6 @@ export const NAV_CATALOG = [
     // 900px, medido pelo e2e `navegacao.spec.ts`.
   },
   {
-    href: "/app/settings/billing",
-    label: "Billing",
-    description: "Plano e cobrança.",
-    icon: "Receipt",
-    group: "organizacao",
-    section: "Sua empresa",
-    minRole: "admin",
-  },
-  {
     href: "/app/lgpd/requests",
     label: "LGPD",
     description: "Pedidos de exportação e exclusão de dados feitos por clientes.",
@@ -641,6 +634,8 @@ export const NAV_CATALOG = [
     group: "organizacao",
     section: "Dados e acesso",
     minRole: "admin",
+    // Chaves de integração são da equipe Treenity, não do Dono.
+    soGestao: true,
   },
 ] as const satisfies readonly NavMetadata[];
 

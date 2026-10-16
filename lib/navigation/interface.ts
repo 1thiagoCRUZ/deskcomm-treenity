@@ -40,10 +40,11 @@ export function essencial(d: NavMetadata, role: Role | null, platform = false): 
   );
 }
 export function canSee(
-  d: Pick<NavMetadata, "href" | "minRole">,
+  d: Pick<NavMetadata, "href" | "minRole" | "soGestao">,
   platform: boolean,
   role: Role | null,
 ): boolean {
+  if (d.soGestao) return platform;
   return platform || (!!role && ROLE_RANK[role] >= ROLE_RANK[d.minRole ?? "viewer"]);
 }
 export function permitidos(platform: boolean, role: Role | null): NavMetadata[] {
