@@ -4,12 +4,12 @@
  * Server Action: completes the welcome step. Updates `display_name`/`timezone`
  * on the org and stamps `onboarding_state.welcome` with accepted_at + meta.
  */
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { audit } from "@/lib/audit";
 import { welcomeSchema } from "@/lib/schemas/onboarding";
+import { finishOnboarding } from "./finishOnboarding";
 import { requireOnboardingCtx, patchOnboardingState, OnboardingError } from "./_shared";
 
 export type AcceptWelcomeResult =
@@ -27,7 +27,6 @@ export async function acceptWelcome(formData: FormData): Promise<AcceptWelcomeRe
 
   const raw = {
     display_name: String(formData.get("display_name") ?? "").trim(),
-    o_que_faz: String(formData.get("o_que_faz") ?? "").trim() || undefined,
     timezone: String(formData.get("timezone") ?? "America/Sao_Paulo"),
     accepted_terms_at: new Date().toISOString(),
   };
@@ -50,7 +49,6 @@ export async function acceptWelcome(formData: FormData): Promise<AcceptWelcomeRe
           accepted_at: input.accepted_terms_at ?? new Date().toISOString(),
           timezone: input.timezone,
           display_name: input.display_name,
-          ...(input.o_que_faz ? { o_que_faz: input.o_que_faz } : {}),
         },
       },
       { display_name: input.display_name, timezone: input.timezone },
@@ -84,5 +82,6 @@ export async function acceptWelcome(formData: FormData): Promise<AcceptWelcomeRe
     metadata: { display_name: input.display_name, timezone: input.timezone },
   });
 
-  redirect("/onboarding");
+  // As boas-vindas são o único passo: concluir aqui leva direto ao Inbox.
+  return finishOnboarding();
 }
