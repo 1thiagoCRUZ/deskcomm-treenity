@@ -512,18 +512,6 @@ export const NAV_CATALOG = [
     sidebar: true,
   },
   {
-    href: "/app/analise/treenity-bot",
-    label: "Vendas do bot",
-    description: "Faturamento, clientes e atendimentos do bot de vendas nos últimos 30 dias.",
-    icon: "ChartLineUp",
-    group: "analise",
-    section: "Os números do período",
-    minRole: "agent",
-    // No menu: é o número que o dono da loja abre todo dia. Rótulo diferente
-    // do "Treenity Bot" de Canais (configuração) para não repetir na barra.
-    sidebar: true,
-  },
-  {
     // Irmã de "Desempenho", não a mesma coisa: lá é DESFECHO (funil agora,
     // ganho/perdido por atendente); aqui é o TRABALHO que aconteceu no
     // período, com quem fez cada coisa. Um mês inteiro atendido pela IA e um

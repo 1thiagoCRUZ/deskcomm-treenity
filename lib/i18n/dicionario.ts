@@ -550,6 +550,11 @@ export const DICIONARIO: Traducoes = {
 
   // ─── Estados e avisos que aparecem em várias telas ───
   "Carregando…": { es: "Cargando…" },
+  "Não foi possível carregar seus números agora.": { es: "No se pudieron cargar tus números ahora." },
+  "Nenhum número conectado ainda. Fale com a Treenity para conectar o seu.": { es: "Aún no hay ningún número conectado. Habla con Treenity para conectar el tuyo." },
+  "Para conectar, trocar ou reconectar um número, fale com a Treenity.": { es: "Para conectar, cambiar o reconectar un número, habla con Treenity." },
+  "Os números de WhatsApp da sua empresa e se estão funcionando.": { es: "Los números de WhatsApp de tu empresa y si están funcionando." },
+  "Esta configuração é da equipe Treenity.": { es: "Esta configuración es del equipo Treenity." },
   "Nenhum resultado": { es: "Ningún resultado" },
   Erro: { es: "Error" },
   Excluir: { es: "Eliminar" },
@@ -7284,7 +7289,6 @@ export const DICIONARIO: Traducoes = {
   "nenhuma coluna": { es: "ninguna columna" },
 
   // ─── Termos compartilhados (rótulos de Análise e do Chat da equipe) ───
-  "Vendas do bot": { es: "Ventas del bot" },
   "Chat da equipe": { es: "Chat del equipo" },
   "lido em": { es: "leído el" },
   a: { es: "a" },

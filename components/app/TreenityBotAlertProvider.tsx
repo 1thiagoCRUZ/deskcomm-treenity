@@ -126,11 +126,11 @@ export function TreenityBotAlertProvider() {
           toast.success(title, {
             description: body,
             duration: 15000,
-            action: { label: t("Ver vendas"), onClick: () => router.push("/app/analise/treenity-bot") },
+            action: { label: t("Ver vendas"), onClick: () => router.push("/app/integrations/treenity-bot") },
           });
         }
         if (canalLigado("venda_bot", "push")) {
-          emitNotification({ kind: "venda_bot", title, body, tag: id, href: "/app/analise/treenity-bot", force: true });
+          emitNotification({ kind: "venda_bot", title, body, tag: id, href: "/app/integrations/treenity-bot", force: true });
         }
       };
       socket.on("painel_evento", (evento: EventoDoPainel) => {
