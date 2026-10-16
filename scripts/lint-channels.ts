@@ -91,7 +91,6 @@ const KNOWN_DEBT: { reason: string; files: string[] }[] = [
       // (#118) Fixture do teste do componente logo abaixo, que já é dívida:
       // sai junto com ele, pelo mesmo motivo.
       // (#118) `waha_error` no catálogo de códigos de erro da API pública.
-      "lib/api/errors.ts",
     ],
   },
   {
