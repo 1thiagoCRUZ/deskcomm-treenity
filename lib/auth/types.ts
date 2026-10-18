@@ -148,6 +148,12 @@ export interface ActiveOrg {
    */
   visibility_mode?: VisibilityMode;
   /**
+   * A empresa tem mais de uma pessoa? O menu esconde o Chat da equipe quando
+   * não tem (`lib/treenity/menu.ts`). Só o layout de `/app` preenche; ausente
+   * significa "não sei" e o menu mostra.
+   */
+  tem_equipe?: boolean;
+  /**
    * O que ESTA organização definiu para si — CAMPO A CAMPO, e só o que ela
    * mesma definiu.
    *

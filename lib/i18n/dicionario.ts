@@ -642,6 +642,7 @@ export const DICIONARIO: Traducoes = {
   // ─── Hub de Configurações (NavHub: seções, rótulos e descrições das cards) ───
   "Sua conta": { es: "Tu cuenta" },
   "Sua empresa": { es: "Tu empresa" },
+  "Atendimento e canais": { es: "Atención y canales" },
   "Dados e acesso": { es: "Datos y acceso" },
   Segurança: { es: "Seguridad" },
   Notificações: { es: "Notificaciones" },

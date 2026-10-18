@@ -47,7 +47,12 @@ import {
   type NavGroupId,
 } from "./catalogo";
 import { destinosDaInterface, type InterfaceSettings } from "./interface";
-import { GRUPOS_FORA_DO_MENU, HUBS_FORA_DO_MENU } from "@/lib/treenity/menu";
+import {
+  GRUPOS_FORA_DO_MENU,
+  HUBS_FORA_DO_MENU,
+  foraDoMenuLateral,
+  type ContextoDoMenu,
+} from "@/lib/treenity/menu";
 export { NAV_GROUPS, GRUPO_NO_RODAPE } from "./catalogo";
 export type { NavGroup, NavGroupId } from "./catalogo";
 const ICONS = {
@@ -108,13 +113,14 @@ export function sidebarGroups(
   isPlatformAdmin: boolean,
   role: Role | null,
   settings?: InterfaceSettings,
+  contexto: ContextoDoMenu = {},
 ): Array<{ group: NavGroup; items: NavDestination[] }> {
   const visible = new Set<string>(
     destinosDaInterface(settings, isPlatformAdmin, role).map((d) => d.href),
   );
   return NAV_GROUPS.filter((group) => !GRUPOS_FORA_DO_MENU.includes(group.id)).map((group) => {
     const items = NAV_DESTINATIONS.filter(
-      (d) => d.group === group.id && (d.sidebar || (!group.hub && !!settings?.destinos)) && visible.has(d.href),
+      (d) => d.group === group.id && (d.sidebar || (!group.hub && !!settings?.destinos)) && visible.has(d.href) && !foraDoMenuLateral(d.href, settings, contexto),
     );
     // O hub só sai quando o grupo tem itens no menu: num menu granular em que o
     // grupo só tem telas de hub, o "Ver tudo" é a única porta e fica.
@@ -145,8 +151,10 @@ export function hubSections(
     destinosDaInterface(settings, isPlatformAdmin, role).map((d) => d.href),
   );
   for (const d of NAV_DESTINATIONS) {
-    if (d.group !== group || !visible.has(d.href)) continue;
-    const secao = d.section ?? "";
+    const daqui = d.group === group;
+    const emprestada = group === "organizacao" && !!d.emConfiguracoes;
+    if ((!daqui && !emprestada) || !visible.has(d.href)) continue;
+    const secao = (daqui ? d.section : d.emConfiguracoes) ?? "";
     const atual = porSecao.get(secao);
     if (atual) atual.push(d);
     else porSecao.set(secao, [d]);
