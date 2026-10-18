@@ -33,7 +33,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // QUALQUER tela aparecer — e este layout roda em toda navegação do /app.
   // Nenhuma depende da outra: só dependem do usuário e da empresa ativa.
   const orgId = activeOrg?.orgId;
-  const [orgRow, linhaDaMarca, conexoesCaidas, enrolled, needsMfaGate] = await Promise.all([
+  const [orgRow, membrosDaOrg, linhaDaMarca, conexoesCaidas, enrolled, needsMfaGate] = await Promise.all([
     orgId
       ? createAdminClient()
           .from("organizations")
@@ -41,6 +41,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           .eq("id", orgId)
           .maybeSingle()
           .then(({ data }) => data)
+      : Promise.resolve(null),
+    // Quantas pessoas a empresa tem: o menu só mostra o Chat da equipe com 2+.
+    orgId
+      ? createAdminClient()
+          .from("user_organizations")
+          .select("user_id", { count: "exact", head: true })
+          .eq("organization_id", orgId)
+          .is("revoked_at", null)
+          .then(({ count }) => count)
       : Promise.resolve(null),
     orgId ? marcaDaInstalacao() : Promise.resolve(null),
     // A conexão caiu? A consulta mora no seam (`lib/channels/health`), não aqui:
@@ -76,7 +85,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     // Fonte confiável (admin client, org do cookie validado) — nunca do body.
     const mode = (orgRow?.settings as { visibility_mode?: VisibilityMode } | null)
       ?.visibility_mode;
-    activeOrg = { ...activeOrg, visibility_mode: mode ?? DEFAULT_VISIBILITY_MODE };
+    activeOrg = {
+      ...activeOrg,
+      visibility_mode: mode ?? DEFAULT_VISIBILITY_MODE,
+      ...(membrosDaOrg == null ? {} : { tem_equipe: membrosDaOrg > 1 }),
+    };
 
     // `marcaDaInstalacao()` é memoizada por TTL no PROCESSO (`lib/branding/
     // instalacao.ts`), e a derivação da cor é cacheada por régua+semente em

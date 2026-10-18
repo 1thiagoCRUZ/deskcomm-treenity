@@ -45,6 +45,12 @@ export interface NavMetadata {
   /** Ausente = só no hub. `true` = uso diário, sobe para o sidebar. */
   sidebar?: boolean;
   healthDot?: boolean;
+  /**
+   * Também aparece no hub de Configurações, nesta seção. A tela mora em outro
+   * grupo (Conexões é de Canais) e continua lá; isto é só a porta extra para
+   * quem a tirou do menu lateral — ver `lib/treenity/menu.ts`.
+   */
+  emConfiguracoes?: string;
 }
 
 /**
@@ -154,6 +160,7 @@ export const NAV_CATALOG = [
     icon: "FileText",
     group: "atendimento",
     sidebar: true,
+    emConfiguracoes: "Atendimento e canais",
   },
 
   // ---- CRM — o funil ----
@@ -303,6 +310,7 @@ export const NAV_CATALOG = [
     minRole: "admin",
     sidebar: true,
     healthDot: true,
+    emConfiguracoes: "Atendimento e canais",
   },
   {
     // Não tinha link nenhum no app inteiro: só se chegava digitando a URL.
