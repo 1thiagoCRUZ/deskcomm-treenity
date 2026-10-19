@@ -20,6 +20,7 @@ import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { ChatThread } from "./ChatThread";
 import { Composer, type ComposerHandle } from "./Composer";
 import { ConversationHeader } from "./ConversationHeader";
+import { VendaFechadaPainel } from "./VendaFechadaPainel";
 import { RetentionNotice } from "./RetentionNotice";
 import { CRMSidePanel } from "./CRMSidePanel";
 import type { Message as ConversationMensagem } from "@/lib/types/messaging";
@@ -464,7 +465,15 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
               )}
             </div>
           )}
-          {selectedConversation ? (
+          {selectedConversation && filterValue.tab === "closed" && selectedConversation.venda_fechada_em ? (
+            // Em Fechadas se abre a VENDA, não o fio da conversa.
+            <VendaFechadaPainel
+              key={selectedConversation.id}
+              conversationId={selectedConversation.id}
+              nome={rotuloDoContato(selectedConversation.contacts ?? null, t)}
+              onAbrirConversa={() => setFilterValue({ ...filterValue, tab: "all" })}
+            />
+          ) : selectedConversation ? (
             <>
               <ConversationHeader conversation={selectedConversation} />
               {/* `relative`: o editor de anexos abre só aqui, abaixo do cabeçalho, como no WhatsApp. */}

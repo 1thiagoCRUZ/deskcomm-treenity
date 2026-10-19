@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { MessageBubble } from "./MessageBubble";
 import { MediaViewerProvider } from "./media/MediaViewer";
 import { NoteCard } from "./NoteCard";
-import { useMessagesRealtime } from "@/hooks/inbox/useMessagesRealtime";
+import { useMessagesRealtime, type JanelaDaVenda } from "@/hooks/inbox/useMessagesRealtime";
 import { useConversationNotes } from "@/hooks/inbox/useConversationNotes";
 import { useDeleteNote } from "@/hooks/inbox/useDeleteNote";
 import { useActiveOrg, useUser } from "@/hooks/auth/AuthProvider";
@@ -24,6 +24,8 @@ interface Props {
   onResponder?: (m: Message) => void;
   /** Nome mostrado no topo do visualizador de mídia para o que o cliente enviou. */
   nomeDoContato?: string;
+  /** Mostra só o atendimento de uma venda (a aba Fechadas). Sem isto, o fio inteiro. */
+  janela?: JanelaDaVenda | null;
 }
 
 /** Onda 5.2: union de item do thread — mensagem real ou nota interna (nunca vai ao cliente). */
@@ -49,11 +51,21 @@ function dayLabel(d: Date, t: (texto: string) => string = (texto) => texto, loca
   return format(d, "dd/MM/yyyy", { locale: locale });
 }
 
-export function ChatThread({ conversationId, onResponder, nomeDoContato }: Props) {
+export function ChatThread({ conversationId, onResponder, nomeDoContato, janela }: Props) {
   const localeDaData = useLocaleDeData();
   const t = useT();
-  const q = useMessagesRealtime(conversationId);
-  const notes = useConversationNotes(conversationId);
+  const q = useMessagesRealtime(conversationId, janela);
+  const todasAsNotas = useConversationNotes(conversationId);
+  // Na venda, só as notas internas daquele atendimento.
+  const notes = useMemo(() => {
+    if (!janela) return todasAsNotas;
+    const ate = janela.ate ? new Date(janela.ate).getTime() : Infinity;
+    const desde = new Date(janela.desde).getTime();
+    return todasAsNotas.filter((n) => {
+      const t = new Date(n.created_at).getTime();
+      return t >= desde && t < ate;
+    });
+  }, [todasAsNotas, janela]);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const paginasVistas = useRef(0);

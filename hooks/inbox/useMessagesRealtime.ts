@@ -12,9 +12,19 @@ interface MessagesResponse {
   meta?: { cursor?: string | null; has_more?: boolean };
 }
 
-export function useMessagesRealtime(conversationId: string | null) {
+/** O recorte de uma venda: só as mensagens de `desde` até `ate` (exclusivo; `null` = sem fim). */
+export interface JanelaDaVenda {
+  desde: string;
+  ate: string | null;
+}
+
+export function useMessagesRealtime(conversationId: string | null, janela?: JanelaDaVenda | null) {
   const qc = useQueryClient();
-  const queryKey = ["messages", conversationId] as const;
+  // O recorte entra na chave: a mesma conversa tem duas leituras (o fio inteiro e a venda).
+  // O prefixo `["messages", id]` continua valendo para invalidar as duas de uma vez.
+  const queryKey = (janela
+    ? (["messages", conversationId, janela.desde, janela.ate ?? ""] as const)
+    : (["messages", conversationId] as const)) as readonly unknown[];
 
   const query = useInfiniteQuery({
     queryKey,
@@ -26,6 +36,10 @@ export function useMessagesRealtime(conversationId: string | null) {
       }
       const qs = new URLSearchParams();
       if (pageParam) qs.set("cursor", pageParam);
+      if (janela) {
+        qs.set("desde", janela.desde);
+        if (janela.ate) qs.set("ate", janela.ate);
+      }
       qs.set("limit", "50");
       try {
         return await apiClient.get<MessagesResponse>(

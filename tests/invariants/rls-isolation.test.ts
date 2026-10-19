@@ -239,6 +239,12 @@ beforeAll(() => {
             values (v_org, v_contact, '17500000');
         end if;
 
+        -- conversa_vendas (0243): o recorte da venda, lido por quem enxerga a conversa.
+        if not exists (select 1 from public.conversa_vendas where organization_id = v_org) then
+          insert into public.conversa_vendas (organization_id, conversation_id, iniciada_em, fechada_em)
+            values (v_org, v_conv, now() - interval '1 hour', now());
+        end if;
+
         -- pedidos_a_gestao (0240): o pedido do Dono à Gestão. Leitura exige agent, que é o
         -- papel do usuário semeado; criar/decidir são medidos em pedidos-a-gestao.test.ts.
         if not exists (select 1 from public.pedidos_a_gestao where organization_id = v_org) then
@@ -314,6 +320,8 @@ export const TABLES = [
   // 0240 — pedidos do cliente à Gestão. Leitura por `agent`+ (o semeado aqui); criar só
   // `admin` e decidir só a Gestão, medidos em `pedidos-a-gestao.test.ts`.
   "pedidos_a_gestao",
+  // 0243 — o recorte da venda. Leitura por quem enxerga a conversa; escrita só pelo servidor.
+  "conversa_vendas",
   // 0227 — texto de sugestões: org + visibilidade da conversa por authenticated.
   "ai_reply_drafts",
   // ⚠️ `webhook_lead_captures` (migration 0174) NÃO entra nesta lista, e a

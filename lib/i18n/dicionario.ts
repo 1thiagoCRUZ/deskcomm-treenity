@@ -392,6 +392,11 @@ export const DICIONARIO: Traducoes = {
   Todas: { es: "Todas" },
   Fechadas: { es: "Cerradas" },
   "Já comprou": { es: "Ya compró" },
+  "Venda fechada em": { es: "Venta cerrada el" },
+  "Abrir conversa atual": { es: "Abrir conversación actual" },
+  "Esta é a conversa desta venda. Mensagens novas do cliente ficam na conversa atual.": {
+    es: "Esta es la conversación de esta venta. Los mensajes nuevos del cliente quedan en la conversación actual.",
+  },
   IA: { es: "IA" },
   "Sem mensagens": { es: "Sin mensajes" },
   "Nenhuma conversa": { es: "Ninguna conversación" },

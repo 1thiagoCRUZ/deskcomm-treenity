@@ -324,6 +324,10 @@ export const listConversationsQuerySchema = z.object({
 export type ListConversationsQuery = z.infer<typeof listConversationsQuerySchema>;
 
 export const listMessagesQuerySchema = z.object({
+  /** Só mensagens a partir deste instante (inclusive) — o começo de uma venda. ISO-8601. */
+  desde: z.string().datetime({ offset: true }).optional(),
+  /** Só mensagens ANTES deste instante — o fim de uma venda. ISO-8601. */
+  ate: z.string().datetime({ offset: true }).optional(),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
