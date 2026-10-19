@@ -42,6 +42,8 @@ export async function GET(req: NextRequest, ctx: RouteCtx): Promise<Response> {
 
   const url = new URL(req.url);
   const qsParsed = listMessagesQuerySchema.safeParse({
+    desde: url.searchParams.get("desde") ?? undefined,
+    ate: url.searchParams.get("ate") ?? undefined,
     cursor: url.searchParams.get("cursor") ?? undefined,
     limit: url.searchParams.get("limit") ?? undefined,
   });

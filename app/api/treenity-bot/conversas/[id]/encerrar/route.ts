@@ -68,7 +68,7 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
 
   const { data: conversa, error: erroLeitura } = await supabase
     .from("conversations")
-    .select("id, organization_id, contact_id, service_revision, contacts:contact_id(phone_number)")
+    .select("id, organization_id, contact_id, service_revision, service_started_at, created_at, contacts:contact_id(phone_number)")
     .eq("id", id)
     .eq("organization_id", authz.org.orgId)
     .maybeSingle();
@@ -79,6 +79,8 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
     organization_id: string;
     contact_id: string | null;
     service_revision: number;
+    service_started_at: string | null;
+    created_at: string;
     contacts: { phone_number: string | null } | null;
   };
 
@@ -134,6 +136,30 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
       .update({ force_human: false })
       .eq("organization_id", c.organization_id)
       .eq("id", c.contact_id);
+  }
+
+  // A venda como registro próprio: de que hora a que hora foi este atendimento. É o que
+  // deixa a aba Fechadas mostrar só a conversa DESTA venda, mesmo que o cliente volte a
+  // escrever e a conversa reabra.
+  if (corpo.data.desfecho === "venda") {
+    const fechadaEm = new Date();
+    const iniciadaEm = new Date(c.service_started_at ?? c.created_at);
+    const { error: erroVenda } = await admin.from("conversa_vendas").insert({
+      organization_id: c.organization_id,
+      conversation_id: c.id,
+      iniciada_em: (iniciadaEm > fechadaEm ? fechadaEm : iniciadaEm).toISOString(),
+      fechada_em: fechadaEm.toISOString(),
+      valor: corpo.data.valor,
+      fechada_por: authz.user.id,
+    });
+    // O fechamento já aconteceu e o bot já foi avisado: falhar aqui não desfaz nada. Só o
+    // recorte da conversa deixa de existir, e a aba cai no fio inteiro — registra e segue.
+    if (erroVenda) {
+      logger.error("[encerrar] não foi possível registrar o recorte da venda", {
+        conversation_id: c.id,
+        message: erroVenda.message,
+      });
+    }
   }
 
   await resolverAvisosDaConversa(admin, c.organization_id, c.id);

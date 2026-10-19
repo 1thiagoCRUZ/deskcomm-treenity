@@ -211,6 +211,10 @@ export async function listMessagesHandler(
     .order("id", { ascending: false })
     .limit(q.limit + 1);
 
+  // O recorte de uma venda: só o atendimento que terminou nela.
+  if (q.desde) query = query.gte("sent_at", q.desde);
+  if (q.ate) query = query.lt("sent_at", q.ate);
+
   if (q.cursor) {
     const c = decodeMsgCursor(q.cursor);
     if (!c) {
