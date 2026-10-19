@@ -5,7 +5,7 @@ import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
 import type { Locale } from "date-fns";
 import { format, formatDistanceToNowStrict } from "date-fns";
 import { useT } from "@/hooks/i18n/useT";
-import { Bell, Phone, Robot } from "@/lib/ui/icons";
+import { Bell, CheckCircle, Phone, Robot } from "@/lib/ui/icons";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { OwnerBadge } from "@/components/kanban/OwnerBadge";
@@ -162,6 +162,9 @@ export function ConversationListItem({
     last_handoff_reason: conversation.last_handoff_reason ?? null,
   });
   const pediuEspecialista = motivoDoEspecialista !== null;
+  // Já fechou uma venda nesta conversa — em qualquer aba. Quem atende vê de
+  // relance que é um cliente que já comprou.
+  const jaComprou = Boolean(conversation.venda_fechada_em);
   const dot = COR_DO_COMANDO[comando.quem] ?? COR_DO_COMANDO.ninguem;
 
   // O número DA EMPRESA por onde esta conversa chegou — não o do cliente. Com
@@ -172,6 +175,7 @@ export function ConversationListItem({
 
   const temSelos =
     pediuEspecialista ||
+    jaComprou ||
     visibleTags.length > 0 ||
     (mostrarAtendente && comando.quem === "humano") ||
     (mostrarCanal && rotuloCanal != null) ||
@@ -279,6 +283,12 @@ export function ConversationListItem({
               >
                 <Bell size={9} weight="fill" aria-hidden />
                 {t("Pediu especialista")}
+              </Badge>
+            )}
+            {jaComprou && (
+              <Badge variant="success" className="h-4 gap-1 px-1.5 text-[10px] font-semibold">
+                <CheckCircle size={9} weight="fill" aria-hidden />
+                {t("Já comprou")}
               </Badge>
             )}
             {visibleTags.map((t) => (

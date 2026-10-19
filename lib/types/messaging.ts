@@ -13,6 +13,8 @@ export interface Conversation {
   status_changed_at: string;
   service_revision?: number;
   service_closed_at?: string | null;
+  /** Quando o botão Fechar registrou uma venda (migration 0241). Alimenta Fechadas e o selo "Já comprou". */
+  venda_fechada_em?: string | null;
   service_started_at?: string | null;
   current_demanda_id?: string | null;
   assigned_to_user_id: string | null;

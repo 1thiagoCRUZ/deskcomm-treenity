@@ -88,7 +88,11 @@ export function tabToFilter(
       // é histórico). O lugar de "minhas fechadas" é a aba Fechadas.
       return { assigned_to: "me", exclude_finished: true };
     case "closed":
-      return { status: "closed" };
+      // Vendas fechadas nas últimas 24h — pela venda, não pelo status: o cliente
+      // que volta a escrever reabre a conversa (o bot atende em Automático) e a
+      // venda de hoje continua aqui. Antes disso, a aba mostrava toda conversa
+      // fechada e acumulava para sempre.
+      return { venda_nas_ultimas_horas: 24 };
     case "ai":
       // `ai_handling` é escrito por UM caminho só em produção (a volta pelo botão
       // "Devolver ao automático"), então a aba vivia mostrando 2 enquanto o robô

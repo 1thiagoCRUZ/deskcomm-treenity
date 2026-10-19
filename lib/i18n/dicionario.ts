@@ -391,6 +391,7 @@ export const DICIONARIO: Traducoes = {
   Minhas: { es: "Mías" },
   Todas: { es: "Todas" },
   Fechadas: { es: "Cerradas" },
+  "Já comprou": { es: "Ya compró" },
   IA: { es: "IA" },
   "Sem mensagens": { es: "Sin mensajes" },
   "Nenhuma conversa": { es: "Ninguna conversación" },

@@ -131,20 +131,9 @@ const PARES: Array<{
     arquivo: "lib/agent-engine/agent/human-cases.ts",
     simbolo: "CaseEventKind",
   },
-  {
-    tabela: "system_update_runs",
-    coluna: "status",
-    // lib/system/update-run.ts → RunStatus
-    arquivo: "lib/system/update-run.ts",
-    simbolo: "RunStatus",
-  },
-  {
-    tabela: "system_update_runs",
-    coluna: "last_step",
-    // lib/system/update-run.ts → RunStep
-    arquivo: "lib/system/update-run.ts",
-    simbolo: "RunStep",
-  },
+  // `system_update_runs` NÃO está aqui: o atualizador por Docker saiu junto com
+  // `lib/system/update-run.ts` (a Treenity publica pela Vercel). A tabela some na
+  // etapa de schema, e sem o TypeScript não há par a comparar.
   // `channel_sessions.provider` NÃO está aqui: o banco ainda aceita os transportes
   // aposentados (`waha`, `zernio`) até a etapa de schema, então a igualdade exata
   // não vale. O par é cobrado, com os legados declarados, por

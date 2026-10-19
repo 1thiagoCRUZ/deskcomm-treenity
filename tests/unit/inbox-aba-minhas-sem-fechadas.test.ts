@@ -29,8 +29,11 @@ describe("tabToFilter — o que cada aba significa", () => {
     expect(tabToFilter("mine")).toEqual({ assigned_to: "me", exclude_finished: true });
   });
 
-  it("Fechadas continua mostrando as fechadas — senão não sobra onde vê-las", () => {
-    expect(tabToFilter("closed")).toEqual({ status: "closed" });
+  it("Fechadas mostra as VENDAS das últimas 24h — pela venda, não pelo status", () => {
+    // Mudou em 2026-10-19: antes pedia `status: closed` e acumulava toda conversa
+    // fechada para sempre. Agora pergunta pela venda registrada no botão Fechar;
+    // o cliente que volta a escrever reabre a conversa e a venda de hoje continua.
+    expect(tabToFilter("closed")).toEqual({ venda_nas_ultimas_horas: 24 });
   });
 
   it("a Fila pergunta QUEM MANDA, não o status — e o valor mudou por medição", () => {

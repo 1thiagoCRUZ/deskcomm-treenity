@@ -78,6 +78,8 @@ export interface ConversationsFilters {
   status?: StatusDeConversa | readonly StatusDeConversa[];
   /** Esconde fechadas/arquivadas — ver `exclude_finished` no schema da rota. */
   exclude_finished?: boolean;
+  /** Só vendas fechadas nas últimas N horas — a aba Fechadas (`venda_nas_ultimas_horas` na rota). */
+  venda_nas_ultimas_horas?: number;
   assigned_to?: "me" | "unassigned" | string;
   /**
    * QUEM MANDA na conversa — o filtro que as abas Fila e Automático passaram a
@@ -120,6 +122,7 @@ export function useConversationsRealtime(
         qs.set("comando", filters.comando.join(","));
       }
       if (filters.exclude_finished) qs.set("exclude_finished", "true");
+      if (filters.venda_nas_ultimas_horas) qs.set("venda_nas_ultimas_horas", String(filters.venda_nas_ultimas_horas));
       if (filters.assigned_to) qs.set("assigned_to", filters.assigned_to);
       if (filters.search) qs.set("search", filters.search);
       if (filters.channel_session_id) qs.set("channel_session_id", filters.channel_session_id);
