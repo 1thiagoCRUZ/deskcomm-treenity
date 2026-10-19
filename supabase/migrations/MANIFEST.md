@@ -304,3 +304,5 @@ To re-apply on a fresh Supabase project, replay the migrations in version order 
 | `20261016180000` | `0240_pedidos_a_gestao` | Tabela `pedidos_a_gestao`: pedidos do cliente à Gestão Treenity (hoje, trocar número de WhatsApp). Ler: `agent`+ da organização e a Gestão; criar: só o `admin` da organização, em nome dele; mudar: só a Gestão. Idempotente. |
 
 | `20261019120000` | `0241_venda_fechada_em` | `conversations.venda_fechada_em`: quando o botão Fechar registrou uma VENDA. Alimenta a aba Fechadas (vendas das últimas 24h, mesmo que o cliente já tenha reaberto a conversa) e o selo "Já comprou". Ponte de 24h para o que já estava fechado. |
+
+| `20261019180000` | `0242_fechar_limpa_pedido_de_especialista` | Trigger em `conversations`: ao encerrar, apaga o pedido "O bot chamou o especialista". Sem isso o aviso da venda anterior reaparecia quando o cliente voltava a escrever. Limpa também os que já estavam assim. |
