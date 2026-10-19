@@ -27,6 +27,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!user) redirect("/login");
 
   let activeOrg = await resolveActiveOrg(user);
+  // Sem empresa, nenhuma tela de /app tem o que mostrar (o menu sai vazio).
+  if (!activeOrg && !user.is_platform_admin) redirect("/sem-empresa");
 
   // Tudo o que o layout lê do banco daqui para baixo sai JUNTO. Em sequência
   // eram seis idas ao banco (empresa, marca, conexões, MFA ×2…) antes de
