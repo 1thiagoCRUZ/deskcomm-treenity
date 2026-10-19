@@ -27,7 +27,7 @@ export interface TreenityBotUsuario {
  */
 export async function trocarToken(
   usuario: { email: string; nome: string },
-  opcoes: { painelAdmin?: boolean } = {},
+  opcoes: { painelAdmin?: boolean; organizacaoId?: string } = {},
 ): Promise<{ accessToken: string; usuario: TreenityBotUsuario } | null> {
   const config = getConfig();
   if (!config) return null;
@@ -44,6 +44,10 @@ export async function trocarToken(
         email: usuario.email,
         nome: usuario.nome,
         ...(opcoes.painelAdmin ? { painel_admin: true } : {}),
+        // A empresa de quem abre o Chat da equipe: a API do bot só lista e só
+        // deixa conversar quem é da mesma. As demais chamadas não mandam (e não
+        // mexem na empresa gravada).
+        ...(opcoes.organizacaoId ? { organizacao_id: opcoes.organizacaoId } : {}),
       }),
       cache: "no-store",
     });
