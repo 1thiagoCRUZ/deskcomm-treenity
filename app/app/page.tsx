@@ -8,6 +8,8 @@ export default async function AppHome() {
   // "Acompanhar organização") começa no painel da plataforma, e não num Inbox
   // sem organização.
   if (!org && user.is_platform_admin && !user.support) redirect("/admin");
+  // Login sem empresa: explica em vez de largar a pessoa num Perfil com o menu vazio.
+  if (!org && !user.is_platform_admin) redirect("/sem-empresa");
   redirect(
     homeDaInterface(
       org?.interface_settings,

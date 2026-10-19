@@ -50,4 +50,10 @@ describe("home do /app", () => {
     resolveActiveOrg.mockResolvedValue({ orgId: "o", name: "Top Ultra", role: "admin" });
     expect(await destino()).toBe("/app/inbox");
   });
+
+  it("login sem empresa (e sem ser Gestão) → tela que explica", async () => {
+    requireAuth.mockResolvedValue({ is_platform_admin: false, support: null, organizations: [] });
+    resolveActiveOrg.mockResolvedValue(null);
+    expect(await destino()).toBe("/sem-empresa");
+  });
 });

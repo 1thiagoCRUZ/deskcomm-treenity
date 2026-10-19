@@ -5527,6 +5527,13 @@ export const DICIONARIO: Traducoes = {
   "503 — Em manutenção": { es: "503 — En mantenimiento" },
   "Voltamos em alguns minutos.": { es: "Volvemos en unos minutos." },
   "Conta suspensa": { es: "Cuenta suspendida" },
+  "Sua conta ainda não está em nenhuma empresa": { es: "Tu cuenta aún no está en ninguna empresa" },
+  "Você entrou como": { es: "Ingresaste como" },
+  ", mas esse acesso não está ligado a nenhuma empresa. Peça a quem administra o sistema na sua empresa para enviar um novo convite, ou confira se você entrou com o e-mail certo.": {
+    es: ", pero este acceso no está vinculado a ninguna empresa. Pídele a quien administra el sistema en tu empresa que envíe una nueva invitación, o verifica que hayas ingresado con el correo correcto.",
+  },
+  "Precisa de ajuda? Escreva para": { es: "¿Necesitas ayuda? Escribe a" },
+  "Sair e entrar com outra conta": { es: "Salir e ingresar con otra cuenta" },
   "Sua conta está suspensa. Entre em contato com": {
     es: "Tu cuenta está suspendida. Contacta a",
   },
