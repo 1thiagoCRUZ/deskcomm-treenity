@@ -82,7 +82,7 @@ function idsQueCabemNaURL(ids: string[]): string[] {
 
 const SELECT_COLS = `
   id, organization_id, contact_id, channel_session_id, channel, status,
-  status_changed_at, service_revision, service_closed_at, service_started_at, current_demanda_id, assigned_to_user_id, assigned_to_user_name, assignee_kind, assigned_at, last_inbound_at,
+  status_changed_at, venda_fechada_em, service_revision, service_closed_at, service_started_at, current_demanda_id, assigned_to_user_id, assigned_to_user_name, assignee_kind, assigned_at, last_inbound_at,
   last_outbound_at, last_message_at, last_message_preview,
   unread_count_for_assignee, is_group, group_chat_id, tags, metadata,
   snooze_until, created_at, updated_at,
@@ -185,6 +185,12 @@ export async function listConversationsHandler(
   // um dos dois lados escolhido em silêncio.
   if (q.exclude_finished) {
     query = query.not("status", "in", `(${CONVERSATION_TERMINAL_STATUSES.join(",")})`);
+  }
+  // A aba Fechadas: vendas das últimas N horas. Olha a venda, não o `status` —
+  // o cliente que volta a escrever reabre a conversa e a venda continua aqui.
+  if (q.venda_nas_ultimas_horas) {
+    const desde = new Date(Date.now() - q.venda_nas_ultimas_horas * 3_600_000).toISOString();
+    query = query.gte("venda_fechada_em", desde);
   }
   if (q.channel_session_id) query = query.eq("channel_session_id", q.channel_session_id);
   if (q.tag) query = query.contains("tags", [q.tag]); // tags @> array[tag] (GIN)

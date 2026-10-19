@@ -311,6 +311,8 @@ export const listConversationsQuerySchema = z.object({
    * significar "meu trabalho" para virar "tudo que já toquei".
    */
   exclude_finished: z.boolean().optional(),
+  /** Só conversas com venda fechada nas últimas N horas (a aba Fechadas). Vale mesmo que a conversa já tenha reaberto. */
+  venda_nas_ultimas_horas: z.coerce.number().int().min(1).max(8760).optional(),
   assigned_to: z.union([z.string().uuid(), z.literal("me"), z.literal("unassigned")]).optional(),
   channel_session_id: z.string().uuid().optional(),
   tag: conversationTagSchema.optional(),

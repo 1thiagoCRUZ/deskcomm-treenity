@@ -3414,6 +3414,7 @@ export type Database = {
           provider_conversation_id: string | null
           rag_review_status: string | null
           service_closed_at: string | null
+          venda_fechada_em: string | null
           service_revision: number
           service_started_at: string | null
           snooze_until: string | null
@@ -3457,6 +3458,7 @@ export type Database = {
           provider_conversation_id?: string | null
           rag_review_status?: string | null
           service_closed_at?: string | null
+          venda_fechada_em?: string | null
           service_revision?: number
           service_started_at?: string | null
           snooze_until?: string | null
@@ -3500,6 +3502,7 @@ export type Database = {
           provider_conversation_id?: string | null
           rag_review_status?: string | null
           service_closed_at?: string | null
+          venda_fechada_em?: string | null
           service_revision?: number
           service_started_at?: string | null
           snooze_until?: string | null

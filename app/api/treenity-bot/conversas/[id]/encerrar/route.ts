@@ -120,7 +120,12 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
   // solta o silêncio quando não houve handoff — aqui soltamos sempre.
   await admin
     .from("conversations")
-    .update({ bot_silenced_until: null })
+    .update({
+      bot_silenced_until: null,
+      // Só a VENDA entra em Fechadas (e no selo "Já comprou"); o encerramento
+      // sem venda não. A data fica mesmo que o cliente volte a escrever.
+      ...(corpo.data.desfecho === "venda" ? { venda_fechada_em: new Date().toISOString() } : {}),
+    })
     .eq("organization_id", c.organization_id)
     .eq("id", c.id);
   if (c.contact_id) {
