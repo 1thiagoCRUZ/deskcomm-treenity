@@ -38,7 +38,15 @@ export async function GET() {
   const org = await resolveActiveOrg(user);
   const painelAdmin = roleAtLeast(org?.role, "admin");
 
-  const sessao = await trocarToken({ email: user.email, nome: user.full_name ?? user.email }, { painelAdmin });
+  // O chat da equipe separa as empresas por este id. A Gestão, quando entra na
+  // empresa de um cliente para dar suporte, NÃO vira colega dele: fica numa
+  // "empresa" própria e não aparece na lista de ninguém.
+  const organizacaoId = user.support ? "gestao-treenity" : org?.orgId;
+
+  const sessao = await trocarToken(
+    { email: user.email, nome: user.full_name ?? user.email },
+    { painelAdmin, organizacaoId },
+  );
   if (!sessao) {
     return NextResponse.json({ error: "treenity_bot_unavailable" }, { status: 503 });
   }
