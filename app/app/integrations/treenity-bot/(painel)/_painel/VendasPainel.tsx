@@ -23,7 +23,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -49,21 +48,34 @@ import {
   ouvirEventosDoPainel,
   painelEstaAoVivo,
 } from "@/lib/treenity-bot/painel-eventos";
-import { dataHora, moeda, varianteDoStatusDaVenda } from "./formatacao-painel";
+import { diaParaExibir } from "@/lib/treenity-bot/periodo";
+import { dataHora, moeda, unirSemRepetir, varianteDoStatusDaVenda } from "./formatacao-painel";
+import {
+  CampoDeBusca,
+  ChipsDosFiltros,
+  SeletorDePeriodo,
+  useUltimoPedido,
+  useValorComAtraso,
+  type ChipDeFiltro,
+} from "./FiltrosDoPainel";
 
 const TODOS = "todos";
 const AGRUPAR_AVISOS_MS = 400;
 const POLLING_DE_RESERVA_MS = 30 * 1000;
 const CANAIS_CONHECIDOS = ["Instagram", "Facebook", "WhatsApp"];
+// "Paga" precisa estar na lista mesmo que nenhuma venda paga tenha sido carregada ainda.
+const STATUS_BASE = ["Aguardando Pagamento", "Paga"];
 
 interface Filtros {
   status: string;
   canal: string;
+  /** Inclusivos; a rota converte o "até" para o formato do bot. */
   desde: string;
   ate: string;
+  busca: string;
 }
 
-const FILTROS_VAZIOS: Filtros = { status: TODOS, canal: TODOS, desde: "", ate: "" };
+const FILTROS_VAZIOS: Filtros = { status: TODOS, canal: TODOS, desde: "", ate: "", busca: "" };
 
 /** Uma página do servidor. `null` = falha. Fora do componente: não depende de estado. */
 async function baixar(f: Filtros, cursor: string | null): Promise<PaginaDeVendas | null> {
@@ -73,6 +85,7 @@ async function baixar(f: Filtros, cursor: string | null): Promise<PaginaDeVendas
     if (f.canal !== TODOS) params.set("canal", f.canal);
     if (f.desde) params.set("desde", f.desde);
     if (f.ate) params.set("ate", f.ate);
+    if (f.busca.trim()) params.set("busca", f.busca.trim());
     if (cursor) params.set("cursor", cursor);
     const res = await fetch(`/api/treenity-bot/vendas?${params.toString()}`, { cache: "no-store" });
     if (!res.ok) return null;
@@ -121,8 +134,11 @@ export function VendasPainel({ inicial }: { inicial: PaginaDeVendas | null }) {
   const [cursor, setCursor] = useState<string | null>(inicial?.proximoCursor ?? null);
   const [filtros, setFiltros] = useState<Filtros>(FILTROS_VAZIOS);
   const [statusConhecidos, setStatusConhecidos] = useState<string[]>(
-    Array.from(new Set(["Aguardando Pagamento", ...(inicial?.itens ?? []).map((v) => v.status)])),
+    unirSemRepetir(STATUS_BASE, (inicial?.itens ?? []).map((v) => v.status)),
   );
+  const [textoBusca, setTextoBusca] = useState("");
+  const buscaAtrasada = useValorComAtraso(textoBusca);
+  const pedido = useUltimoPedido();
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState(inicial === null);
   const [aberta, setAberta] = useState<VendaPainel | null>(null);
@@ -144,9 +160,7 @@ export function VendasPainel({ inicial }: { inicial: PaginaDeVendas | null }) {
     setItens((prev) => mesclarVendas(prev, nova.itens));
     setResumo(nova.resumo);
     setCursor((atual) => atual ?? nova.proximoCursor);
-    setStatusConhecidos((prev) =>
-      Array.from(new Set([...prev, ...nova.itens.map((v) => v.status)])),
-    );
+    setStatusConhecidos((prev) => unirSemRepetir(prev, nova.itens.map((v) => v.status)));
     setErro(false);
   }, []);
 
@@ -175,23 +189,24 @@ export function VendasPainel({ inicial }: { inicial: PaginaDeVendas | null }) {
   }, [aoVivo, atualizarSilencioso]);
 
   async function buscar(f: Filtros, cursorAtual: string | null) {
+    const meu = pedido.novo();
     setCarregando(true);
     setErro(false);
     try {
       const nova = await baixar(f, cursorAtual);
+      if (!pedido.ehOAtual(meu)) return; // chegou uma busca mais nova: esta resposta é velha
       if (!nova) throw new Error("falha ao buscar vendas");
 
       setItens((prev) => (cursorAtual ? [...prev, ...nova.itens] : nova.itens));
       setResumo(nova.resumo);
       setCursor(nova.proximoCursor);
-      setStatusConhecidos((prev) =>
-        Array.from(new Set([...prev, ...nova.itens.map((v) => v.status)])),
-      );
+      setStatusConhecidos((prev) => unirSemRepetir(prev, nova.itens.map((v) => v.status)));
     } catch {
+      if (!pedido.ehOAtual(meu)) return;
       setErro(true);
       toast.error(t("Não foi possível carregar as vendas agora."));
     } finally {
-      setCarregando(false);
+      if (pedido.ehOAtual(meu)) setCarregando(false);
     }
   }
 
@@ -201,7 +216,51 @@ export function VendasPainel({ inicial }: { inicial: PaginaDeVendas | null }) {
     void buscar(novo, null);
   }
 
-  const temFiltro = JSON.stringify(filtros) !== JSON.stringify(FILTROS_VAZIOS);
+  // A busca só dispara depois de 400ms sem digitar.
+  useEffect(() => {
+    if (buscaAtrasada.trim() === filtros.busca.trim()) return;
+    aplicar({ busca: buscaAtrasada });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buscaAtrasada]);
+
+  function limparTudo() {
+    setTextoBusca("");
+    setFiltros(FILTROS_VAZIOS);
+    void buscar(FILTROS_VAZIOS, null);
+  }
+
+  const chips: ChipDeFiltro[] = [];
+  if (filtros.busca.trim()) {
+    chips.push({
+      chave: "busca",
+      texto: `${t("Busca")}: ${filtros.busca.trim()}`,
+      remover: () => {
+        setTextoBusca("");
+        aplicar({ busca: "" });
+      },
+    });
+  }
+  if (filtros.status !== TODOS) {
+    chips.push({ chave: "status", texto: `${t("Status")}: ${filtros.status}`, remover: () => aplicar({ status: TODOS }) });
+  }
+  if (filtros.canal !== TODOS) {
+    chips.push({ chave: "canal", texto: `${t("Canal")}: ${filtros.canal}`, remover: () => aplicar({ canal: TODOS }) });
+  }
+  if (filtros.desde || filtros.ate) {
+    const texto =
+      filtros.desde && filtros.ate
+        ? filtros.desde === filtros.ate
+          ? diaParaExibir(filtros.desde)
+          : `${diaParaExibir(filtros.desde)} – ${diaParaExibir(filtros.ate)}`
+        : filtros.desde
+          ? `${t("A partir de")} ${diaParaExibir(filtros.desde)}`
+          : `${t("Até")} ${diaParaExibir(filtros.ate)}`;
+    chips.push({
+      chave: "periodo",
+      texto: `${t("Período")}: ${texto}`,
+      remover: () => aplicar({ desde: "", ate: "" }),
+    });
+  }
 
   return (
     <section className="space-y-4">
@@ -219,11 +278,22 @@ export function VendasPainel({ inicial }: { inicial: PaginaDeVendas | null }) {
 
       <Card>
         <CardHeader className="gap-4">
+          <CampoDeBusca
+            id="vendas-busca"
+            valor={textoBusca}
+            onChange={setTextoBusca}
+            rotulo={t("Buscar por cliente, telefone ou produto")}
+          />
+          <SeletorDePeriodo
+            prefixoDeId="vendas"
+            periodo={{ desde: filtros.desde, ate: filtros.ate }}
+            onChange={(p) => aplicar({ desde: p.desde, ate: p.ate })}
+          />
           <div className="flex flex-wrap items-end gap-4">
-            <div className="space-y-1.5">
+            <div className="w-full space-y-1.5 sm:w-56">
               <Label>{t("Status")}</Label>
               <Select value={filtros.status} onValueChange={(v) => aplicar({ status: v })}>
-                <SelectTrigger className="w-56">
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -236,10 +306,10 @@ export function VendasPainel({ inicial }: { inicial: PaginaDeVendas | null }) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
+            <div className="w-full space-y-1.5 sm:w-48">
               <Label>{t("Canal")}</Label>
               <Select value={filtros.canal} onValueChange={(v) => aplicar({ canal: v })}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -252,38 +322,8 @@ export function VendasPainel({ inicial }: { inicial: PaginaDeVendas | null }) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="vendas-desde">{t("De")}</Label>
-              <Input
-                id="vendas-desde"
-                type="date"
-                className="w-44"
-                value={filtros.desde}
-                onChange={(e) => aplicar({ desde: e.target.value })}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="vendas-ate">{t("Até (exclusivo)")}</Label>
-              <Input
-                id="vendas-ate"
-                type="date"
-                className="w-44"
-                value={filtros.ate}
-                onChange={(e) => aplicar({ ate: e.target.value })}
-              />
-            </div>
-            {temFiltro ? (
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setFiltros(FILTROS_VAZIOS);
-                  void buscar(FILTROS_VAZIOS, null);
-                }}
-              >
-                {t("Limpar filtros")}
-              </Button>
-            ) : null}
           </div>
+          <ChipsDosFiltros chips={chips} onLimpar={limparTudo} />
         </CardHeader>
 
         <CardContent className="p-0">

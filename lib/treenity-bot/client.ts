@@ -309,8 +309,10 @@ export interface FiltrosDeVendas {
   canal?: string;
   /** `YYYY-MM-DD`, inclusivo. */
   desde?: string;
-  /** `YYYY-MM-DD`, exclusivo. */
+  /** `YYYY-MM-DD`, exclusivo (a rota do painel converte a partir do dia inclusivo da tela). */
   ate?: string;
+  /** Cliente, telefone ou produto. Bot antigo ignora o parâmetro. */
+  busca?: string;
   cursor?: string;
   limit?: number;
 }
@@ -329,6 +331,8 @@ export interface AtendimentoPainel {
   totalMensagens: number;
   ultimaMensagem: { remetente: string | null; formato: string | null; conteudo: string; enviadoEm: string | null } | null;
   venda: { quantidade: number; total: number } | null;
+  /** Só quando a busca casou por texto de mensagem (bot novo). */
+  trecho?: string | null;
 }
 
 export interface PaginaDeAtendimentos {
@@ -342,6 +346,10 @@ export interface FiltrosDeAtendimentos {
   comVenda?: boolean;
   /** `YYYY-MM-DD` ou ISO, inclusivo — o bot filtra pela última atividade. */
   desde?: string;
+  /** `YYYY-MM-DD`, exclusivo. */
+  ate?: string;
+  /** Nome, telefone ou texto de mensagem. Bot antigo ignora o parâmetro. */
+  busca?: string;
   cursor?: string;
   limit?: number;
 }

@@ -37,3 +37,17 @@ export function varianteDaEtapa(etapa: string | null): VarianteDeStatus {
   if (s.includes("negocia")) return "warning";
   return "neutral";
 }
+
+/** Prévia de uma mensagem em uma linha: espaços/quebras viram um espaço e o excesso vira "…". */
+export function previaDaMensagem(texto: string | null | undefined, max = 90): string {
+  const limpo = (texto ?? "").replace(/\s+/g, " ").trim();
+  if (limpo.length <= max) return limpo;
+  return `${limpo.slice(0, max - 1).trimEnd()}…`;
+}
+
+/** Junta os valores sem repetir (ignora vazios), preservando a ordem. */
+export function unirSemRepetir(base: string[], extras: Array<string | null | undefined>): string[] {
+  const vistos = new Set(base);
+  for (const e of extras) if (e) vistos.add(e);
+  return [...vistos];
+}

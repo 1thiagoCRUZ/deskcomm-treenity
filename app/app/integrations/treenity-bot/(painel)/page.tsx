@@ -48,6 +48,7 @@ import { localeDeData } from "@/lib/i18n/datas";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { cn } from "@/lib/utils";
 import { VendasPainel } from "./_painel/VendasPainel";
+import { ConversasPainel } from "./_painel/ConversasPainel";
 import { AutomacoesPainel } from "./_automacoes/AutomacoesPainel";
 
 export default async function TreenityBotIntegrationPage() {
@@ -173,6 +174,11 @@ async function ConteudoTreenityBot() {
             <TabsTrigger value="visao-geral" className={tabTriggerClass}>
               {traduzir("Visão geral", idioma)}
             </TabsTrigger>
+            {ehAdmin ? (
+              <TabsTrigger value="conversas" className={tabTriggerClass}>
+                {traduzir("Conversas", idioma)}
+              </TabsTrigger>
+            ) : null}
             {ehGestao ? (
               <TabsTrigger value="automacoes" className={tabTriggerClass}>
                 {traduzir("Automações", idioma)}
@@ -247,6 +253,12 @@ async function ConteudoTreenityBot() {
 
             {ehAdmin ? <VendasPainel inicial={painel?.vendas ?? null} /> : null}
           </TabsContent>
+
+          {ehAdmin ? (
+            <TabsContent value="conversas" className="mt-0 min-h-0 flex-1 overflow-y-auto">
+              <ConversasPainel />
+            </TabsContent>
+          ) : null}
 
           {/* "Precisando de atenção" e "Atendimentos" viraram o Inbox (Fila e
               Todas) — "um lugar para cada coisa". O Chat interno ganhou item
