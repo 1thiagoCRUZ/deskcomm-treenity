@@ -121,7 +121,10 @@ o que "pronto" significa (os `acceptance` dela — que você NÃO pode editar).
 - **Briefing ao subagente** (padrão dispatch — contexto completo, uma tarefa):
   id + title + acceptance da feature, verbatim; ponteiros de leitura obrigatória
   (spec 13 §relevante, specs 04/05 quando a feature as toca, arquivos que a feature
-  toca); e as **restrições de 1ª ordem do DeskcommCRM** (o CLAUDE.md do repo é a
+  toca) **com CAMINHOS EXATOS de arquivo e a SEÇÃO da spec** (ex.:
+  `docs/specs/13-spec-governanca-atendimento.md §3.5`, `app/api/v1/conversations/_handler.ts`),
+  nunca "veja a spec" nem "procure o handler" — o subagente não deve precisar explorar; e as
+  **restrições de 1ª ordem do DeskcommCRM** (o CLAUDE.md do repo é a
   fonte; o briefing repete o núcleo):
   - `organization_id` de fonte confiável (cookie/JWT/webhook secret/path token) —
     **NUNCA do body**; toda query em tabela tenant-aware filtra org; RLS + helper
@@ -153,30 +156,33 @@ o que "pronto" significa (os `acceptance` dela — que você NÃO pode editar).
   e esconderia exatamente o que está sob verificação.) Envie `git diff main...HEAD`
   junto, ROTULADO como "contexto da fase (commits anteriores, não é o objeto da
   verificação)".
-- **Hash-check — a defesa real contra verifier que "conserta e aprova"**: o
-  frontmatter do gov-verifier não tem Write/Edit, mas Bash escreve em disco
-  (`sed -i`, `echo >`, `patch`) — a ausência de tool NÃO é propriedade física.
-  Quem garante é você: ANTES de despachar o verifier, capture
-  ```bash
-  HASH_BEFORE=$({ git diff HEAD; git status --porcelain; } | shasum -a 256)
-  ```
-  DEPOIS do veredito, recompute e compare. Hash mudou → o working tree foi alterado
-  durante a verificação → **o veredito é INVÁLIDO**: registre no progress.md
-  ("veredito invalidado por mudança no tree durante verificação") e re-despache um
-  verifier FRESCO. Barato, determinístico, fecha o buraco.
-- Despache o subagente `gov-verifier` com: id + acceptance verbatim + o diff da
-  sessão (`git diff HEAD` + `git status --porcelain`) + o contexto da fase rotulado
-  + o resumo do implementer. O verifier roda os acceptance MECANICAMENTE e procura
-  o que quebra. Ele só veta — nunca conserta.
+- **Hash-check — a defesa real contra verifier que "conserta e aprova"** (passo explícito,
+  ANTES e DEPOIS de todo despacho do verifier). O frontmatter do gov-verifier não tem Write/Edit,
+  mas Bash escreve em disco (`sed -i`, `echo >`, `patch`) — a ausência de tool NÃO é propriedade
+  física. Quem garante é você, em 4 passos, nesta ordem:
+  1. **Antes de despachar**, capture:
+     ```bash
+     HASH_BEFORE=$({ git diff HEAD; git status --porcelain; } | shasum -a 256)
+     ```
+  2. **Despache** o `gov-verifier` com: id + acceptance verbatim + o diff da sessão
+     (`git diff HEAD` + `git status --porcelain`) + o contexto da fase rotulado + o resumo do
+     implementer. O verifier roda os acceptance MECANICAMENTE e procura o que quebra. Ele só veta —
+     nunca conserta.
+  3. **Depois do veredito**, recompute `HASH_AFTER` com o mesmo comando e compare.
+  4. **Hash mudou** → o working tree foi alterado durante a verificação → **o veredito é INVÁLIDO**:
+     registre no progress.md ("veredito invalidado por mudança no tree durante verificação") e
+     re-despache um verifier FRESCO. Barato, determinístico, fecha o buraco.
 - Veredito `PASS` (com hash conferido) → siga ao §4.
 - Veredito `FAIL` → **UMA rodada de reparo**: devolva os findings do verifier ao
   gov-implementer (como artefato, não diálogo — cole os findings no briefing),
   re-execute, re-verifique com o verifier (contexto fresco, hash-check de novo).
-- `FAIL` de novo → a sessão desiste desta feature: `git stash push -u -m
-  "<FEATURE-ID> failed-verify <data ISO>"` (a recuperação futura é pela MENSAGEM —
-  `git stash list | grep '<FEATURE-ID>'`), abra item na inbox (com a mensagem do
-  stash, o que foi tentado, os findings do verifier) e vá ao §4 registrar a sessão
-  como bloqueada. **Nunca** terceira rodada — loop que insiste vira thrash.
+- **Teto: no máximo 2 ciclos implementer → verifier por feature** (o inicial + o de reparo).
+  `FAIL` no 2º ciclo → **PARE e reporte ao dono**: a sessão desiste desta feature:
+  `git stash push -u -m "<FEATURE-ID> failed-verify <data ISO>"` (a recuperação futura é pela
+  MENSAGEM — `git stash list | grep '<FEATURE-ID>'`), abra item na inbox (com a mensagem do
+  stash, o que foi tentado, os findings do verifier), vá ao §4 registrar a sessão como bloqueada
+  e **cole os findings do verifier, na íntegra, na resposta final da sessão** para o dono.
+  **Nunca** terceira rodada — loop que insiste vira thrash.
 
 ## 4. Fechamento — persistir estado (a sessão morre, o disco fica)
 
@@ -207,6 +213,8 @@ Com PASS do verifier (e hash conferido), nesta ordem:
 4. **`loop/sessions.log`**: a linha de RESULTADO, par da linha `started` do §0.5:
    `<ISO America/Sao_Paulo> core <FEATURE-ID|repair|blocked|idle> <resultado>`.
 5. Remova seu `loop/locks/core.lock`.
+6. **Recomende ao dono `/clear`** antes da próxima feature (na última mensagem da sessão): o contexto
+   desta sessão não serve à próxima e só encarece cada chamada seguinte.
 
 Sessão bloqueada (FAIL duplo ou human_input): faça só os passos 3-5 + o item de
 inbox. `passes` fica `false`. Working tree limpa (o stash guardou o trabalho).
@@ -218,13 +226,26 @@ da fase corrente com `passes:true`), OU se a fase está travada (nenhuma feature
 elegível — só congeladas/human_input):
 
 1. Escreva `loop/checkpoints/<FASE>-report.md` seguindo `loop/CHECKPOINT.md`
-   (completo ou marcado `INCOMPLETO — bloqueado`).
+   (completo ou marcado `INCOMPLETO — bloqueado`). A última feature da fase é verificada
+   com o **gate de fase** do gov-verifier (passo 5), que inclui a suíte unitária completa
+   (`pnpm test:unit`); o relatório só é emitido como completo com esse gate observado.
 2. Commite o relatório na branch da fase.
 3. Registre no progress.md: "checkpoint <FASE> emitido, loop PARADO aguardando aprovação".
 4. **PARE.** Não escolha outra feature, não espie a próxima fase. A guarda de
    entrada nº 2 mantém todas as sessões futuras paradas até o dono criar
    `loop/checkpoints/<FASE>.approved` (ou bloqueadas pelo `.rejected`, se recusar).
    O que acontece na aprovação/recusa está em `loop/CHECKPOINT.md`.
+
+## Orçamento de contexto do orquestrador (você)
+
+- **Você não lê código-fonte nem logs completos.** Você trabalha com as DEVOLUÇÕES dos agentes
+  (resumo do implementer, veredito do verifier). Precisa de um detalhe do código? Peça ao
+  subagente certo no briefing, com caminho e seção; não abra o arquivo você mesmo.
+- O que você lê é o **estado do loop** (§1: `git log`, `plan/progress.md`, `plan/features.json`,
+  `loop/inbox.items.md`, `loop/sessions.log`) — é pequeno e é o seu trabalho.
+- O smoke do §1.8 e qualquer outro comando seu seguem a mesma regra dos agentes: saída em
+  arquivo (`/tmp/loop-<cmd>.log`), exit code medido na linha seguinte sem pipe, e só o comando, o
+  exit code e as linhas de falha (~30) entram no seu contexto.
 
 ## Proibições permanentes (as armadilhas conhecidas do loop)
 

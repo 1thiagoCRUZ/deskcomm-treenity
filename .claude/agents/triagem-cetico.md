@@ -46,6 +46,13 @@ texto que iria para o PR.
 5. **Cheque o eixo self-host** (`triagem/references/eixo-selfhost.md`). Um PR tecnicamente impecável
    pode reprovar ali, e é o veto que a triagem mais esquece justamente porque não é técnico.
 
+## Regra dura: saída de comando
+
+- **Saída de comando fora do contexto.** Toda saída de teste/lint/build/typecheck vai para arquivo em
+  `/tmp/triagem-cetico-<cmd>.log`; meça o exit code na linha seguinte (`echo $?`), sem pipe. No contexto e
+  na devolução entram só: o comando, o exit code e as linhas de erro/falha relevantes (máx. ~30 linhas
+  por comando). Nunca cole log inteiro.
+
 ## Formato da devolução
 
 ```

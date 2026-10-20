@@ -698,6 +698,33 @@ Aplique a label do desfecho: `triagem:pronto`, `triagem:bloqueado` ou `triagem:d
 
 ---
 
+## 9-bis. Despachando os subagentes: briefing, hash-check e orçamento de contexto
+
+Vale para `triagem-medidor` (passes 3/4), `triagem-reprodutor` (5/6) e `triagem-cetico` (9).
+
+- **Briefing com caminhos exatos.** Cada briefing leva o número do PR, o SHA da cabeça e o de
+  `origin/main`, o **caminho do worktree exclusivo** do agente, os **arquivos do diff que importam**
+  (caminho relativo, e o intervalo de linhas quando você já o conhece) e as linhas de
+  `triagem/references/complemento-do-ci.md` ligadas pelo raio de dano. O agente não deve precisar
+  explorar para achar o que medir.
+- **Hash-check do cético (e de quem não deve escrever), passo explícito, ANTES e DEPOIS.** O
+  `triagem-cetico` e o `triagem-medidor` não têm Write/Edit, mas Bash escreve em disco: a ausência
+  de tool não é propriedade física. Em 4 passos, no worktree do agente:
+  1. antes de despachar: `HASH_BEFORE=$({ git diff HEAD; git status --porcelain; } | shasum -a 256)`;
+  2. despache o agente com o briefing acima;
+  3. depois do veredito, recompute `HASH_AFTER` com o mesmo comando e compare;
+  4. mudou → o worktree foi alterado durante a medição/refutação → **o resultado é INVÁLIDO**:
+     registre e re-despache um agente fresco. Nunca aproveite a refutação de um cético sob hash
+     divergente.
+- **Você, orquestrador, não lê código nem logs completos.** Trabalhe com as devoluções (medição,
+  reprodução, refutação). Precisa de um detalhe? Peça ao agente certo, com caminho e seção. Seus
+  próprios comandos seguem a regra dos agentes: saída em arquivo, exit code na linha seguinte sem
+  pipe, e só o comando, o exit code e as linhas de falha (~30) entram no seu contexto.
+- **Ao publicar o veredito e fechar o PR, recomende ao dono `/clear`** antes do próximo PR: o
+  contexto desta triagem não serve à próxima e encarece cada chamada seguinte.
+
+---
+
 ## 10. Resposta que faz voltar
 
 `references/resposta-ao-contribuidor.md`. As três regras duras:

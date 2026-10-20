@@ -22,6 +22,18 @@
 - Atenção permanente: a cadeia `vendaval/F2-*` pode ter migrations não mergeadas.
   O gate de migration valida a sequência `NNNN` contra TODAS as branches locais.
 
+## Suíte de verificação: por feature × gate de fase
+
+Registro único do que o `gov-verifier` roda (detalhe no passo 2 do `.claude/agents/gov-verifier.md`):
+
+| Momento | O que roda | Obrigatório quando |
+|---|---|---|
+| **Por feature** | `pnpm typecheck`, `pnpm lint` e SÓ os testes unitários relacionados ao diff | sempre |
+| **Por feature** | `pnpm test:invariants` e `pnpm test:db` | o diff toca schema, RLS, migrations ou `tests/invariants/**` |
+| **Gate de fase** | a suíte unitária **completa** (`pnpm test:unit`), além dos critérios da fase | sempre, ao fechar a fase (e antes de emitir o checkpoint) |
+
+Cada comando roda separado, com saída em arquivo e exit code medido sem pipe.
+
 ## G1 — Provas & fundação (eval-first)
 
 Nenhuma mudança de comportamento do produto. Sai da fase quando:

@@ -31,9 +31,12 @@ dessa vez". Aprovar por cortesia é a única falha inaceitável no seu papel.
    rode o comando, suba o processo, dispare o cenário, LEIA a saída. Item que você
    não conseguiu exercitar = item reprovado (`não-verificável` conta como FAIL do
    item — nunca como "benefício da dúvida").
-2. **Suíte geral**: `pnpm typecheck && pnpm lint && pnpm test:unit` (+
-   `pnpm test:invariants`/`test:db` se o diff toca schema, RLS ou invariantes).
-   Vermelho em qualquer coisa que o diff toca = FAIL.
+2. **Suíte por escopo do diff** (cada comando separado, saída em arquivo — ver regras de execução abaixo):
+   por feature rode `pnpm typecheck`, `pnpm lint` e SÓ os testes unitários relacionados ao diff
+   (`pnpm exec vitest run <arquivos>`: os testes dos arquivos tocados e dos que os importam ou os
+   guardam). Rode também `pnpm test:invariants` e `pnpm test:db` SEMPRE que o diff tocar schema, RLS,
+   migrations ou `tests/invariants/**`. A suíte unitária COMPLETA (`pnpm test:unit`) é obrigatória no
+   **gate de fase** (passo 5), não por feature. Vermelho em qualquer coisa que o diff toca = FAIL.
 3. **Caça ao que quebra** (mínimo 3 tentativas hostis; as DUAS primeiras são
    OBRIGATÓRIAS neste domínio):
    - **(a) Vazamento cross-org E cross-atendente**: usuário da org B lendo dado da
@@ -59,7 +62,8 @@ dessa vez". Aprovar por cortesia é a única falha inaceitável no seu papel.
    Grep é seu amigo — e o diff certo pra isso é o da sessão (`git diff HEAD`),
    não o da fase.
 5. **Gates de fase** (aplique o da fase corrente — critérios de saída em
-   `plan/phases.md`):
+   `plan/phases.md`). **No gate de fase a suíte unitária completa (`pnpm test:unit`) é obrigatória**,
+   além dos critérios abaixo:
    G1 — CI consolidado verde observado; baseline install+update num Postgres
    descartável; invariantes cobrem os 7 eixos com `test.fails` explícito nos gaps;
    auditoria 04/05 com evidência arquivo:linha;
@@ -74,6 +78,16 @@ dessa vez". Aprovar por cortesia é a única falha inaceitável no seu papel.
    Feature com superfície de UI — screenshot EXISTENTE em
    `loop/checkpoints/evidence/<fase>/` (arquivo no disco, não promessa). Estética
    em si não veta; acceptance sim.
+
+## Regras duras de execução
+
+- **Saída de comando fora do contexto.** Toda saída de teste/lint/build/typecheck vai para arquivo em
+  `/tmp/gov-verifier-<cmd>.log`; meça o exit code na linha seguinte (`echo $?`), sem pipe. No contexto e
+  na devolução entram só: o comando, o exit code e as linhas de erro/falha relevantes (máx. ~30 linhas
+  por comando). Nunca cole log inteiro.
+- **Leitura econômica.** Leia primeiro só os ponteiros do briefing. Para o resto, use Grep/Glob para
+  localizar e Read com intervalo de linhas; não leia arquivos grandes inteiros nem specs inteiras quando o
+  briefing indicar a seção.
 
 ## Veredito (formato obrigatório, nada além dele)
 ```
