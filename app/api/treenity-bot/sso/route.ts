@@ -11,10 +11,16 @@
  * do lado do bot — aceitável pro volume de uso desse chat interno; se isso
  * virar gargalo, dá pra cachear por alguns minutos.
  */
+import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 
-import { loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
-import { roleAtLeast } from "@/lib/auth/types";
+import { fail } from "@/lib/api/wrappers";
+import { requireRole } from "@/lib/auth/require-role";
+import { loadAuthUser, mfaEmDivida, resolveActiveOrg } from "@/lib/auth/server";
+import { roleAtLeast, type ActiveOrg } from "@/lib/auth/types";
+import { traduzir } from "@/lib/i18n/dicionario";
+import { ehGestaoTreenity } from "@/lib/treenity/papeis";
+import { carregarAcessoAoBot } from "@/lib/treenity-bot/acesso";
 import { getConfig } from "@/lib/treenity-bot/config";
 import { trocarToken } from "@/lib/treenity-bot/client";
 
@@ -31,11 +37,48 @@ export async function GET() {
     return NextResponse.json({ error: "not_configured" }, { status: 501 });
   }
 
+  // A API do bot não separa empresas: o token só sai para atendente (ou mais) de
+  // uma empresa que TEM o bot ligado. A Gestão Treenity (equipe do próprio bot)
+  // segue como antes — sem esse gate, inclusive em suporte somente leitura.
+  const requestId = randomUUID();
+  let org: ActiveOrg | null;
+  if (ehGestaoTreenity(user)) {
+    // Fora do requireRole, então MFA e acompanhamento vencido são conferidos aqui:
+    // senha vazada da Gestão (aal1) ou suporte expirado não emitem token.
+    if (user.support && user.support.status !== "active") {
+      return fail("forbidden", "O acompanhamento terminou. Saia para continuar.", 403, { requestId });
+    }
+    if (await mfaEmDivida()) {
+      return fail(
+        "mfa_required",
+        traduzir(
+          "Esta sessão precisa da verificação em duas etapas. Entre novamente com o código do aplicativo.",
+          user.idioma,
+        ),
+        403,
+        { requestId },
+      );
+    }
+    org = await resolveActiveOrg(user);
+  } else {
+    const authz = await requireRole("agent", { requestId, resource: "treenity_bot" });
+    if (!authz.ok) return authz.response;
+    org = authz.org;
+    const acesso = await carregarAcessoAoBot({ user, org, minimo: "agent" });
+    if (!acesso.permitido) {
+      return fail(
+        "forbidden",
+        traduzir("O Treenity Bot não está ligado nesta empresa.", user.idioma),
+        403,
+        { requestId },
+      );
+    }
+  }
+
   // Admin da organização leva a permissão de painel no token: é ela que coloca o
   // socket dele na sala de avisos em tempo real (vendas/atendimentos ao vivo).
   // Quem não é admin recebe um token comum e nunca entra nessa sala. A decisão é
   // tomada aqui, no servidor — o navegador só recebe o resultado.
-  const org = await resolveActiveOrg(user);
   const painelAdmin = roleAtLeast(org?.role, "admin");
 
   // O chat da equipe separa as empresas por este id. A Gestão, quando entra na

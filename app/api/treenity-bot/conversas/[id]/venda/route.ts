@@ -9,6 +9,8 @@ import type { NextRequest } from "next/server";
 
 import { ok, fail } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
+import { traduzir } from "@/lib/i18n/dicionario";
+import { carregarAcessoAoBot } from "@/lib/treenity-bot/acesso";
 import { createClient } from "@/lib/supabase/server";
 import { carregarVendasTreenityBot } from "@/lib/treenity-bot/client";
 import { getConfig } from "@/lib/treenity-bot/config";
@@ -24,6 +26,14 @@ export async function GET(req: NextRequest, ctx: RouteCtx): Promise<Response> {
   const requestId = randomUUID();
   const authz = await requireRole("admin", { requestId, resource: "treenity_bot" });
   if (!authz.ok) return authz.response;
+
+  // A API do bot não separa empresas: só o Dono de uma empresa com o bot ligado.
+  const acesso = await carregarAcessoAoBot({ user: authz.user, org: authz.org, minimo: "admin" });
+  if (!acesso.permitido) {
+    return fail("forbidden", traduzir("O Treenity Bot não está ligado nesta empresa.", authz.user.idioma), 403, {
+      requestId,
+    });
+  }
   if (!getConfig()) return ok(null, { requestId });
 
   const { id } = await ctx.params;

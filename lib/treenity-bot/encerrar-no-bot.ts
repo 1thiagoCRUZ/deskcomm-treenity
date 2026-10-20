@@ -40,7 +40,12 @@ export async function encerrarAtendimentoNoBot(pedido: {
 
     const res = await fetch(`${config.apiUrl}/api/atendimentos/encerrar-por-cliente`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${sessao.accessToken}`, "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${sessao.accessToken}`,
+        // Segredo de servidor: a API do bot passa a exigi-lo nas mutações. Nunca vai ao navegador nem a log.
+        "X-SSO-Secret": config.ssoSecret,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
         id_faces: idsFaceDoTelefone(pedido.telefone),
         ...(pedido.valorDaVenda !== null ? { venda: { valor_total: pedido.valorDaVenda } } : {}),

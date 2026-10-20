@@ -67,7 +67,7 @@ async function chamarApi<T>(accessToken: string, path: string): Promise<T | null
 
   try {
     const res = await fetch(`${config.apiUrl}${path}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: { Authorization: `Bearer ${accessToken}`, "X-SSO-Secret": config.ssoSecret },
       cache: "no-store",
     });
     if (!res.ok) return null;
@@ -85,7 +85,7 @@ async function chamarApiCompleta<T>(accessToken: string, path: string): Promise<
 
   try {
     const res = await fetch(`${config.apiUrl}${path}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: { Authorization: `Bearer ${accessToken}`, "X-SSO-Secret": config.ssoSecret },
       cache: "no-store",
     });
     if (!res.ok) return null;
@@ -302,7 +302,9 @@ export async function carregarDadosTreenityBot(usuario: {
   const config = getConfig();
   if (!config) return null;
 
-  const sessao = await trocarToken(usuario);
+  // `/api/dashboard` e `/sinalizados` exigem a permissão de painel na API do bot:
+  // só chame depois de confirmar, no servidor, que a pessoa é admin da empresa.
+  const sessao = await trocarToken(usuario, { painelAdmin: true });
   if (!sessao) return null;
 
   const [metricas, sinalizados] = await Promise.all([
@@ -351,7 +353,8 @@ export async function carregarConversaTreenityBot(
   usuario: { email: string; nome: string },
   atendimentoId: string,
 ): Promise<ConversaTreenityBot | null> {
-  const sessao = await trocarToken(usuario);
+  // A transcrição exige a permissão de painel: só chame após confirmar admin no servidor.
+  const sessao = await trocarToken(usuario, { painelAdmin: true });
   if (!sessao) return null;
 
   return chamarApi<ConversaTreenityBot>(
