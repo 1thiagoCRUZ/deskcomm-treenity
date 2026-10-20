@@ -288,7 +288,7 @@ export function ConversationListItem({
             {jaComprou && (
               <Badge variant="success" className="h-4 gap-1 px-1.5 text-[10px] font-semibold">
                 <CheckCircle size={9} weight="fill" aria-hidden />
-                {t("Já comprou")}
+                {t("Já é nosso cliente")}
               </Badge>
             )}
             {visibleTags.map((t) => (

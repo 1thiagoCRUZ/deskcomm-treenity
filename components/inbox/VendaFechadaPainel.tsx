@@ -15,12 +15,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
 import type { JanelaDaVenda } from "@/hooks/inbox/useMessagesRealtime";
-import { useVendaDaConversa } from "@/hooks/inbox/useVendaDaConversa";
+import { useVendaFechada } from "@/hooks/inbox/useVendaFechada";
 import { ChatThread } from "./ChatThread";
 
 const BRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
 interface Props {
+  /** A venda que se abre — uma venda, não "a última do cliente". */
+  vendaId: string;
   conversationId: string;
   /** Nome que a lista mostra para este cliente. */
   nome: string;
@@ -28,10 +30,10 @@ interface Props {
   onAbrirConversa: () => void;
 }
 
-export function VendaFechadaPainel({ conversationId, nome, onAbrirConversa }: Props) {
+export function VendaFechadaPainel({ vendaId, conversationId, nome, onAbrirConversa }: Props) {
   const t = useT();
   const locale = useLocaleDeData();
-  const { data: venda, isPending } = useVendaDaConversa(conversationId, true);
+  const { data: venda, isPending } = useVendaFechada(vendaId);
 
   const janela: JanelaDaVenda | null = useMemo(
     () => (venda ? { desde: venda.iniciada_em, ate: venda.ate } : null),

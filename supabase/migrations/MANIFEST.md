@@ -307,3 +307,5 @@ To re-apply on a fresh Supabase project, replay the migrations in version order 
 
 | `20261019180000` | `0242_fechar_limpa_pedido_de_especialista` | Trigger em `conversations`: ao encerrar, apaga o pedido "O bot chamou o especialista". Sem isso o aviso da venda anterior reaparecia quando o cliente voltava a escrever. Limpa também os que já estavam assim. |
 | `20261019210000` | `0243_conversa_vendas` | Tabela `conversa_vendas`: o recorte de tempo (início e fim) do atendimento que terminou em venda, gravado pelo botão Fechar. A aba Fechadas mostra só a conversa daquela venda, mesmo que o cliente já tenha voltado a escrever. Leitura: quem enxerga a conversa; escrita: só o servidor. |
+
+| `20261020120000` | `0244_conversa_vendas_id_no_bot` | `conversa_vendas.venda_bot_id`: o id da venda no Treenity Bot, para o painel mostrar a venda certa (e não só a mais recente do cliente). |

@@ -31,6 +31,8 @@ import { phoneForDisplay } from "@/lib/channels/phone-variants";
 
 interface Props {
   conversation: ConversationWithContact | null;
+  /** A venda do bot a mostrar no painel (aba Fechadas). Sem isto, a mais recente do cliente. */
+  vendaBotId?: string | null;
 }
 
 interface LeadRow {
@@ -402,7 +404,7 @@ function CamposDoFunil({
   );
 }
 
-export function CRMSidePanel({ conversation }: Props) {
+export function CRMSidePanel({ conversation, vendaBotId }: Props) {
   const { user } = useAuth();
   const readonly = user.support?.access_mode === "support_readonly";
   const localeDaData = useLocaleDeData();
@@ -625,7 +627,7 @@ export function CRMSidePanel({ conversation }: Props) {
 
       <Separator />
 
-      <VendaDaConversa conversationId={conversation.id} />
+      <VendaDaConversa conversationId={conversation.id} vendaBotId={vendaBotId} />
 
       {/* ANTES dos negócios de propósito (doutrina cap. 5): lead é o negócio,
           conversa é o canal, demanda é o que precisa acabar. Quem abre esta

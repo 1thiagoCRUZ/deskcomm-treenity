@@ -21,6 +21,8 @@ import { ChatThread } from "./ChatThread";
 import { Composer, type ComposerHandle } from "./Composer";
 import { ConversationHeader } from "./ConversationHeader";
 import { VendaFechadaPainel } from "./VendaFechadaPainel";
+import { VendasFechadasLista } from "./VendasFechadasLista";
+import { useVendaFechada } from "@/hooks/inbox/useVendaFechada";
 import { RetentionNotice } from "./RetentionNotice";
 import { CRMSidePanel } from "./CRMSidePanel";
 import type { Message as ConversationMensagem } from "@/lib/types/messaging";
@@ -150,6 +152,12 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
   );
 
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId);
+  /**
+   * A VENDA aberta na aba Fechadas. Uma venda é uma venda: o cliente que comprou duas
+   * vezes tem duas linhas, e cada uma abre o atendimento dela. `selectedId` continua
+   * sendo a conversa (o painel do contato e o "Abrir conversa atual" precisam dela).
+   */
+  const [selectedVendaId, setSelectedVendaId] = useState<string | null>(null);
   const [visibleIds, setVisibleIds] = useState<string[]>([]);
   const [helpOpen, setHelpOpen] = useState(false);
   /** A ficha do contato como painel deslizante — só existe abaixo do `xl`. */
@@ -244,6 +252,10 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
   const selectionNotFound =
     needsFetch && !single.isPending && !single.data && isNotFound(single.error);
 
+  const abrindoVenda = filterValue.tab === "closed" && selectedVendaId !== null;
+  const vendaAberta = useVendaFechada(abrindoVenda ? selectedVendaId : null);
+  const vendaBotId = abrindoVenda ? (vendaAberta.data?.venda_bot_id ?? null) : null;
+
   const colunas = colunasDoCelular(Boolean(selectedId));
 
   const claim = useClaimConversation();
@@ -266,6 +278,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
   // conversa, que hoje entra por `initialSelectedId` vindo da rota.
   const handleSelect = useCallback((id: string | null) => {
     setSelectedId(id);
+    setSelectedVendaId(null);
     // Sem isto, escolher "responder" numa conversa e trocar para outra levaria
     // a citação junto — e a resposta sairia citando mensagem de outro cliente.
     setRespondendo(null);
@@ -407,14 +420,26 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
         >
           <InboxFilters value={filterValue} onChange={setFilterValue} />
           <div className="min-h-0 flex-1 overflow-hidden">
-            <ConversationList
-              listQuery={listQ}
-              filters={filters}
-              selectedId={selectedId}
-              onSelect={handleSelect}
-              clientFilter={clientFilter}
-              onVisibleChange={handleVisibleChange}
-            />
+            {filterValue.tab === "closed" ? (
+              <VendasFechadasLista
+                vendaSelecionadaId={selectedVendaId}
+                busca={filterValue.search}
+                onSelecionar={(v) => {
+                  setSelectedId(v.conversation_id);
+                  setSelectedVendaId(v.id);
+                  setRespondendo(null);
+                }}
+              />
+            ) : (
+              <ConversationList
+                listQuery={listQ}
+                filters={filters}
+                selectedId={selectedId}
+                onSelect={handleSelect}
+                clientFilter={clientFilter}
+                onVisibleChange={handleVisibleChange}
+              />
+            )}
           </div>
         </div>
 
@@ -459,19 +484,23 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
                   </SheetTrigger>
                   <SheetContent side="right" className="w-[min(22rem,90vw)] overflow-y-auto p-0">
                     <SheetTitle className="sr-only">{t("Ficha do contato")}</SheetTitle>
-                    <CRMSidePanel conversation={selectedConversation} />
+                    <CRMSidePanel conversation={selectedConversation} vendaBotId={vendaBotId} />
                   </SheetContent>
                 </Sheet>
               )}
             </div>
           )}
-          {selectedConversation && filterValue.tab === "closed" && selectedConversation.venda_fechada_em ? (
+          {selectedConversation && abrindoVenda && selectedVendaId ? (
             // Em Fechadas se abre a VENDA, não o fio da conversa.
             <VendaFechadaPainel
-              key={selectedConversation.id}
+              key={selectedVendaId}
+              vendaId={selectedVendaId}
               conversationId={selectedConversation.id}
               nome={rotuloDoContato(selectedConversation.contacts ?? null, t)}
-              onAbrirConversa={() => setFilterValue({ ...filterValue, tab: "all" })}
+              onAbrirConversa={() => {
+                setSelectedVendaId(null);
+                setFilterValue({ ...filterValue, tab: "all" });
+              }}
             />
           ) : selectedConversation ? (
             <>
@@ -520,7 +549,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
         </div>
 
         <div className="hidden h-full min-h-0 xl:block">
-          <CRMSidePanel conversation={selectedConversation} />
+          <CRMSidePanel conversation={selectedConversation} vendaBotId={vendaBotId} />
         </div>
 
         <InboxKeyboardShortcuts

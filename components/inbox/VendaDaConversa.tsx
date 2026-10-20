@@ -32,16 +32,25 @@ function Linha({ rotulo, valor }: { rotulo: string; valor: string }) {
   );
 }
 
-export function VendaDaConversa({ conversationId }: { conversationId: string }) {
+export function VendaDaConversa({
+  conversationId,
+  vendaBotId,
+}: {
+  conversationId: string;
+  /** A venda do bot a mostrar. Sem isto, a mais recente do cliente. */
+  vendaBotId?: string | null;
+}) {
   const t = useT();
   const qc = useQueryClient();
   const { data: venda } = useQuery({
-    queryKey: ["treenity-bot", "venda-da-conversa", conversationId],
+    queryKey: ["treenity-bot", "venda-da-conversa", conversationId, vendaBotId ?? "recente"],
     retry: false,
     staleTime: 30_000,
     queryFn: () =>
       apiClient
-        .get<{ data: VendaPainel | null }>(`/api/treenity-bot/conversas/${conversationId}/venda`)
+        .get<{ data: VendaPainel | null }>(
+          `/api/treenity-bot/conversas/${conversationId}/venda${vendaBotId ? `?venda_id=${encodeURIComponent(vendaBotId)}` : ""}`,
+        )
         .then((r) => r.data),
   });
 

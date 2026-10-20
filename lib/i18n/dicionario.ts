@@ -391,7 +391,10 @@ export const DICIONARIO: Traducoes = {
   Minhas: { es: "Mías" },
   Todas: { es: "Todas" },
   Fechadas: { es: "Cerradas" },
-  "Já comprou": { es: "Ya compró" },
+  "Já é nosso cliente": { es: "Ya es nuestro cliente" },
+  "Nenhuma venda fechada nas últimas 24 horas.": { es: "Ninguna venta cerrada en las últimas 24 horas." },
+  "Não foi possível carregar as vendas agora.": { es: "No fue posible cargar las ventas ahora." },
+  "Venda não encontrada.": { es: "Venta no encontrada." },
   "Venda fechada em": { es: "Venta cerrada el" },
   "Abrir conversa atual": { es: "Abrir conversación actual" },
   "Esta é a conversa desta venda. Mensagens novas do cliente ficam na conversa atual.": {

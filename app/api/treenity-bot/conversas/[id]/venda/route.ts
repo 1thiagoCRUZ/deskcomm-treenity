@@ -1,6 +1,7 @@
 /**
  * GET /api/treenity-bot/conversas/{id}/venda — a venda mais recente do cliente
- * desta conversa, para o painel lateral do Inbox. Só ADMIN: traz valores de
+ * desta conversa, para o painel lateral do Inbox. Com `?venda_id=`, ESSA venda (a aba
+ * Fechadas abre uma venda específica, e a compra nova não pode esconder a antiga). Só ADMIN: traz valores de
  * faturamento (mesma regra da lista de vendas). `data: null` = sem venda.
  */
 import { randomUUID } from "node:crypto";
@@ -19,7 +20,7 @@ interface RouteCtx {
   params: Promise<{ id: string }>;
 }
 
-export async function GET(_req: NextRequest, ctx: RouteCtx): Promise<Response> {
+export async function GET(req: NextRequest, ctx: RouteCtx): Promise<Response> {
   const requestId = randomUUID();
   const authz = await requireRole("admin", { requestId, resource: "treenity_bot" });
   if (!authz.ok) return authz.response;
@@ -38,12 +39,21 @@ export async function GET(_req: NextRequest, ctx: RouteCtx): Promise<Response> {
   if (!telefone) return ok(null, { requestId });
 
   const usuario = { email: authz.user.email, nome: authz.user.full_name ?? authz.user.email };
-  let maisRecente = null;
+  const vendaPedida = new URL(req.url).searchParams.get("venda_id");
+  let escolhida = null;
   for (const idFace of idsFaceDoTelefone(telefone)) {
-    const pagina = await carregarVendasTreenityBot(usuario, { id_face: idFace, limit: 1 });
+    const pagina = await carregarVendasTreenityBot(usuario, { id_face: idFace, limit: vendaPedida ? 100 : 1 });
     if (!pagina) return fail("treenity_bot_unavailable", "Não foi possível carregar a venda agora.", 503, { requestId });
-    const venda = pagina.itens[0];
-    if (venda && (!maisRecente || venda.data_venda > maisRecente.data_venda)) maisRecente = venda;
+    const candidata = vendaPedida ? pagina.itens.find((v) => v.id_venda === vendaPedida) : pagina.itens[0];
+    if (candidata && (!escolhida || candidata.data_venda > escolhida.data_venda)) escolhida = candidata;
   }
-  return ok(maisRecente, { requestId });
+  // A venda pedida sumiu do bot: cai na mais recente em vez de painel vazio.
+  if (vendaPedida && !escolhida) {
+    for (const idFace of idsFaceDoTelefone(telefone)) {
+      const pagina = await carregarVendasTreenityBot(usuario, { id_face: idFace, limit: 1 });
+      const venda = pagina?.itens[0];
+      if (venda && (!escolhida || venda.data_venda > escolhida.data_venda)) escolhida = venda;
+    }
+  }
+  return ok(escolhida, { requestId });
 }
