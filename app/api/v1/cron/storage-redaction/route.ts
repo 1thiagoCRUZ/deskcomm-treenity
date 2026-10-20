@@ -2,8 +2,10 @@
  * GET /api/v1/cron/storage-redaction
  *
  * Drains the LGPD `storage_redaction_queue` (one batch per call). Designed
- * to run from a scheduled cron (Vercel Cron / external cron) every few
- * minutes. Idempotent: rows transition pending → deleted | failed | skipped.
+ * to run from a scheduled cron every few minutes (self-host Docker: o serviço
+ * `scheduler`) OR, na Treenity (Vercel Hobby), pelo relógio: `lib/relogio/
+ * executar.ts` chama `drainStorageRedactionQueue` direto, uma vez por dia na
+ * janela das 03h (America/Sao_Paulo), sem passar por esta rota. Idempotent: rows transition pending → deleted | failed | skipped.
  *
  * Auth: `Authorization: Bearer <INTERNAL_CRON_SECRET>` (fail-closed when
  * secret missing). Mirrors `app/api/v1/cron/kb-conversations-batch/route.ts`.

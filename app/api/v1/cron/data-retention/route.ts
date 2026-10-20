@@ -44,8 +44,12 @@
  * Auth: mesmo contrato dos demais crons (Bearer INTERNAL_CRON_SECRET|
  * INTERNAL_SECRET, fail-closed).
  *
- * NOTA DE DEPLOY: não há `vercel.json` neste repo (self-host). O agendamento
- * vive no serviço `scheduler` (docker/scheduler/entrypoint.sh), diário.
+ * NOTA DE DEPLOY: no self-host Docker o agendamento vive no serviço `scheduler`
+ * (docker/scheduler/entrypoint.sh), diário. Na Treenity (Vercel Hobby, que só
+ * agenda 1 cron por dia e não o usa para isto) quem chama é o relógio:
+ * `lib/relogio/executar.ts` roda `executarRetencaoDiaria` (abaixo) na janela
+ * das 03h (America/Sao_Paulo). A rota HTTP e o relógio compartilham a mesma
+ * função, então o comportamento (e a auditoria) é um só.
  */
 import { randomUUID } from "node:crypto";
 import type { NextRequest } from "next/server";
@@ -120,6 +124,7 @@ async function drenar(
   db: PodaDb,
   nome: "fn_podar_fila_de_jobs" | "fn_expurgar_auditoria_vencida" | "fn_expurgar_espelho_da_agenda" | "fn_expurgar_nonces_de_oauth",
   dias: number,
+  prazoMs?: number,
 ): Promise<{ apagadas: number; lotes: number; temResto: boolean }> {
   let apagadas = 0;
   let lotes = 0;
@@ -135,6 +140,11 @@ async function drenar(
     // Lote incompleto = a ponta velha acabou. Encerra sem gastar mais uma ida
     // ao banco só para ouvir zero.
     if (n < TAMANHO_DO_LOTE) return { apagadas, lotes, temResto: false };
+    // Prazo vencido (só o relógio passa um): para aqui, o lote veio cheio, então
+    // `temResto` diz "continua na próxima rodada".
+    if (prazoMs !== undefined && Date.now() >= prazoMs) {
+      return { apagadas, lotes, temResto: true };
+    }
   }
   return { apagadas, lotes, temResto: true };
 }
@@ -151,6 +161,8 @@ export async function podarHistorico(
     AUDIT_LOG_RETENTION_DAYS?: string;
     CALENDAR_MIRROR_RETENTION_DAYS?: string;
   },
+  /** Instante (epoch ms) em que o laço de lotes para. Ausente = sem prazo. */
+  prazoMs?: number,
 ): Promise<ResultadoDaRetencao> {
   const fila = interpretarRetencao(ambiente.JOB_QUEUE_RETENTION_DAYS, {
     chave: "JOB_QUEUE_RETENTION_DAYS",
@@ -169,14 +181,14 @@ export async function podarHistorico(
     piso: RETENCAO_ESPELHO_AGENDA_DIAS_PISO,
   });
 
-  const jobs = await drenar(db, "fn_podar_fila_de_jobs", fila.dias);
-  const linhas = await drenar(db, "fn_expurgar_auditoria_vencida", auditoria.dias);
-  const eventos = await drenar(db, "fn_expurgar_espelho_da_agenda", espelho.dias);
+  const jobs = await drenar(db, "fn_podar_fila_de_jobs", fila.dias, prazoMs);
+  const linhas = await drenar(db, "fn_expurgar_auditoria_vencida", auditoria.dias, prazoMs);
+  const eventos = await drenar(db, "fn_expurgar_espelho_da_agenda", espelho.dias, prazoMs);
   // Quarta poda: os nonces de OAuth já queimados. O `state` vale dez minutos,
   // então um dia é folga de duas ordens de grandeza — e sem esta linha a tabela
   // cresceria para sempre, uma linha por conexão tentada, num produto que se
   // instala e ninguém monitora.
-  const nonces = await drenar(db, "fn_expurgar_nonces_de_oauth", 1);
+  const nonces = await drenar(db, "fn_expurgar_nonces_de_oauth", 1, prazoMs);
 
   return {
     jobs_apagados: jobs.apagadas,
@@ -218,16 +230,23 @@ export function houveEfeito(resultado: ResultadoDaRetencao): boolean {
   );
 }
 
-async function handle(req: NextRequest): Promise<Response> {
-  const requestId = randomUUID();
+/** O que a rodada diária devolve — o corpo do 200 da rota e o resumo do relógio. */
+export type ResumoDaRetencaoDiaria = ResultadoDaRetencao & {
+  anonimizacoes_examinadas: number;
+  anonimizacoes_completadas: number;
+  anonimizacoes_tem_resto: boolean;
+};
 
-  const auth = req.headers.get("authorization") ?? "";
-  const provided = auth.startsWith("Bearer ") ? auth.slice("Bearer ".length).trim() : "";
-  const accepted = [env.INTERNAL_CRON_SECRET, env.INTERNAL_SECRET].filter(Boolean);
-  if (accepted.length === 0 || !provided || !accepted.includes(provided)) {
-    return fail("forbidden", "Cron secret missing or invalid.", 403, { requestId });
-  }
-
+/**
+ * A rodada inteira (poda + retomada das anonimizações + auditoria), separada do
+ * handler HTTP para o relógio (`lib/relogio/executar.ts`) chamá-la sem passar
+ * por request/auth. LANÇA se a poda falhar (depois de auditar a falha); a
+ * varredura de anonimização tem try próprio e nunca lança.
+ */
+export async function executarRetencaoDiaria(
+  requestId: string,
+  prazoMs?: number,
+): Promise<ResumoDaRetencaoDiaria> {
   let resultado: ResultadoDaRetencao;
   let varredura: ResultadoDaVarredura = {
     examinados: 0,
@@ -250,16 +269,18 @@ async function handle(req: NextRequest): Promise<Response> {
     resultado = await podarHistorico(db, {
       JOB_QUEUE_RETENTION_DAYS: env.JOB_QUEUE_RETENTION_DAYS,
       AUDIT_LOG_RETENTION_DAYS: env.AUDIT_LOG_RETENTION_DAYS,
-    });
+    }, prazoMs);
     // ── A cascata de anonimização que ficou pela metade ──────────────────
     //
-    // Mora AQUI, e não numa rota de cron própria, por uma razão de packaging: o
-    // agendamento vive no serviço `scheduler`, e um cron novo exigiria linha
-    // nova no `docker/scheduler/entrypoint.sh` — que só chega a quem já
-    // instalou depois de a imagem do scheduler ser trocada. Pendurado no
-    // varredor diário que TODO clone já roda, o conserto alcança o parque
-    // instalado sem ninguém editar nada (DoD 15). Nome e cadência também
-    // servem: retenção é remover dado pessoal no prazo, e a LGPD dá D+15.
+    // Mora AQUI, e não numa rota de cron própria, por uma razão de packaging: um
+    // cron novo exigiria agendamento novo (linha no `docker/scheduler/
+    // entrypoint.sh` no Docker, tarefa nova no relógio na Treenity), que só
+    // chega a quem já instalou depois de a imagem ser trocada. Pendurado no
+    // varredor diário que TODO clone já roda (no Docker, o `scheduler`; na
+    // Treenity, o relógio às 03h — `lib/relogio/executar.ts`), o conserto
+    // alcança o parque instalado sem ninguém editar nada (DoD 15). Nome e
+    // cadência também servem: retenção é remover dado pessoal no prazo, e a LGPD
+    // dá D+15.
     //
     // O client aqui é o de SERVICE ROLE, que bypassa a RLS — por isso
     // `completarRedacaoDoContato` filtra `organization_id` à mão em toda query,
@@ -290,7 +311,7 @@ async function handle(req: NextRequest): Promise<Response> {
       metadata: { falhou: true, erro: detail.slice(0, 300) },
       requestId,
     });
-    return fail("internal_error", "Failed to prune history.", 500, { requestId });
+    throw err;
   }
 
   for (const aviso of resultado.avisos) {
@@ -341,15 +362,31 @@ async function handle(req: NextRequest): Promise<Response> {
     }
   }
 
-  return ok(
-    {
-      ...resultado,
-      anonimizacoes_examinadas: varredura.examinados,
-      anonimizacoes_completadas: varredura.completados.length,
-      anonimizacoes_tem_resto: varredura.temResto,
-    },
-    { requestId },
-  );
+  return {
+    ...resultado,
+    anonimizacoes_examinadas: varredura.examinados,
+    anonimizacoes_completadas: varredura.completados.length,
+    anonimizacoes_tem_resto: varredura.temResto,
+  };
+}
+
+async function handle(req: NextRequest): Promise<Response> {
+  const requestId = randomUUID();
+
+  const auth = req.headers.get("authorization") ?? "";
+  const provided = auth.startsWith("Bearer ") ? auth.slice("Bearer ".length).trim() : "";
+  const accepted = [env.INTERNAL_CRON_SECRET, env.INTERNAL_SECRET].filter(Boolean);
+  if (accepted.length === 0 || !provided || !accepted.includes(provided)) {
+    return fail("forbidden", "Cron secret missing or invalid.", 403, { requestId });
+  }
+
+  try {
+    const dados = await executarRetencaoDiaria(requestId);
+    return ok(dados, { requestId });
+  } catch {
+    // A falha já foi logada e auditada dentro de `executarRetencaoDiaria`.
+    return fail("internal_error", "Failed to prune history.", 500, { requestId });
+  }
 }
 
 export async function GET(req: NextRequest): Promise<Response> {

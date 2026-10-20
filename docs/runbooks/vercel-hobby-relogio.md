@@ -91,4 +91,30 @@ Na fila de follow-ups, o status sai de **Aguardando resposta**.
 3. `routing-worker`
 4. `recover-stuck-messages`
 
-Definição canônica: `lib/relogio/tarefas.ts` + `lib/relogio/executar.ts`.
+### Tarefas diárias (só na janela das 03h20–03h59, horário de São Paulo)
+
+O tick bate a cada ~5 min; estas duas só rodam quando a hora local de
+`America/Sao_Paulo` é 3 e o minuto está entre 20 e 59 (`ehJanelaDiaria`). A
+janela evita o começo da hora (06h00 UTC), quando o GitHub mais atrasa ou
+descarta schedules. As tarefas são idempotentes e em lotes, e rodada vazia não
+audita. Rodam depois das tarefas de minuto, com prazo de 40 s dentro do tick
+(limite de 60 s); o que sobrar continua na batida seguinte.
+
+Se o GitHub pular a janela inteira, o dia seguinte compensa (a poda é por idade
+e a fila de mídia continua pendente). Para rodar à mão:
+
+```bash
+curl -fsS -H "Authorization: Bearer $INTERNAL_SECRET" "https://SEU-DOMINIO/api/v1/cron/data-retention"
+curl -fsS -H "Authorization: Bearer $INTERNAL_SECRET" "https://SEU-DOMINIO/api/v1/cron/storage-redaction"
+```
+
+5. `data-retention` — poda `job_queue` (90 dias), `api_audit_log` (1825 dias),
+   espelho da agenda (90 dias) e nonces de OAuth (1 dia), e completa as
+   anonimizações LGPD incompletas (`varrerRedacoesIncompletas`). Mesma lógica da
+   rota `/api/v1/cron/data-retention`.
+6. `storage-redaction` — esvazia a fila de mídia a apagar após anonimização
+   (até 200 arquivos por rodada). Mesma lógica de `/api/v1/cron/storage-redaction`.
+
+**Se o relógio estiver desligado** (`RELOGIO_LIGADO` != `1`), nada disso roda.
+
+Definição canônica: `lib/relogio/tarefas.ts` + `lib/relogio/executar.ts` (guarda de horário em `lib/relogio/janela-diaria.ts`).
