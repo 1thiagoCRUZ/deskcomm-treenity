@@ -270,40 +270,13 @@ describe("nascimento do lead", () => {
 
 /**
  * A fiação. Os casos acima provam que o passo compartido FAZ a coisa certa;
- * estes provam que os dois canais o CHAMAM — que é o defeito original.
+ * estes provam que o canal oficial o CHAMA — que é o defeito original.
  */
-describe("os dois canais usam o mesmo passo", () => {
-  const ZERNIO = readFileSync("lib/channels/zernio/ingest.ts", "utf8");
-  const WAHA = readFileSync("lib/waha/ingest.ts", "utf8");
+describe("o canal oficial usa o mesmo passo de pós-entrada", () => {
   const META = readFileSync("lib/channels/meta/ingest.ts", "utf8");
 
-  it("o canal intermediado chama nos DOIS caminhos de inserção", () => {
-    // A ingestão resolve a conversa por dois caminhos — thread conhecida e
-    // âncora — e o primeiro é o mais comum. Chamar só no segundo deixaria a
-    // maioria das mensagens sem nenhum dos três efeitos.
-    const chamadas = [...ZERNIO.matchAll(/await efeitosDaEntrada\(/g)];
-    expect(chamadas.length, "faltou o passo em um dos caminhos").toBe(2);
-  });
-
-  it("o canal intermediado só aplica os efeitos na ENTRADA", () => {
-    // O eco de um envio nosso não pede para sair nem abre demanda.
-    expect(ZERNIO).toMatch(/if \(msg\.direction !== "inbound"\) return;/);
-  });
-
-  it("o canal por QR delega no compartilhado em vez de reimplementar", () => {
-    expect(WAHA).toMatch(/await aplicarEfeitosPosEntrada\(admin, \{/);
-  });
-
-  it("o canal oficial também acorda o follow-up no mesmo passo", () => {
+  it("o canal oficial acorda o follow-up no mesmo passo", () => {
     expect(META).toMatch(/await aplicarEfeitosPosEntrada\(admin, \{/);
-  });
-
-  it("e não guarda mais uma cópia privada da regra de opt-out", () => {
-    // Duas cópias divergem na primeira vez que alguém acrescentar um termo — e
-    // a que diverge é sempre a que ninguém lembra que existe.
-    expect(WAHA, "o canal por QR voltou a ter regex própria de STOP").not.toMatch(
-      /STOP\|PARAR\|SAIR\|UNSUBSCRIBE/,
-    );
   });
 
   it("acorda o follow-up do contato ANTES do drain genérico", async () => {

@@ -1,5 +1,9 @@
 /**
- * `'infinity'` TEM DE CALAR O WORKER LEGADO — E NÃO CALAVA.
+ * A REGRA CANÔNICA DO SILÊNCIO TRATA `'infinity'` E DATA ILEGÍVEL COMO SILÊNCIO.
+ *
+ * Este arquivo testa a função pura `silencioVigente` (lib/inbox/comando-da-conversa.ts),
+ * que é a regra viva. Nasceu de um defeito em que o worker legado (hoje removido)
+ * não calava com `'infinity'`.
  *
  * ─── O defeito, medido em produção (VPS, 2026-08-30) ──────────────────────
  *
@@ -9,7 +13,7 @@
  * A partir dali o motor novo se recusou a responder, corretamente — o log diz
  * `turno pulado — lead em handoff humano (bot silenciado)`.
  *
- * O worker legado continuou respondendo por cima da escalação. A guarda dele era:
+ * O worker legado (já removido) continuou respondendo por cima da escalação. A guarda dele era:
  *
  *     if (c.bot_silenced_until && new Date(c.bot_silenced_until).getTime() > Date.now())
  *
@@ -26,37 +30,15 @@
  * discordavam: a tela dizia "automático parado" enquanto o worker respondia.
  *
  * Reescrever a expressão no worker consertaria a instância e deixaria a classe
- * de pé — a terceira cópia nasceria divergente igual. Por isso o worker passa a
- * chamar `silencioVigente`, e o que este arquivo vigia é que ele **continue**
- * chamando: uma cópia local nova é o defeito voltando com outra cara.
+ * de pé — a terceira cópia nasceria divergente igual. Por isso a regra ficou
+ * numa função só, `silencioVigente`, e este arquivo vigia o comportamento dela:
+ * `'infinity'` e data ilegível calam; prazo vencido não cala.
  */
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
-
 import { silencioVigente } from "@/lib/inbox/comando-da-conversa";
 
-const FONTE_BRUTA_DO_WORKER = readFileSync(
-  join(process.cwd(), "workers/ai-response-worker.ts"),
-  "utf8",
-);
-
-/**
- * O worker SEM comentários.
- *
- * A cerca de "não voltou a comparar a data crua" procura a expressão que
- * falhava — e o comentário do conserto CITA essa expressão para explicar o
- * defeito. Medido: a primeira versão desta cerca reprovou o próprio conserto,
- * acusando o texto que o documenta. Uma sonda que lê comentário mede a prosa,
- * não o código; e a saída seria apagar a explicação, que é o pior desfecho.
- */
-const FONTE_DO_WORKER = FONTE_BRUTA_DO_WORKER.replace(/\/\*[\s\S]*?\*\//g, "").replace(
-  /\/\/.*$/gm,
-  "",
-);
-
-describe("silêncio pós-handoff: 'infinity' cala os dois motores", () => {
+describe("silêncio vigente: 'infinity' e data ilegível calam; prazo vencido não", () => {
   it("a aritmética que produziu o defeito — o porquê, para ninguém 'simplificar' de volta", () => {
     // Sem esta asserção, o conserto parece paranoia e a próxima pessoa reverte.
     expect(Number.isNaN(new Date("infinity").getTime())).toBe(true);
@@ -80,28 +62,5 @@ describe("silêncio pós-handoff: 'infinity' cala os dois motores", () => {
     expect(silencioVigente("2026-08-30T20:00:00Z", agora).vigente).toBe(false);
     expect(silencioVigente("2026-08-30T22:00:00Z", agora).vigente).toBe(true);
     expect(silencioVigente(null, agora).vigente).toBe(false);
-  });
-
-
-  it("a sonda sem comentários ainda enxerga o código — senão ela aprova tudo", () => {
-    // Controle: uma limpeza gulosa demais devolveria string vazia, e aí a cerca
-    // acima passaria por não achar nada — verde pelo motivo errado.
-    expect(FONTE_DO_WORKER).toContain("silenced_post_handoff");
-    expect(FONTE_DO_WORKER.length).toBeGreaterThan(1000);
-  });
-
-  it("O WORKER USA a regra canônica — a função certa e não chamada deixa o defeito de pé", () => {
-    expect(
-      /silencioVigente\s*\(/.test(FONTE_DO_WORKER),
-      "o worker legado não chama silencioVigente — a guarda voltou a ser cópia local",
-    ).toBe(true);
-  });
-
-  it("e não voltou a comparar a data crua — a expressão exata que falhava", () => {
-    const cru = /new Date\(\s*c\.bot_silenced_until\s*\)/.test(FONTE_DO_WORKER);
-    expect(
-      cru,
-      "o worker voltou a fazer new Date(c.bot_silenced_until) — para 'infinity' isso é NaN e a guarda não dispara",
-    ).toBe(false);
   });
 });

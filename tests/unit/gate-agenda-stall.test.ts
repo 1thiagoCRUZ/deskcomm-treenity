@@ -1,6 +1,3 @@
-import fs from "node:fs";
-import path from "node:path";
-
 import { describe, expect, it } from "vitest";
 
 import {
@@ -13,14 +10,21 @@ import { SPINNING_DEFAULTS } from "@/lib/agent-engine/spinning/defaults";
 
 /**
  * O GATE de "vou verificar/confirmar agenda sem checar" — a cura DETERMINÍSTICA para o
- * `AGENDA_SYSTEM_BLOCK` (instrução em texto, `inbound-turn.ts`) sozinho não bastar. Medido
- * em produção, 2026-08-29 (tenant YADEA, `openai/gpt-5.6-terra`): a instrução estava presente
- * e por último no prompt, e o modelo prometeu verificar/confirmar horário sem chamar
+ * `AGENDA_SYSTEM_BLOCK` (instrução em texto, que vivia em `inbound-turn.ts`, arquivo já
+ * apagado) sozinho não bastar. Medido em produção, 2026-08-29 (tenant YADEA,
+ * `openai/gpt-5.6-terra`): a instrução estava presente e por último no prompt, e o modelo
+ * prometeu verificar/confirmar horário sem chamar
  * `crm_find_free_slots`/`crm_book_appointment`/`crm_reschedule_appointment` mesmo assim.
  *
  * `baseCtx` é próprio deste arquivo — mesma decisão de `gate-vazamento-interno.test.ts`
  * (sem fixture compartilhada de `GateContext`, pra um gate não herdar o contexto calibrado
  * para outro).
+ *
+ * ─── Pendência conhecida (não consertada aqui) ──────────────────────────────
+ *
+ * `runBeforeSend` só é chamado por lib/agent-engine/agent/aviso-de-escalacao.ts, que não
+ * passa `agenda`. Logo, o `agendaStallGate` existe na cadeia, mas hoje NÃO é armado em
+ * produção. Este arquivo prova o gate isolado, não que ele protege uma conversa real.
  */
 function baseCtx(overrides: Partial<GateContext> = {}): GateContext {
   return {
@@ -169,34 +173,5 @@ describe("agendaStallGate — veta a promessa vazia, nunca a checagem de verdade
 
   it("está na cadeia global e é o mesmo objeto exportado", () => {
     expect(BEFORE_SEND_GATES).toContain(agendaStallGate);
-  });
-});
-
-/**
- * FIAÇÃO — mesmo padrão de `gate-vazamento-interno.test.ts`: prova que o campo chega da
- * fonte real (`send_message` em `inbound-turn.ts`), não só que o gate decide certo isolado.
- */
-const FONTE_INBOUND = fs.readFileSync(
-  path.join(process.cwd(), "lib/agent-engine/agent/inbound-turn.ts"),
-  "utf8",
-);
-
-describe("fiação do gate — a EXECUÇÃO da ferramenta de agenda arma o sinal, não a decisão de chamar", () => {
-  it("send_message passa `agenda` calculado a partir de toolIds e da flag de execução", () => {
-    const i = FONTE_INBOUND.indexOf("send_message: tool({");
-    const j = FONTE_INBOUND.indexOf("update_lead_state: tool({", i);
-    expect(i).toBeGreaterThan(-1);
-    expect(j).toBeGreaterThan(i);
-    const corpo = FONTE_INBOUND.slice(i, j);
-    expect(corpo).toMatch(/agentConfig\.toolIds\.includes\('crm_book_appointment'\)/);
-    expect(corpo).toMatch(/toolCalledThisTurn:\s*agendaToolCalledThisTurn/);
-  });
-
-  it("as três tools de agenda são marcadas na montagem — não só crm_book_appointment", () => {
-    expect(FONTE_INBOUND).toMatch(/AGENDA_TOOL_NAMES = new Set\(\[/);
-    expect(FONTE_INBOUND).toContain("'crm_find_free_slots'");
-    expect(FONTE_INBOUND).toContain("'crm_book_appointment'");
-    expect(FONTE_INBOUND).toContain("'crm_reschedule_appointment'");
-    expect(FONTE_INBOUND).toMatch(/agendaToolCalledThisTurn = true/);
   });
 });
