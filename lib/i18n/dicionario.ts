@@ -7404,6 +7404,13 @@ export const DICIONARIO: Traducoes = {
   "Prazo": { es: "Plazo" },
   "Situação": { es: "Situación" },
   "Em andamento": { es: "En curso" },
+  "Clientes que estão conversando agora e ainda não escolheram a forma de pagamento.": { es: "Clientes que están conversando ahora y aún no eligieron la forma de pago." },
+  "Começou a conversa": { es: "Empezó la conversación" },
+  "Negociando": { es: "Negociando" },
+  "Proposta / pagamento": { es: "Propuesta / pago" },
+  "Não foi possível carregar os atendimentos em andamento agora.": { es: "No se pudieron cargar las atenciones en curso ahora." },
+  "Nenhum atendimento em andamento agora": { es: "Ninguna atención en curso ahora" },
+  "Precisa de atenção": { es: "Necesita atención" },
   "Escreva um título para a tarefa.": { es: "Escribe un título para la tarea." },
   "Não foi possível salvar a tarefa.": { es: "No se pudo guardar la tarea." },
 

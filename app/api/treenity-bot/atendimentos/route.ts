@@ -27,6 +27,7 @@ const querySchema = z.object({
   canal: z.string().min(1).max(60).optional(),
   etapa: z.string().min(1).max(60).optional(),
   com_venda: z.enum(["true", "false"]).optional(),
+  em_andamento: z.enum(["true", "false"]).optional(),
   cursor: z.string().min(1).max(300).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
 });
@@ -56,10 +57,10 @@ export async function GET(req: NextRequest): Promise<Response> {
     });
   }
 
-  const { com_venda, ...filtros } = parsed.data;
+  const { com_venda, em_andamento, ...filtros } = parsed.data;
   const pagina = await carregarAtendimentosTreenityBot(
     { email: authz.user.email, nome: authz.user.full_name ?? authz.user.email },
-    { ...filtros, desde: desdeParaOBot(filtros.desde), ate: ateParaOBot(filtros.ate), comVenda: com_venda === undefined ? undefined : com_venda === "true" },
+    { ...filtros, desde: desdeParaOBot(filtros.desde), ate: ateParaOBot(filtros.ate), comVenda: com_venda === undefined ? undefined : com_venda === "true", emAndamento: em_andamento === undefined ? undefined : em_andamento === "true" },
   );
   if (!pagina) {
     return fail("treenity_bot_unavailable", "Não foi possível carregar os atendimentos agora.", 503, { requestId });

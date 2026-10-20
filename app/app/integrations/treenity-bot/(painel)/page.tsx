@@ -47,6 +47,7 @@ import { normalizarIdioma } from "@/lib/i18n/idiomas";
 import { localeDeData } from "@/lib/i18n/datas";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { cn } from "@/lib/utils";
+import { EmAndamentoPainel } from "./_painel/EmAndamentoPainel";
 import { VendasPainel } from "./_painel/VendasPainel";
 import { AutomacoesPainel } from "./_automacoes/AutomacoesPainel";
 
@@ -245,6 +246,7 @@ async function ConteudoTreenityBot() {
               </div>
             </Card>
 
+            {ehAdmin ? <EmAndamentoPainel /> : null}
             {ehAdmin ? <VendasPainel inicial={painel?.vendas ?? null} /> : null}
           </TabsContent>
 

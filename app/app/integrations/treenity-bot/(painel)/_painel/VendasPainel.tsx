@@ -9,7 +9,7 @@
  * filtro, não só as linhas já carregadas.
  */
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { ArrowRight } from "@/lib/ui/icons";
@@ -43,12 +43,8 @@ import { useT } from "@/hooks/i18n/useT";
 import { useIdioma } from "@/lib/i18n/IdiomaProvider";
 import { tagDeIdioma } from "@/lib/i18n/datas";
 import type { PaginaDeVendas, ResumoVendas, VendaPainel } from "@/lib/treenity-bot/client";
-import {
-  assinarEstadoDoPainel,
-  ouvirEventosDoPainel,
-  painelEstaAoVivo,
-} from "@/lib/treenity-bot/painel-eventos";
 import { diaParaExibir } from "@/lib/treenity-bot/periodo";
+import { useAtualizacaoAoVivo } from "./useAtualizacaoAoVivo";
 import { dataHora, moeda, unirSemRepetir, varianteDoStatusDaVenda } from "./formatacao-painel";
 import {
   CampoDeBusca,
@@ -60,8 +56,6 @@ import {
 } from "./FiltrosDoPainel";
 
 const TODOS = "todos";
-const AGRUPAR_AVISOS_MS = 400;
-const POLLING_DE_RESERVA_MS = 30 * 1000;
 const CANAIS_CONHECIDOS = ["Instagram", "Facebook", "WhatsApp"];
 // "Paga" precisa estar na lista mesmo que nenhuma venda paga tenha sido carregada ainda.
 const STATUS_BASE = ["Aguardando Pagamento", "Paga"];
@@ -148,9 +142,6 @@ export function VendasPainel({ inicial }: { inicial: PaginaDeVendas | null }) {
     filtrosRef.current = filtros;
   }, [filtros]);
 
-  // "Ao vivo" só quando o bot confirmou que este socket está na sala do painel.
-  const aoVivo = useSyncExternalStore(assinarEstadoDoPainel, painelEstaAoVivo, () => false);
-
   // Busca a primeira página de novo, sem piscar nem avisar erro, e mescla com o
   // que já está na tela (quem carregou "mais" não perde as páginas seguintes).
   const atualizarSilencioso = useCallback(async () => {
@@ -164,29 +155,8 @@ export function VendasPainel({ inicial }: { inicial: PaginaDeVendas | null }) {
     setErro(false);
   }, []);
 
-  // Ao vivo, uma venda nova/alterada (ou um "reconectado") atualiza na hora.
-  useEffect(() => {
-    let espera: ReturnType<typeof setTimeout> | undefined;
-    const parar = ouvirEventosDoPainel((evento) => {
-      if (evento.tipo !== "venda" && evento.tipo !== "reconectado") return;
-      if (espera) clearTimeout(espera);
-      espera = setTimeout(() => void atualizarSilencioso(), AGRUPAR_AVISOS_MS);
-    });
-    return () => {
-      parar();
-      if (espera) clearTimeout(espera);
-    };
-  }, [atualizarSilencioso]);
-
-  // Reserva: sem tempo real (usuário sem acesso ao vivo, bot antigo), atualiza por
-  // polling. Ao vivo, os avisos acima bastam.
-  useEffect(() => {
-    if (aoVivo) return;
-    const timer = setInterval(() => {
-      if (document.visibilityState === "visible") void atualizarSilencioso();
-    }, POLLING_DE_RESERVA_MS);
-    return () => clearInterval(timer);
-  }, [aoVivo, atualizarSilencioso]);
+  // Venda nova/alterada (ou "reconectado") atualiza na hora; sem tempo real, por polling.
+  useAtualizacaoAoVivo(["venda"], atualizarSilencioso);
 
   async function buscar(f: Filtros, cursorAtual: string | null) {
     const meu = pedido.novo();
