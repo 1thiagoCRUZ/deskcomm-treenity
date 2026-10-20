@@ -38,3 +38,23 @@ describe("menu do Dono: enxuto e adaptável", () => {
     expect(menu).toContain("/app/connections");
   });
 });
+
+describe("Agenda do Funcionário: só quando a empresa liga", () => {
+  const agenda = "/app/agenda";
+  const func = PAPEIS_DO_CLIENTE.funcionario.interface;
+
+  it("desligada (padrão), o Funcionário não vê a Agenda; o Dono vê sempre", () => {
+    expect(hrefsDoMenu(false, "agent", func, {})).not.toContain(agenda);
+    expect(hrefsDoMenu(false, "agent", func, { agendaDaEquipe: false })).not.toContain(agenda);
+    expect(hrefsDoMenu(false, "admin", { preset: "completa" }, { agendaDaEquipe: false })).toContain(agenda);
+  });
+
+  it("ligada, o Funcionário passa a ver a Agenda", () => {
+    expect(hrefsDoMenu(false, "agent", func, { agendaDaEquipe: true })).toContain(agenda);
+  });
+
+  it("menu personalizado do Dono vence: lista sem Agenda continua sem", () => {
+    const personalizado = { preset: "simplificada" as const, destinos: ["/app/inbox" as const] };
+    expect(hrefsDoMenu(false, "agent", personalizado, { agendaDaEquipe: true })).not.toContain(agenda);
+  });
+});

@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 
+import { agendaLigadaParaEquipe } from "@/lib/agenda/da-equipe";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { ROLE_RANK } from "@/lib/auth/types";
@@ -42,7 +44,7 @@ export default async function TiposDeAgendamentoPage() {
   const podeEditar = (user.is_platform_admin && !user.support) || ROLE_RANK[activeOrg.role] >= ROLE_RANK.manager;
 
   const supabase = await createClient();
-  const [{ data: tipos }, { data: pessoas }] = await Promise.all([
+  const [{ data: tipos }, { data: pessoas }, { data: configDaOrg }] = await Promise.all([
     supabase
       .from("calendar_event_types")
       .select(
@@ -56,6 +58,9 @@ export default async function TiposDeAgendamentoPage() {
       .select("user_id, role")
       .eq("organization_id", activeOrg.orgId)
       .is("revoked_at", null),
+    // `activeOrg.orgId` vem da sessão; admin client porque `settings` da empresa
+    // não é lido pelo client de sessão em todo papel.
+    createAdminClient().from("organizations").select("settings").eq("id", activeOrg.orgId).maybeSingle(),
   ]);
 
   // O NOME DE GENTE, e não o fragmento de UUID.
@@ -92,6 +97,8 @@ export default async function TiposDeAgendamentoPage() {
         usuarioAtualId={user.id}
         podeConfigurarGoogle={ROLE_RANK[activeOrg.role] >= ROLE_RANK.agent}
         podeEditar={podeEditar}
+        ehDono={activeOrg.role === "admin"}
+        agendaDaEquipe={agendaLigadaParaEquipe(configDaOrg?.settings)}
       />
     </div>
   );

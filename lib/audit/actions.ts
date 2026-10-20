@@ -325,6 +325,8 @@ export const AUDIT_ACTIONS = [
   "onboarding.agente_teste_pulado",
   "security.mfa_exigida",
   "security.mfa_dispensada",
+  "agenda.equipe_ligada",
+  "agenda.equipe_desligada",
   "security.mfa_desativada",
   // Havia convite no signup e ele não valia (expirado, ou emitido para outro
   // e-mail). Não é falha de sistema: é a recusa deliberada de abrir organização

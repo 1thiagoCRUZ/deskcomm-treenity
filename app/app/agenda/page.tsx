@@ -3,7 +3,10 @@ import { redirect } from "next/navigation";
 
 import { enderecoDeRetorno, faltaParaConectarOGoogle, googleEstaConfigurado } from "@/lib/agenda/google/config";
 import { PROVEDOR_GOOGLE } from "@/lib/agenda/tipos";
+import { agendaLigadaParaEquipe } from "@/lib/agenda/da-equipe";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
+import { ROLE_RANK } from "@/lib/auth/types";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 import type { Agendamento as AgendamentoDaTela } from "@/components/agenda/tipos";
@@ -48,6 +51,19 @@ export default async function AgendaPage() {
   // não expõe o metadata cru — ele extrai o que toda tela precisa no primeiro
   // render, como já fazia com o `locale`. O fuso entrou lá pela mesma razão.
   const fusoDeApresentacao = user.timezone ?? null;
+
+  // O Funcionário só entra na Agenda quando o Dono ligou para a equipe. Esconder
+  // o menu não basta: sem isto a URL abriria a tela de uma empresa que não a usa.
+  // Dono, Gerente e Gestão passam sempre. `activeOrg.orgId` vem da sessão.
+  const veSempre = user.is_platform_admin || ROLE_RANK[activeOrg.role] >= ROLE_RANK.manager;
+  if (!veSempre) {
+    const { data: org } = await createAdminClient()
+      .from("organizations")
+      .select("settings")
+      .eq("id", activeOrg.orgId)
+      .maybeSingle();
+    if (!agendaLigadaParaEquipe(org?.settings)) redirect("/app");
+  }
 
   // Resolvido no SERVIDOR: `GOOGLE_CALENDAR_*` é env de servidor e não pode
   // atravessar para o cliente. A tela recebe o booleano e a lista do que falta,
