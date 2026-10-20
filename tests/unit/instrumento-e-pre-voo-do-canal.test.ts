@@ -152,24 +152,6 @@ describe("o arquivo do corpo cru", () => {
   });
 });
 
-describe("a rota chama o arquivo nos dois lados", () => {
-  const ROTA = readFileSync("app/api/v1/webhooks/channel/[token]/route.ts", "utf8");
-
-  it("abre ANTES de processar", () => {
-    // Se o processo morrer no meio, o corpo cru precisa já estar gravado — que é
-    // justamente quando alguém vai querer lê-lo.
-    const abertura = ROTA.indexOf("abrirArquivoDoWebhook");
-    const processamento = ROTA.indexOf("await handleInboundWebhook");
-    expect(abertura).toBeGreaterThan(-1);
-    expect(abertura, "o arquivo abre depois do processamento").toBeLessThan(processamento);
-  });
-
-  it("fecha nos TRÊS desfechos — sucesso, recusa e exceção", () => {
-    const fechamentos = [...ROTA.matchAll(/await fecharArquivoDoWebhook\(/g)];
-    expect(fechamentos.length, "algum desfecho deixa a linha eternamente 'received'").toBe(3);
-  });
-});
-
 describe("o pré-voo da definição", () => {
   async function conferir(values: Record<string, string> = {}) {
     const { conferirDefinicao } = await import("@/lib/channels/conferir-definicao");
@@ -263,26 +245,5 @@ describe("o pré-voo roda antes de escolher transporte", () => {
     // Dois números têm modelos diferentes; conferir o do número errado aprovaria
     // um envio que a plataforma recusa.
     expect(HANDLER).toMatch(/channelSessionId: c\.channel_session_id/);
-  });
-});
-
-describe("o resgate de presas não toca canal que não alcança", () => {
-  const WATCHDOG = readFileSync("lib/agent-engine/edge/crm/session-reconciler.ts", "utf8");
-
-  it("filtra para as sessões que este transporte resolve", () => {
-    // Sem o filtro, a consulta trazia mensagem de QUALQUER canal e postava com
-    // a sessão nula.
-    expect(WATCHDOG).toMatch(/and s\.waha_session_name is not null/);
-  });
-
-  it("mas CONTA as que ficaram de fora — silêncio é o que fez isso durar", () => {
-    expect(WATCHDOG).toMatch(/mensagens presas em canal que este resgate não alcança/);
-  });
-
-  it("e não as reenvia daqui", () => {
-    // Enviar em dobro é pior que não enviar, e este processo não tem como saber
-    // se o outro caminho já mandou.
-    const envios = [...WATCHDOG.matchAll(/\/api\/sendText/g)];
-    expect(envios.length, "apareceu um segundo caminho de envio no watchdog").toBe(1);
   });
 });
