@@ -153,6 +153,8 @@ export interface ActiveOrg {
    * significa "não sei" e o menu mostra.
    */
   tem_equipe?: boolean;
+  /** O Dono ligou a Agenda para a equipe? O menu do Funcionário mostra a Agenda só com isto. */
+  agenda_da_equipe?: boolean;
   /**
    * O que ESTA organização definiu para si — CAMPO A CAMPO, e só o que ela
    * mesma definiu.

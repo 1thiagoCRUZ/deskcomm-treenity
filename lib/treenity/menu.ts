@@ -41,6 +41,8 @@ export interface ContextoDoMenu {
   temEquipe?: boolean;
   /** A Gestão está dentro da empresa (suporte): ela usa Conexões toda hora, então o menu fica completo. */
   suporte?: boolean;
+  /** O Dono ligou a Agenda para a equipe? Ausente = desligada (ver `lib/agenda/da-equipe.ts`). */
+  agendaDaEquipe?: boolean;
 }
 
 export function foraDoMenuLateral(
