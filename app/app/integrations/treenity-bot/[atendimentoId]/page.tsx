@@ -20,7 +20,9 @@ import { format, isToday, isYesterday } from "date-fns";
 import { CaretLeft, ChatCircle, Microphone, Robot, Warning } from "@/lib/ui/icons";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { loadAuthUser } from "@/lib/auth/server";
+import { loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
+import { roleAtLeast } from "@/lib/auth/types";
+import { carregarAcessoAoBot } from "@/lib/treenity-bot/acesso";
 import { carregarConversaTreenityBot, type MensagemAtendimento } from "@/lib/treenity-bot/client";
 import { formatarLatencia, iniciaisDe } from "@/lib/treenity-bot/formatacao";
 import { normalizarIdioma, type Idioma } from "@/lib/i18n/idiomas";
@@ -103,7 +105,31 @@ export default async function TreenityBotConversaPage({ params }: Props) {
   const user = await loadAuthUser();
   const idioma = normalizarIdioma(user?.locale ?? null);
 
-  const conversa = user
+  // A API do bot não separa empresas: a transcrição só abre para o Dono de uma
+  // empresa com o bot ligado (a Gestão Treenity é a exceção, dentro de `carregarAcessoAoBot`).
+  const org = user ? await resolveActiveOrg(user) : null;
+  const acesso = user ? await carregarAcessoAoBot({ user, org, minimo: "admin" }) : null;
+
+  if (user && !acesso?.permitido) {
+    return (
+      <div className="flex w-full flex-col gap-4">
+        <Card className="max-w-2xl">
+          <CardHeader>
+            <CardTitle>
+              {traduzir(
+                acesso?.permitido === false && acesso.motivo === "bot_desligado"
+                  ? "O Treenity Bot não está ligado nesta empresa."
+                  : "Somente o Dono da empresa acessa esta área do Treenity Bot.",
+                idioma,
+              )}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
+  const conversa = user && roleAtLeast(org?.role, "admin")
     ? await carregarConversaTreenityBot({ email: user.email, nome: user.full_name ?? user.email }, atendimentoId)
     : null;
 

@@ -7553,6 +7553,8 @@ export const DICIONARIO: Traducoes = {
   "Fechando…": { es: "Cerrando…" },
   "Informe como terminou e, se teve venda, o valor.": { es: "Indica cómo terminó y, si hubo venta, el valor." },
   "Esta organização não usa o Treenity Bot no Inbox.": { es: "Esta organización no usa Treenity Bot en el Inbox." },
+  "O Treenity Bot não está ligado nesta empresa.": { es: "Treenity Bot no está activado en esta empresa." },
+  "Somente o Dono da empresa acessa esta área do Treenity Bot.": { es: "Solo el Dueño de la empresa accede a esta área de Treenity Bot." },
   "Não foi possível avisar o Treenity Bot. Nada foi fechado — tente de novo em instantes.": { es: "No fue posible avisar a Treenity Bot. No se cerró nada: inténtalo de nuevo en unos instantes." },
   "Atendimento devolvido, mas o sinal de retomada do acompanhamento falhou — tente de novo.": { es: "Atención devuelta, pero la señal de reanudación del seguimiento falló — intenta de nuevo." },
   "Atendimento devolvido ao agente com o registro do que a equipe decidiu": {

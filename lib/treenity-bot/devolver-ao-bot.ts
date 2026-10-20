@@ -64,7 +64,12 @@ export async function liberarTravaDoBot(
 
     const res = await comRenovacaoEm401(pedido.usuario, sessao.accessToken, (accessToken) => fetch(`${config.apiUrl}/api/atendimentos/devolver-ao-bot`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        // Segredo de servidor: a API do bot passa a exigi-lo nas mutações. Nunca vai ao navegador nem a log.
+        "X-SSO-Secret": config.ssoSecret,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({ id_faces: idsFaceDoTelefone(telefone) }),
       cache: "no-store",
       signal: AbortSignal.timeout(TEMPO_MAXIMO_MS),
