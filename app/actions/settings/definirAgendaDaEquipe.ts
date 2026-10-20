@@ -14,7 +14,7 @@
 import { revalidatePath } from "next/cache";
 
 import { audit } from "@/lib/audit";
-import { loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
+import { loadAuthUser, mfaEmDivida, resolveActiveOrg } from "@/lib/auth/server";
 import { supportWriteError } from "@/lib/impersonate/support";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -23,6 +23,8 @@ export type ResultadoDaAgendaDaEquipe = { ok: true } | { ok: false; erro: string
 export async function definirAgendaDaEquipe(ligada: boolean): Promise<ResultadoDaAgendaDaEquipe> {
   const user = await loadAuthUser();
   if (!user) return { ok: false, erro: "Sua sessão expirou. Entre de novo." };
+  // Server Action não passa por `requireRole`; sem isto, sessão só com senha (aal1) gravaria.
+  if (await mfaEmDivida()) return { ok: false, erro: "Confirme a verificação em duas etapas." };
   if (supportWriteError(user.support)) return { ok: false, erro: "Acompanhamento somente leitura ou encerrado." };
   const org = await resolveActiveOrg(user);
   if (!org) return { ok: false, erro: "Nenhuma empresa ativa." };

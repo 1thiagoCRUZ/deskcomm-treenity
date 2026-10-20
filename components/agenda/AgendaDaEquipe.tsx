@@ -38,7 +38,7 @@ export function AgendaDaEquipe({ ligadaInicial }: { ligadaInicial: boolean }) {
       <div className="space-y-1">
         <h2 className="font-semibold">{t("Minha equipe usa a Agenda")}</h2>
         <p className="text-sm text-text-muted">
-          {t("Ligado: os funcionários veem a Agenda no menu. Desligado: só você vê. Cada empresa tem a sua agenda, separada das outras.")}
+          {t("Ligado: os funcionários veem a Agenda no menu. Desligado: só você e os gerentes veem. Cada empresa tem a sua agenda, separada das outras.")}
         </p>
       </div>
       <Switch
