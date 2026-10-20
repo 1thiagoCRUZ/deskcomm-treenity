@@ -249,7 +249,12 @@ export function SidebarContent({
                   className="space-y-1"
                 >
                   {items.map((item) => {
-                    const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                    // O item mais específico vence: "Chat da equipe" mora DENTRO de
+                    // "Treenity Bot" (`/treenity-bot/chat`), e o prefixo sozinho marcava os dois.
+                    const casa = (h: string) => pathname === h || pathname.startsWith(h + "/");
+                    const isActive =
+                      casa(item.href) &&
+                      !todos.some((g) => g.items.some((o) => o.href.length > item.href.length && casa(o.href)));
                     const Icon = item.icon;
                     return (
                       <li key={item.href}>
