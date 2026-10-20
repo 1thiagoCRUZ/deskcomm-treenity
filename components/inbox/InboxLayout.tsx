@@ -1,10 +1,8 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useT } from "@/hooks/i18n/useT";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/auth/AuthProvider";
-import { estadoDaJanela, formatarDecorrido } from "@/lib/channels/janela";
-import { JanelaFechadaAviso } from "@/components/inbox/JanelaFechadaAviso";
 import { useClaimConversation } from "@/hooks/inbox/useClaimConversation";
 import { useCloseConversation } from "@/hooks/inbox/useCloseConversation";
 import { useMarkAsRead } from "@/hooks/inbox/useMarkAsRead";
@@ -18,7 +16,8 @@ import { ConversationList } from "./ConversationList";
 import { InboxFilters, type InboxFiltersValue, type InboxTab } from "./InboxFilters";
 import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { ChatThread } from "./ChatThread";
-import { Composer, type ComposerHandle } from "./Composer";
+import type { ComposerHandle } from "./Composer";
+import { RodapeDaConversa } from "./RodapeDaConversa";
 import { ConversationHeader } from "./ConversationHeader";
 import { VendaFechadaPainel } from "./VendaFechadaPainel";
 import { VendasFechadasLista } from "./VendasFechadasLista";
@@ -127,12 +126,25 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
   const supportReadonly = user.support?.access_mode === "support_readonly";
   const orgId = activeOrg?.orgId ?? null;
 
-  const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const tab = parseFilterParam(searchParams.get("filter"));
+  const tabDaUrl = parseFilterParam(searchParams.get("filter"));
 
-  // tab vive na URL (?filter=); os demais filtros são estado local de sessão.
+  // A ABA vive em estado local; a URL (?filter=) só a ESPELHA. `router.replace`
+  // numa página `force-dynamic` é uma ida ao servidor (RSC) por clique; o
+  // `history.replaceState(null, ...)` troca a URL sem rede (o Next acompanha o
+  // `useSearchParams`). O state é `null` de propósito: reaproveitar
+  // `window.history.state` (que traz `__NA`) faria o Next PULAR a atualização. O deep-link ?filter= vale na carga inicial, e uma
+  // mudança de URL vinda de fora (voltar/avançar, link) reassenta o estado.
+  const [tab, setTab] = useState<InboxTab>(tabDaUrl);
+  // Ajuste durante o render (padrão do React): guarda a última URL vista e só
+  // reassenta a aba quando a URL mudou por fora.
+  const [urlVista, setUrlVista] = useState<InboxTab>(tabDaUrl);
+  if (urlVista !== tabDaUrl) {
+    setUrlVista(tabDaUrl);
+    setTab(tabDaUrl);
+  }
+
+  // os demais filtros são estado local de sessão.
   const [aux, setAux] = useState<Omit<InboxFiltersValue, "tab">>({
     search: "",
     onlyUnread: false,
@@ -141,14 +153,19 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
   const setFilterValue = useCallback(
     (next: InboxFiltersValue) => {
       if (next.tab !== tab) {
-        const params = new URLSearchParams(searchParams);
+        setTab(next.tab);
+        const params = new URLSearchParams(window.location.search);
         params.set("filter", next.tab);
-        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+        window.history.replaceState(
+          null,
+          "",
+          `${window.location.pathname}?${params.toString()}${window.location.hash}`,
+        );
       }
       const { tab: _t, ...rest } = next;
       setAux(rest);
     },
-    [tab, searchParams, router, pathname],
+    [tab],
   );
 
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId);
@@ -180,7 +197,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
    * e completa quando a resposta chega; a janela é de ~200ms e o rótulo nunca
    * discorda do filtro, porque os dois usam a mesma convenção.
    */
-  const { data: automaticoDaOrg } = useAutomaticoAtivo();
+  const { data: automaticoDaOrg, isLoading: lendoAutomatico, failureCount } = useAutomaticoAtivo();
   const composerRef = useRef<ComposerHandle | null>(null);
 
   const filters: ConversationsFilters = useMemo(
@@ -209,7 +226,37 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
 
   // We need the selected conversation object for header / composer / side panel.
   // Source it from the same query the list uses to avoid an extra request.
-  const listQ = useConversationsRealtime(filters, orgId);
+  //
+  // ABERTURA EM UMA LISTA SÓ: só a Fila muda de pedido conforme o automático da
+  // org (`comandosDaFila`). Nela, a lista espera essa resposta (~200ms) em vez de
+  // pedir com a chave antiga e de novo com a nova (2 listas de ~1s). Sem a
+  // permissão, ou depois de um erro, `lendoAutomatico` é falso e a lista segue
+  // com `undefined` ("assume que há automático"). Com o valor em cache
+  // (staleTime 5 min) não espera nada. A espera tem TETO de 1 s (`esperaVencida`):
+  // se o endpoint ficar pendurado (o cliente HTTP faz várias tentativas), a lista
+  // sai mesmo assim com `undefined`.
+  // `failureCount === 0`: a primeira falha já libera a lista (não espera a
+  // nova tentativa do hook).
+  const aguardaAutomatico =
+    filterValue.tab === "unassigned" && lendoAutomatico && failureCount === 0;
+  const [esperaVencida, setEsperaVencida] = useState(false);
+  useEffect(() => {
+    if (!aguardaAutomatico) return;
+    const id = setTimeout(() => setEsperaVencida(true), 1000);
+    return () => clearTimeout(id);
+  }, [aguardaAutomatico]);
+  const esperandoAutomatico = aguardaAutomatico && !esperaVencida;
+  const listaBruta = useConversationsRealtime(filters, orgId, !esperandoAutomatico);
+  // Query desligada não é "carregando" para o react-query; para a tela é —
+  // sem isto a lista pintaria "vazio" durante a espera.
+  const listQ = useMemo(
+    () =>
+      ({
+        ...listaBruta,
+        isLoading: listaBruta.isLoading || esperandoAutomatico,
+      }) as typeof listaBruta,
+    [listaBruta, esperandoAutomatico],
+  );
   const inList = useMemo(() => {
     const all = listQ.data?.pages.flatMap((p) => p.data) ?? [];
     return all.find((c) => c.id === selectedId) ?? null;
@@ -284,6 +331,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
     setRespondendo(null);
   }, []);
   const handleVisibleChange = useCallback((ids: string[]) => setVisibleIds(ids), []);
+  const cancelarResposta = useCallback(() => setRespondendo(null), []);
   const handleFocusReply = useCallback(() => composerRef.current?.focus(), []);
   const handleClaim = useCallback(() => {
     if (!selectedConversation) return;
@@ -296,38 +344,6 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
     if (!selectedConversation) return;
     close.mutate({ conversation_id: selectedConversation.id });
   }, [close, selectedConversation]);
-
-  // A janela vence SOZINHA com a aba aberta. Sem este relógio, quem deixa o
-  // inbox aberto a tarde inteira seguiria com o composer liberado numa conversa
-  // que já venceu — e o bloqueio só apareceria no próximo recarregamento.
-  const [agoraJanela, setAgoraJanela] = useState(() => new Date());
-  useEffect(() => {
-    const t = setInterval(() => setAgoraJanela(new Date()), 30_000);
-    return () => clearInterval(t);
-  }, []);
-
-  // A janela de 24h fecha o composer, e o motivo DIZ há quanto tempo fechou.
-  //
-  // Antes disto o texto livre saía, o CRM marcava `failed` e o operador via um
-  // `131047` — descobrindo a regra pelo erro, uma mensagem por vez. Barrar aqui
-  // é o pedido explícito do dono: se não dá para enviar, que não deixe tentar.
-  //
-  // Reusa o `blockedReason` que já existe (contato bloqueado/anonimizado) em vez
-  // de um segundo mecanismo de bloqueio: dois caminhos para desabilitar o mesmo
-  // composer divergem, e o segundo esquece de cobrir o áudio ou o anexo.
-  const janela = estadoDaJanela(
-    selectedConversation?.channel_sessions?.provider ?? null,
-    selectedConversation?.last_inbound_at ?? null,
-    agoraJanela,
-  );
-  const motivoDaJanela =
-    janela.tipo === "fechada"
-      ? janela.fechadaHaMs === null
-        ? t(
-            "O cliente ainda não escreveu — a janela de 24h nunca abriu. Só um modelo aprovado sai daqui.",
-          )
-        : `${t("A janela de 24h fechou há")} ${formatarDecorrido(janela.fechadaHaMs)}. ${t("Só um modelo aprovado sai daqui — texto livre é recusado pela plataforma.")}`
-      : null;
 
   const blockedReason = selectedConversation?.contacts?.is_blocked
     ? t("Contato bloqueado — envio de mensagens desabilitado.")
@@ -515,23 +531,12 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
                   />
                 </div>
                 <RetentionNotice conversationId={selectedConversation.id} />
-                {motivoDaJanela && (
-                  <JanelaFechadaAviso
-                    conversationId={selectedConversation.id}
-                    provider={selectedConversation.channel_sessions?.provider ?? null}
-                    motivo={motivoDaJanela}
-                  />
-                )}
-                <Composer
-                  ref={composerRef}
-                  conversationId={selectedConversation.id}
+                <RodapeDaConversa
+                  conversation={selectedConversation}
+                  composerRef={composerRef}
                   blockedReason={supportReadonly ? "Acompanhamento somente leitura" : blockedReason}
-                  janelaFechada={motivoDaJanela}
-                  disabled={selectedConversation.status === "closed"}
-                  contactName={selectedConversation.contacts?.name ?? null}
                   respondendo={respondendo}
-                  onCancelarResposta={() => setRespondendo(null)}
-                  currentContactId={selectedConversation.contact_id}
+                  onCancelarResposta={cancelarResposta}
                 />
               </div>
             </>

@@ -80,10 +80,13 @@ export function InterfaceRefresh({
     },
   });
   useEffect(() => {
+    // O canal Realtime acima é quem avisa na hora; este intervalo é só a rede de
+    // segurança (120 s). Ao OCULTAR a aba não há o que conferir: só ao voltar.
     const refresh = () => {
+      if (isDocumentHidden()) return;
       void check();
     };
-    const timer = setInterval(refresh, 30_000);
+    const timer = setInterval(refresh, 120_000);
     window.addEventListener("focus", refresh);
     window.addEventListener("online", refresh);
     document.addEventListener("visibilitychange", refresh);

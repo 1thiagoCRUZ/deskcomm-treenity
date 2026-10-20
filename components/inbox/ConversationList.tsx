@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useT } from "@/hooks/i18n/useT";
 import type { InfiniteData, UseInfiniteQueryResult } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -61,6 +61,14 @@ export function ConversationList({
   // com o cabeçalho, que faz a mesma pergunta).
   const automaticoDaOrg = useAutomaticoAtivo();
 
+  // Um tique por minuto (só a lista redesenha) mantém "há X min" e o tempo de
+  // espera da Fila corretos, já que as linhas são memoizadas.
+  const [minuto, setMinuto] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setMinuto((m) => m + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   const items = useMemo(() => {
     const all: ConversationWithContact[] = q.data?.pages.flatMap((p) => p.data) ?? [];
     return clientFilter ? all.filter(clientFilter) : all;
@@ -103,10 +111,16 @@ export function ConversationList({
   const mostrarAutomatico =
     !(filters.comando?.length === 1 && filters.comando[0] === "automatico");
 
+  // Só avisa o pai quando os IDs (e a ordem) de fato mudam: um refetch devolve
+  // objetos novos com os mesmos ids, e cada aviso redesenhava o InboxLayout.
+  const assinaturaDosIds = useMemo(() => items.map((i) => i.id).join("|"), [items]);
+  const ultimaAssinatura = useRef<string | null>(null);
   useEffect(() => {
-    if (onVisibleChange) onVisibleChange(items.map((i) => i.id));
+    if (!onVisibleChange || ultimaAssinatura.current === assinaturaDosIds) return;
+    ultimaAssinatura.current = assinaturaDosIds;
+    onVisibleChange(assinaturaDosIds === "" ? [] : assinaturaDosIds.split("|"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items]);
+  }, [assinaturaDosIds]);
 
   if (q.isLoading) {
     return (
@@ -156,6 +170,7 @@ export function ConversationList({
             mostrarAtendente={mostrarAtendente}
             mostrarAutomatico={mostrarAutomatico}
             automaticoDaOrg={automaticoDaOrg.data}
+            minuto={minuto}
           />
         ))}
         {q.hasNextPage && (

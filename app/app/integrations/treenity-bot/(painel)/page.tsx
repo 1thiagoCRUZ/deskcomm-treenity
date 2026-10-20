@@ -30,9 +30,11 @@
  * tempo faz que `atencaoSinalizadaEm` foi gravado.
  */
 
+import { Suspense } from "react";
 import Link from "next/link";
 import { formatDistanceToNowStrict } from "date-fns";
 import { ChartLineUp, Robot } from "@/lib/ui/icons";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
@@ -48,6 +50,46 @@ import { VendasPainel } from "./_painel/VendasPainel";
 import { AutomacoesPainel } from "./_automacoes/AutomacoesPainel";
 
 export default async function TreenityBotIntegrationPage() {
+  const user = await loadAuthUser();
+  const idioma = normalizarIdioma(user?.locale ?? null);
+
+  // A casca e o cabeçalho saem na hora; o que depende da API do bot (que pode estar
+  // "dormindo" no Render) fica dentro do Suspense e chega quando responder.
+  return (
+    <div className="flex h-[calc(100dvh-3.5rem-2*var(--space-6))] w-full flex-col gap-4">
+      <header className="flex shrink-0 items-center gap-3">
+        <div className="rounded-lg border border-border bg-surface p-2.5">
+          <Robot size={24} weight="duotone" className="text-muted-foreground" />
+        </div>
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">Treenity Bot</h1>
+          <p className="text-sm text-muted-foreground">
+            {traduzir(
+              "Bot de vendas (WhatsApp/Facebook) — status da conexão e conversas precisando de um humano.",
+              idioma,
+            )}
+          </p>
+        </div>
+      </header>
+
+      <Suspense fallback={<ConteudoSkeleton />}>
+        <ConteudoTreenityBot />
+      </Suspense>
+    </div>
+  );
+}
+
+function ConteudoSkeleton() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-12 w-72 rounded-xl" />
+      <Skeleton className="h-48 w-full" />
+      <Skeleton className="h-64 w-full" />
+    </div>
+  );
+}
+
+async function ConteudoTreenityBot() {
   const user = await loadAuthUser();
   const idioma = normalizarIdioma(user?.locale ?? null);
   const locale = localeDeData(idioma);
@@ -78,22 +120,7 @@ export default async function TreenityBotIntegrationPage() {
     "rounded-lg px-6 py-3 text-base font-semibold text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm";
 
   return (
-    <div className="flex h-[calc(100dvh-3.5rem-2*var(--space-6))] w-full flex-col gap-4">
-      <header className="flex shrink-0 items-center gap-3">
-        <div className="rounded-lg border border-border bg-surface p-2.5">
-          <Robot size={24} weight="duotone" className="text-muted-foreground" />
-        </div>
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Treenity Bot</h1>
-          <p className="text-sm text-muted-foreground">
-            {traduzir(
-              "Bot de vendas (WhatsApp/Facebook) — status da conexão e conversas precisando de um humano.",
-              idioma,
-            )}
-          </p>
-        </div>
-      </header>
-
+    <>
       {!configured ? (
         <Card className="max-w-2xl">
           <CardHeader>
@@ -212,6 +239,6 @@ export default async function TreenityBotIntegrationPage() {
           ) : null}
         </Tabs>
       )}
-    </div>
+    </>
   );
 }

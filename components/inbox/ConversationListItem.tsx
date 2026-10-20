@@ -1,4 +1,5 @@
 "use client";
+import { memo } from "react";
 
 import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
 
@@ -55,6 +56,12 @@ interface Props {
    * afirme nada".
    */
   automaticoDaOrg?: boolean;
+  /**
+   * Só existe para REFAZER os textos relativos ("há 5 min", "Aguardando há…"):
+   * com `memo`, a linha não redesenha sozinha com o passar do tempo, então a
+   * lista troca este número a cada minuto. Não é lido de propósito.
+   */
+  minuto?: number;
 }
 
 /**
@@ -111,7 +118,7 @@ function waitingLabel(
   return `${t("Aguardando")} ${formatDistanceToNowStrict(new Date(since), { addSuffix: true, locale: locale })}`;
 }
 
-export function ConversationListItem({
+function ConversationListItemBase({
   conversation,
   isSelected,
   onSelect,
@@ -328,3 +335,7 @@ export function ConversationListItem({
     </button>
   );
 }
+
+// Props estáveis (callbacks vêm de useCallback/setState; objetos preservados pelo
+// structural sharing do react-query): sem isto, cada refetch redesenha todas as linhas.
+export const ConversationListItem = memo(ConversationListItemBase);

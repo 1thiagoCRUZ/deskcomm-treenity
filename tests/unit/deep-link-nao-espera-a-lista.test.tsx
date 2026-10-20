@@ -73,7 +73,7 @@ const get = vi.fn(async (bruta?: string): Promise<unknown> => {
   if (url === `/api/v1/conversations/${CONVERSA}`) {
     return { data: CONVERSA_ROW };
   }
-  if (url === "/api/v1/ai/automatico-ativo") return { data: { ativo: false } };
+  if (url === "/api/v1/atendimento/automatico-ativo") return { data: { ativo: false } };
   if (url === "/api/v1/conversations/counts") return { data: {} };
   if (url === "/api/v1/conversation-tags") return { data: [] };
   return { data: [] };
@@ -144,9 +144,14 @@ describe("deep-link para conversa fora do filtro", () => {
     );
     // O controle: a lista continua no ar. Sem ele, este caso passaria também
     // num mundo em que a busca única espera — bastaria a lista ter respondido.
-    expect(
-      get.mock.calls.some((c) => (c[0] ?? "").startsWith("/api/v1/conversations?")),
-    ).toBe(true);
+    // (Com a abertura em UMA lista só, a Fila espera o "automático da org"
+    // responder antes de pedir a lista — por isso o waitFor: a lista sai logo
+    // depois, em paralelo à busca única, e nunca responde.)
+    await waitFor(() =>
+      expect(
+        get.mock.calls.some((c) => (c[0] ?? "").startsWith("/api/v1/conversations?")),
+      ).toBe(true),
+    );
   });
 
   it("entrega a conversa ao painel do contato com a lista ainda no ar", async () => {

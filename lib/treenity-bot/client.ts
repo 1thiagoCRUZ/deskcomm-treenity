@@ -21,17 +21,43 @@ export interface TreenityBotUsuario {
 }
 
 /**
- * Exportada (além de usada internamente aqui) porque a rota de chat interno
- * (`app/api/treenity-bot/sso/route.ts`) também precisa trocar a identidade do
- * usuário logado por um accessToken, sem duplicar essa chamada.
+ * A API do bot roda no Render gratuito, que "dorme" e leva dezenas de segundos
+ * para acordar. Sem teto, a tela do painel ficaria pendurada esse tempo todo:
+ * com ele, a chamada falha rápido e cai na degradação de sempre (null).
  */
-export async function trocarToken(
-  usuario: { email: string; nome: string },
-  opcoes: { painelAdmin?: boolean; organizacaoId?: string } = {},
-): Promise<{ accessToken: string; usuario: TreenityBotUsuario } | null> {
-  const config = getConfig();
-  if (!config) return null;
+const TEMPO_MAXIMO_MS = 10_000;
 
+type SessaoBot = { accessToken: string; usuario: TreenityBotUsuario };
+type OpcoesSso = {
+  painelAdmin?: boolean;
+  organizacaoId?: string;
+  /** Token que vai para o NAVEGADOR: sempre um SSO novo, nunca lido nem gravado no cache. */
+  semCache?: boolean;
+};
+
+// ─── Cache do token do SSO (em memória do PROCESSO) ──────────────────────────
+// O token vale 15 min; guardamos por 10. A chave inclui e-mail E `painelAdmin`
+// E empresa: um token de admin nunca serve a quem não é admin nem a outra pessoa.
+// Guardamos a PROMESSA (e não só o valor) para que chamadas simultâneas da mesma
+// chave dividam um único SSO. Falha (null) nunca fica no cache.
+const TTL_DO_TOKEN_MS = 10 * 60_000;
+const MAX_ENTRADAS_DO_CACHE = 200;
+const cacheDeTokens = new Map<string, { expiraEm: number; promessa: Promise<SessaoBot | null> }>();
+
+function chaveDoToken(usuario: { email: string }, opcoes: OpcoesSso): string {
+  return JSON.stringify([usuario.email.trim().toLowerCase(), opcoes.painelAdmin === true, opcoes.organizacaoId ?? null]);
+}
+
+/** Só para testes. */
+export function limparCacheDeTokensDoBot(): void {
+  cacheDeTokens.clear();
+}
+
+async function pedirSso(
+  config: NonNullable<ReturnType<typeof getConfig>>,
+  usuario: { email: string; nome: string },
+  opcoes: OpcoesSso,
+): Promise<SessaoBot | null> {
   try {
     const res = await fetch(`${config.apiUrl}/api/auth/sso`, {
       method: "POST",
@@ -50,50 +76,148 @@ export async function trocarToken(
         ...(opcoes.organizacaoId ? { organizacao_id: opcoes.organizacaoId } : {}),
       }),
       cache: "no-store",
+      signal: AbortSignal.timeout(TEMPO_MAXIMO_MS),
     });
     if (!res.ok) return null;
     const json = await res.json();
     if (!json?.success) return null;
     return { accessToken: json.data.accessToken as string, usuario: json.data.usuario as TreenityBotUsuario };
   } catch {
-    // API do bot fora do ar/inalcançável — degrada para "sem dado", nunca 500 na tela.
+    // API do bot fora do ar/inalcançável/lenta — degrada para "sem dado", nunca 500 na tela.
     return null;
   }
 }
 
-async function chamarApi<T>(accessToken: string, path: string): Promise<T | null> {
+async function obterSessao(
+  usuario: { email: string; nome: string },
+  opcoes: OpcoesSso,
+  ignorarCache = false,
+): Promise<SessaoBot | null> {
   const config = getConfig();
   if (!config) return null;
 
+  // Token que vai para o NAVEGADOR (rota do chat da equipe) não é reaproveitado:
+  // quem recebe precisa dos 15 min inteiros, não do que sobrou de um token antigo.
+  // O bypass é explícito (`semCache`), não deduzido de ter empresa ativa ou não.
+  if (opcoes.semCache) return pedirSso(config, usuario, opcoes);
+
+  const chave = chaveDoToken(usuario, opcoes);
+  const agora = Date.now();
+  const existente = cacheDeTokens.get(chave);
+  if (existente && !ignorarCache && existente.expiraEm > agora) return existente.promessa;
+
+  const promessa = pedirSso(config, usuario, opcoes);
+  cacheDeTokens.delete(chave);
+  cacheDeTokens.set(chave, { expiraEm: agora + TTL_DO_TOKEN_MS, promessa });
+  while (cacheDeTokens.size > MAX_ENTRADAS_DO_CACHE) {
+    const maisAntiga = cacheDeTokens.keys().next().value;
+    if (maisAntiga === undefined) break;
+    cacheDeTokens.delete(maisAntiga);
+  }
+  void promessa.then((r) => {
+    // Só remove se a entrada ainda é a nossa (pode ter sido substituída).
+    if (!r && cacheDeTokens.get(chave)?.promessa === promessa) cacheDeTokens.delete(chave);
+  });
+  return promessa;
+}
+
+/**
+ * Exportada (além de usada internamente aqui) porque a rota de chat interno
+ * (`app/api/treenity-bot/sso/route.ts`) também precisa trocar a identidade do
+ * usuário logado por um accessToken, sem duplicar essa chamada.
+ */
+export async function trocarToken(
+  usuario: { email: string; nome: string },
+  opcoes: OpcoesSso = {},
+): Promise<{ accessToken: string; usuario: TreenityBotUsuario } | null> {
+  return obterSessao(usuario, opcoes);
+}
+
+/**
+ * Para as ESCRITAS no bot que fazem o próprio fetch (encerrar, devolver…): roda `fazer`
+ * com o token que a pessoa já tem e, SÓ se o bot responder 401, refaz o SSO sem cache
+ * e repete uma vez. O 401 vem do middleware de autenticação, antes do handler agir,
+ * então repetir é seguro; outros códigos, timeout e erro de rede não repetem.
+ */
+export async function comRenovacaoEm401(
+  usuario: { email: string; nome: string },
+  accessToken: string,
+  fazer: (accessToken: string) => Promise<Response>,
+): Promise<Response> {
+  const res = await fazer(accessToken);
+  if (res.status !== 401) return res;
+  cacheDeTokens.delete(chaveDoToken(usuario, {}));
+  const nova = await obterSessao(usuario, {}, true);
+  return nova ? fazer(nova.accessToken) : res;
+}
+
+/** Uma sessão do bot que sabe se renovar: 401 = token velho, refaz o SSO uma vez. */
+interface SessaoRenovavel {
+  usuario: TreenityBotUsuario;
+  get(): Promise<string | null>;
+  renovar(): Promise<string | null>;
+}
+
+async function abrirSessao(
+  usuario: { email: string; nome: string },
+  opcoes: OpcoesSso = {},
+): Promise<SessaoRenovavel | null> {
+  const inicial = await obterSessao(usuario, opcoes);
+  if (!inicial) return null;
+  let atual = inicial;
+  return {
+    usuario: inicial.usuario,
+    get: async () => atual.accessToken,
+    renovar: async () => {
+      cacheDeTokens.delete(chaveDoToken(usuario, opcoes));
+      const nova = await obterSessao(usuario, opcoes, true);
+      if (nova) atual = nova;
+      return nova?.accessToken ?? null;
+    },
+  };
+}
+
+/** GET autenticado; em 401 renova o token e repete UMA vez. Devolve o JSON ou null. */
+async function buscarJson(sessao: SessaoRenovavel, path: string): Promise<{ success?: boolean; data?: unknown } | null> {
+  const config = getConfig();
+  if (!config) return null;
+
+  const uma = async (token: string): Promise<Response | null> => {
+    try {
+      return await fetch(`${config.apiUrl}${path}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+        signal: AbortSignal.timeout(TEMPO_MAXIMO_MS),
+      });
+    } catch {
+      return null;
+    }
+  };
+
   try {
-    const res = await fetch(`${config.apiUrl}${path}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
-    const json = await res.json();
-    return json?.success ? (json.data as T) : null;
+    const token = await sessao.get();
+    if (!token) return null;
+    let res = await uma(token);
+    if (res && res.status === 401) {
+      const novo = await sessao.renovar();
+      res = novo ? await uma(novo) : null;
+    }
+    if (!res || !res.ok) return null;
+    return await res.json();
   } catch {
     return null;
   }
+}
+
+async function chamarApi<T>(sessao: SessaoRenovavel, path: string): Promise<T | null> {
+  const json = await buscarJson(sessao, path);
+  return json?.success ? (json.data as T) : null;
 }
 
 /** Como `chamarApi`, mas devolve o JSON inteiro: as listas paginadas trazem `resumo` e cursor fora de `data`. */
-async function chamarApiCompleta<T>(accessToken: string, path: string): Promise<T | null> {
-  const config = getConfig();
-  if (!config) return null;
-
-  try {
-    const res = await fetch(`${config.apiUrl}${path}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
-    const json = await res.json();
-    return json?.success ? (json as T) : null;
-  } catch {
-    return null;
-  }
+async function chamarApiCompleta<T>(sessao: SessaoRenovavel, path: string): Promise<T | null> {
+  const json = await buscarJson(sessao, path);
+  return json?.success ? (json as T) : null;
 }
 
 function montarQuery(params: Record<string, string | number | boolean | undefined | null>): string {
@@ -221,23 +345,23 @@ export interface FiltrosDeAtendimentos {
   limit?: number;
 }
 
-async function buscarPaginaDeVendas(accessToken: string, filtros: FiltrosDeVendas): Promise<PaginaDeVendas | null> {
+async function buscarPaginaDeVendas(sessao: SessaoRenovavel, filtros: FiltrosDeVendas): Promise<PaginaDeVendas | null> {
   const resposta = await chamarApiCompleta<{
     data: VendaPainel[];
     resumo: ResumoVendas;
     proximo_cursor: string | null;
-  }>(accessToken, `/api/dashboard/vendas${montarQuery({ ...filtros })}`);
+  }>(sessao, `/api/dashboard/vendas${montarQuery({ ...filtros })}`);
   if (!resposta) return null;
   return { itens: resposta.data, resumo: resposta.resumo, proximoCursor: resposta.proximo_cursor };
 }
 
 async function buscarPaginaDeAtendimentos(
-  accessToken: string,
+  sessao: SessaoRenovavel,
   filtros: FiltrosDeAtendimentos,
 ): Promise<PaginaDeAtendimentos | null> {
   const { comVenda, ...resto } = filtros;
   const resposta = await chamarApiCompleta<{ data: AtendimentoPainel[]; proximoCursor: string | null }>(
-    accessToken,
+    sessao,
     `/api/atendimentos${montarQuery({ ...resto, com_venda: comVenda })}`,
   );
   if (!resposta) return null;
@@ -256,12 +380,14 @@ export async function carregarPainelAdmin(
   usuario: { email: string; nome: string },
   filtros: { vendas?: FiltrosDeVendas; atendimentos?: FiltrosDeAtendimentos } = {},
 ): Promise<{ vendas: PaginaDeVendas | null; atendimentos: PaginaDeAtendimentos | null } | null> {
-  const sessao = await trocarToken(usuario, { painelAdmin: true });
+  const sessao = await abrirSessao(usuario, { painelAdmin: true });
   if (!sessao) return null;
 
+  // Atendimentos só são buscados quando quem chama pede (passando `filtros.atendimentos`):
+  // a página do Treenity Bot só usa as vendas, e a lista é uma chamada a mais ao bot.
   const [vendas, atendimentos] = await Promise.all([
-    buscarPaginaDeVendas(sessao.accessToken, filtros.vendas ?? {}),
-    buscarPaginaDeAtendimentos(sessao.accessToken, filtros.atendimentos ?? {}),
+    buscarPaginaDeVendas(sessao, filtros.vendas ?? {}),
+    filtros.atendimentos ? buscarPaginaDeAtendimentos(sessao, filtros.atendimentos) : null,
   ]);
   return { vendas, atendimentos };
 }
@@ -271,8 +397,8 @@ export async function carregarVendasTreenityBot(
   usuario: { email: string; nome: string },
   filtros: FiltrosDeVendas,
 ): Promise<PaginaDeVendas | null> {
-  const sessao = await trocarToken(usuario, { painelAdmin: true });
-  return sessao ? buscarPaginaDeVendas(sessao.accessToken, filtros) : null;
+  const sessao = await abrirSessao(usuario, { painelAdmin: true });
+  return sessao ? buscarPaginaDeVendas(sessao, filtros) : null;
 }
 
 /** Uma página de atendimentos. Mesma regra de `carregarPainelAdmin`: só após checar admin. */
@@ -280,8 +406,8 @@ export async function carregarAtendimentosTreenityBot(
   usuario: { email: string; nome: string },
   filtros: FiltrosDeAtendimentos,
 ): Promise<PaginaDeAtendimentos | null> {
-  const sessao = await trocarToken(usuario, { painelAdmin: true });
-  return sessao ? buscarPaginaDeAtendimentos(sessao.accessToken, filtros) : null;
+  const sessao = await abrirSessao(usuario, { painelAdmin: true });
+  return sessao ? buscarPaginaDeAtendimentos(sessao, filtros) : null;
 }
 
 export interface TreenityBotDados {
@@ -302,12 +428,12 @@ export async function carregarDadosTreenityBot(usuario: {
   const config = getConfig();
   if (!config) return null;
 
-  const sessao = await trocarToken(usuario);
+  const sessao = await abrirSessao(usuario);
   if (!sessao) return null;
 
   const [metricas, sinalizados] = await Promise.all([
-    chamarApi<DashboardMetrica[]>(sessao.accessToken, "/api/dashboard"),
-    chamarApi<AtendimentoSinalizado[]>(sessao.accessToken, "/api/atendimentos/sinalizados"),
+    chamarApi<DashboardMetrica[]>(sessao, "/api/dashboard"),
+    chamarApi<AtendimentoSinalizado[]>(sessao, "/api/atendimentos/sinalizados"),
   ]);
 
   return {
@@ -351,11 +477,11 @@ export async function carregarConversaTreenityBot(
   usuario: { email: string; nome: string },
   atendimentoId: string,
 ): Promise<ConversaTreenityBot | null> {
-  const sessao = await trocarToken(usuario);
+  const sessao = await abrirSessao(usuario);
   if (!sessao) return null;
 
   return chamarApi<ConversaTreenityBot>(
-    sessao.accessToken,
+    sessao,
     `/api/atendimentos/${encodeURIComponent(atendimentoId)}/mensagens`,
   );
 }
@@ -375,7 +501,7 @@ export async function listarVendasAguardandoPagamento(
   try {
     const res = await fetch(
       `${config.apiUrl}/api/vendas/aguardando-pagamento${montarQuery({ desde, cursor, limit: 100 })}`,
-      { headers: { "X-SSO-Secret": config.ssoSecret }, cache: "no-store" },
+      { headers: { "X-SSO-Secret": config.ssoSecret }, cache: "no-store", signal: AbortSignal.timeout(TEMPO_MAXIMO_MS) },
     );
     if (!res.ok) return null;
     const json = await res.json();
@@ -405,6 +531,7 @@ export async function definirPagamentoDaVenda(
         pagamento.pago ? { pago: true, confirmado_por: pagamento.confirmadoPor } : { pago: false },
       ),
       cache: "no-store",
+      signal: AbortSignal.timeout(TEMPO_MAXIMO_MS),
     });
     if (!res.ok) return false;
     return (await res.json())?.success === true;
