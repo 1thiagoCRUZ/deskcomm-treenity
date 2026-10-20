@@ -14,10 +14,16 @@ import { traduzir } from "@/lib/i18n/dicionario";
 import { carregarAcessoAoBot } from "@/lib/treenity-bot/acesso";
 import { carregarAtendimentosTreenityBot } from "@/lib/treenity-bot/client";
 import { getConfig } from "@/lib/treenity-bot/config";
+import { ateParaOBot, desdeParaOBot, diaValido } from "@/lib/treenity-bot/periodo";
 
 export const dynamic = "force-dynamic";
 
+const DIA = /^\d{4}-\d{2}-\d{2}$/;
 const querySchema = z.object({
+  desde: z.string().regex(DIA).refine(diaValido).optional(),
+  /** Inclusivo para quem usa a tela; a rota converte para o exclusivo do bot. */
+  ate: z.string().regex(DIA).refine(diaValido).optional(),
+  busca: z.string().trim().min(1).max(100).optional(),
   canal: z.string().min(1).max(60).optional(),
   etapa: z.string().min(1).max(60).optional(),
   com_venda: z.enum(["true", "false"]).optional(),
@@ -53,7 +59,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   const { com_venda, ...filtros } = parsed.data;
   const pagina = await carregarAtendimentosTreenityBot(
     { email: authz.user.email, nome: authz.user.full_name ?? authz.user.email },
-    { ...filtros, comVenda: com_venda === undefined ? undefined : com_venda === "true" },
+    { ...filtros, desde: desdeParaOBot(filtros.desde), ate: ateParaOBot(filtros.ate), comVenda: com_venda === undefined ? undefined : com_venda === "true" },
   );
   if (!pagina) {
     return fail("treenity_bot_unavailable", "Não foi possível carregar os atendimentos agora.", 503, { requestId });

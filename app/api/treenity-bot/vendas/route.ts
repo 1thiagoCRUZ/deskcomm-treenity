@@ -16,6 +16,7 @@ import { traduzir } from "@/lib/i18n/dicionario";
 import { carregarAcessoAoBot } from "@/lib/treenity-bot/acesso";
 import { carregarVendasTreenityBot } from "@/lib/treenity-bot/client";
 import { getConfig } from "@/lib/treenity-bot/config";
+import { ateParaOBot, desdeParaOBot, diaValido } from "@/lib/treenity-bot/periodo";
 
 export const dynamic = "force-dynamic";
 
@@ -23,8 +24,10 @@ const DIA = /^\d{4}-\d{2}-\d{2}$/;
 const querySchema = z.object({
   status: z.string().min(1).max(60).optional(),
   canal: z.string().min(1).max(60).optional(),
-  desde: z.string().regex(DIA).optional(),
-  ate: z.string().regex(DIA).optional(),
+  desde: z.string().regex(DIA).refine(diaValido).optional(),
+  /** Inclusivo para quem usa a tela; a rota converte para o exclusivo do bot. */
+  ate: z.string().regex(DIA).refine(diaValido).optional(),
+  busca: z.string().trim().min(1).max(100).optional(),
   cursor: z.string().min(1).max(300).optional(),
   limit: z.coerce.number().int().min(1).max(200).optional(),
 });
@@ -56,7 +59,7 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   const pagina = await carregarVendasTreenityBot(
     { email: authz.user.email, nome: authz.user.full_name ?? authz.user.email },
-    parsed.data,
+    { ...parsed.data, desde: desdeParaOBot(parsed.data.desde), ate: ateParaOBot(parsed.data.ate) },
   );
   if (!pagina) {
     return fail("treenity_bot_unavailable", "Não foi possível carregar as vendas agora.", 503, { requestId });
