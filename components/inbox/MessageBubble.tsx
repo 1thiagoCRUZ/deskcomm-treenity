@@ -1,4 +1,5 @@
 "use client";
+import { memo } from "react";
 
 import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
 import { format } from "date-fns";
@@ -31,7 +32,7 @@ function AckIndicator({ status, t }: { status: string; t: (texto: string) => str
   return null;
 }
 
-export function MessageBubble({ message, onResponder, citada }: Props) {
+function MessageBubbleBase({ message, onResponder, citada }: Props) {
   const localeDaData = useLocaleDeData();
   const t = useT();
   const isOutbound = message.direction === "outbound";
@@ -247,3 +248,7 @@ export function MessageBubble({ message, onResponder, citada }: Props) {
     </div>
   );
 }
+
+// Props estáveis (callbacks vêm de useCallback/setState; objetos preservados pelo
+// structural sharing do react-query): sem isto, cada refetch redesenha todas as linhas.
+export const MessageBubble = memo(MessageBubbleBase);

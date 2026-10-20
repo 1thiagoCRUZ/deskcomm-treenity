@@ -1,7 +1,7 @@
 "use client";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
 import { useRealtimeChannel } from "@/hooks/realtime/useRealtimeChannel";
+import { useInvalidarAgrupado } from "@/hooks/realtime/useInvalidarAgrupado";
 import { useRefetchDeSeguranca } from "@/hooks/realtime/useRefetchDeSeguranca";
 import { apiClient } from "@/lib/api/client";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
@@ -100,12 +100,22 @@ interface ListResponse {
 export function useConversationsRealtime(
   filters: ConversationsFilters,
   orgId: string | null,
+  /**
+   * Segura o PRIMEIRO pedido da lista (padrão: pede). Serve para a abertura do
+   * Inbox esperar um fato que muda a chave da lista, em vez de pedir duas vezes.
+   * O Realtime e a rede de segurança seguem ligados (invalidar query desligada
+   * não busca nada).
+   */
+  enabled: boolean = true,
 ) {
   const qc = useQueryClient();
   const queryKey = ["conversations", filters] as const;
 
   const query = useInfiniteQuery({
     queryKey,
+    enabled,
+    // `maxPages` ficou de fora de propósito: exige `getPreviousPageParam` e
+    // descartaria do topo as conversas já carregadas ao "Carregar mais".
     initialPageParam: undefined as string | undefined,
     queryFn: async ({ pageParam }) => {
       const qs = new URLSearchParams();
@@ -144,9 +154,9 @@ export function useConversationsRealtime(
     refetchOnWindowFocus: true,
   });
 
-  const onChange = useCallback(() => {
-    qc.invalidateQueries({ queryKey: ["conversations"] });
-  }, [qc]);
+  // Rajada de eventos (cada mensagem mexe na conversa) vira UMA invalidação, no
+  // fim da rajada: a lista é infinita e cada invalidação refaz todas as páginas.
+  const onChange = useInvalidarAgrupado(qc, ["conversations"]);
 
   // G4-01 (visibility_mode): a subscription postgres_changes HERDA a RLS de
   // SELECT de `conversations` — o Supabase Realtime avalia as policies do usuário
@@ -199,7 +209,7 @@ export function useConversationsRealtime(
       return `${conversas.length}:${maior}`;
     },
     ultimaEntrega,
-    enabled: !!orgId,
+    enabled: !!orgId && enabled,
   });
 
   return { ...query, realtimeStatus, seguranca };

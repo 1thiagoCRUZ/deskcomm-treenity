@@ -16,7 +16,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { phoneLookupVariants } from "@/lib/channels/phone-variants";
 import { logger } from "@/lib/logger";
 
-import { trocarToken } from "./client";
+import { comRenovacaoEm401, trocarToken } from "./client";
 import { getConfig } from "./config";
 import { botDoTreenityAtende } from "./whatsapp";
 
@@ -62,13 +62,13 @@ export async function liberarTravaDoBot(
     const config = getConfig();
     if (!sessao || !config) return "falhou";
 
-    const res = await fetch(`${config.apiUrl}/api/atendimentos/devolver-ao-bot`, {
+    const res = await comRenovacaoEm401(pedido.usuario, sessao.accessToken, (accessToken) => fetch(`${config.apiUrl}/api/atendimentos/devolver-ao-bot`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${sessao.accessToken}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({ id_faces: idsFaceDoTelefone(telefone) }),
       cache: "no-store",
       signal: AbortSignal.timeout(TEMPO_MAXIMO_MS),
-    });
+    }));
     if (!res.ok) {
       logger.error("[treenity-bot] API do bot recusou a devolução", {
         organization_id: pedido.organizationId,

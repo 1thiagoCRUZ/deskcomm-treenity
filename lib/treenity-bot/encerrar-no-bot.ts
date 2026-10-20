@@ -13,7 +13,7 @@
  */
 import { logger } from "@/lib/logger";
 
-import { trocarToken } from "./client";
+import { comRenovacaoEm401, trocarToken } from "./client";
 import { getConfig } from "./config";
 import { idsFaceDoTelefone } from "./devolver-ao-bot";
 
@@ -38,9 +38,9 @@ export async function encerrarAtendimentoNoBot(pedido: {
     const sessao = config ? await trocarToken(pedido.usuario) : null;
     if (!config || !sessao) return { desfecho: "falhou", vendaId: null };
 
-    const res = await fetch(`${config.apiUrl}/api/atendimentos/encerrar-por-cliente`, {
+    const res = await comRenovacaoEm401(pedido.usuario, sessao.accessToken, (accessToken) => fetch(`${config.apiUrl}/api/atendimentos/encerrar-por-cliente`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${sessao.accessToken}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         id_faces: idsFaceDoTelefone(pedido.telefone),
         ...(pedido.valorDaVenda !== null ? { venda: { valor_total: pedido.valorDaVenda } } : {}),
@@ -48,7 +48,7 @@ export async function encerrarAtendimentoNoBot(pedido: {
       }),
       cache: "no-store",
       signal: AbortSignal.timeout(TEMPO_MAXIMO_MS),
-    });
+    }));
     if (res.status === 404) return { desfecho: "sem_atendimento_aberto", vendaId: null };
     if (!res.ok) {
       logger.error("[treenity-bot] API do bot recusou o encerramento", { status: res.status });

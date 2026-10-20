@@ -12,7 +12,7 @@ import { revalidatePath } from "next/cache";
 
 import { loadAuthUser } from "@/lib/auth/server";
 import { getConfig } from "@/lib/treenity-bot/config";
-import { trocarToken } from "@/lib/treenity-bot/client";
+import { comRenovacaoEm401, trocarToken } from "@/lib/treenity-bot/client";
 
 type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -27,9 +27,15 @@ export async function encerrarAtendimentoAction(atendimentoId: string): Promise<
   if (!sessao) return { ok: false, error: "treenity_bot_unavailable" };
 
   try {
-    const res = await fetch(
-      `${config.apiUrl}/api/atendimentos/${encodeURIComponent(atendimentoId)}/encerrar`,
-      { method: "POST", headers: { Authorization: `Bearer ${sessao.accessToken}` }, cache: "no-store" },
+    const res = await comRenovacaoEm401(
+      { email: user.email, nome: user.full_name ?? user.email },
+      sessao.accessToken,
+      (accessToken) =>
+        fetch(`${config.apiUrl}/api/atendimentos/${encodeURIComponent(atendimentoId)}/encerrar`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${accessToken}` },
+          cache: "no-store",
+        }),
     );
     if (!res.ok) return { ok: false, error: "request_failed" };
   } catch {
