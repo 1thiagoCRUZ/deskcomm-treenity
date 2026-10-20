@@ -6,8 +6,8 @@
  * do usuário em 10/10: o cliente diz "vou ver e te falo", e o lembrete chama
  * a equipe de volta na hora marcada).
  *
- * Confere a cada minuto (`/api/v1/inbox/lembretes-vencidos`), também com a aba
- * minimizada. Cada lembrete avisa UMA vez por navegador (ids guardados no
+ * Confere a cada minuto (`/api/v1/inbox/lembretes-vencidos`) também com a aba
+ * minimizada (e na hora em que ela volta a ficar visível). Cada lembrete avisa UMA vez por navegador (ids guardados no
  * localStorage). Quem vence o lembrete é o servidor (`vencer-lembretes.ts`),
  * chamado pelo n8n a cada 5 minutos.
  */
@@ -86,9 +86,16 @@ export function AvisoDeLembretes() {
     };
     void conferir();
     const timer = setInterval(() => void conferir(), INTERVALO_MS);
+    // Em segundo plano segue conferindo (o aviso do sistema precisa sair); ao
+    // voltar a aba, confere na hora.
+    const aoVoltar = () => {
+      if (document.visibilityState === "visible") void conferir();
+    };
+    document.addEventListener("visibilitychange", aoVoltar);
     return () => {
       cancelado = true;
       clearInterval(timer);
+      document.removeEventListener("visibilitychange", aoVoltar);
     };
   }, [router]);
 

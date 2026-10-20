@@ -16,7 +16,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { phoneLookupVariants } from "@/lib/channels/phone-variants";
 import { logger } from "@/lib/logger";
 
-import { trocarToken } from "./client";
+import { comRenovacaoEm401, trocarToken } from "./client";
 import { getConfig } from "./config";
 import { botDoTreenityAtende } from "./whatsapp";
 
@@ -62,10 +62,10 @@ export async function liberarTravaDoBot(
     const config = getConfig();
     if (!sessao || !config) return "falhou";
 
-    const res = await fetch(`${config.apiUrl}/api/atendimentos/devolver-ao-bot`, {
+    const res = await comRenovacaoEm401(pedido.usuario, sessao.accessToken, (accessToken) => fetch(`${config.apiUrl}/api/atendimentos/devolver-ao-bot`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${sessao.accessToken}`,
+        Authorization: `Bearer ${accessToken}`,
         // Segredo de servidor: a API do bot passa a exigi-lo nas mutações. Nunca vai ao navegador nem a log.
         "X-SSO-Secret": config.ssoSecret,
         "Content-Type": "application/json",
@@ -73,7 +73,7 @@ export async function liberarTravaDoBot(
       body: JSON.stringify({ id_faces: idsFaceDoTelefone(telefone) }),
       cache: "no-store",
       signal: AbortSignal.timeout(TEMPO_MAXIMO_MS),
-    });
+    }));
     if (!res.ok) {
       logger.error("[treenity-bot] API do bot recusou a devolução", {
         organization_id: pedido.organizationId,

@@ -88,7 +88,7 @@ export async function GET() {
 
   const sessao = await trocarToken(
     { email: user.email, nome: user.full_name ?? user.email },
-    { painelAdmin, organizacaoId },
+    { painelAdmin, organizacaoId, semCache: true },
   );
   if (!sessao) {
     return NextResponse.json({ error: "treenity_bot_unavailable" }, { status: 503 });

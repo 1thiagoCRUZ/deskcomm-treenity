@@ -17,7 +17,7 @@ import { requireRole } from "@/lib/auth/require-role";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 import { carregarAcessoAoBot } from "@/lib/treenity-bot/acesso";
 import { getConfig } from "@/lib/treenity-bot/config";
-import { trocarToken } from "@/lib/treenity-bot/client";
+import { comRenovacaoEm401, trocarToken } from "@/lib/treenity-bot/client";
 
 type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -39,14 +39,16 @@ export async function encerrarAtendimentoAction(atendimentoId: string): Promise<
   if (!sessao) return { ok: false, error: "treenity_bot_unavailable" };
 
   try {
-    const res = await fetch(
-      `${config.apiUrl}/api/atendimentos/${encodeURIComponent(atendimentoId)}/encerrar`,
-      {
-        method: "POST",
-        // Segredo de servidor: a API do bot passa a exigi-lo nas mutações. Nunca vai ao navegador nem a log.
-        headers: { Authorization: `Bearer ${sessao.accessToken}`, "X-SSO-Secret": config.ssoSecret },
-        cache: "no-store",
-      },
+    const res = await comRenovacaoEm401(
+      { email: user.email, nome: user.full_name ?? user.email },
+      sessao.accessToken,
+      (accessToken) =>
+        fetch(`${config.apiUrl}/api/atendimentos/${encodeURIComponent(atendimentoId)}/encerrar`, {
+          method: "POST",
+          // Segredo de servidor: a API do bot passa a exigi-lo nas mutações. Nunca vai ao navegador nem a log.
+          headers: { Authorization: `Bearer ${accessToken}`, "X-SSO-Secret": config.ssoSecret },
+          cache: "no-store",
+        }),
     );
     if (!res.ok) return { ok: false, error: "request_failed" };
   } catch {

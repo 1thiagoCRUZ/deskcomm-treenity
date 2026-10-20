@@ -49,6 +49,8 @@ vi.mock("@/lib/treenity-bot/config", () => ({
 }));
 vi.mock("@/lib/treenity-bot/client", () => ({
   trocarToken: (...a: unknown[]) => estado.trocarToken(...a),
+  // O auxiliar real renova o token em 401; aqui só interessa que a chamada saia com o token dado.
+  comRenovacaoEm401: async (_usuario: unknown, token: string, fazer: (t: string) => Promise<Response>) => fazer(token),
 }));
 
 import { GET as ssoGET } from "@/app/api/treenity-bot/sso/route";
@@ -147,6 +149,8 @@ describe("GET /api/treenity-bot/sso", () => {
     expect(estado.trocarToken).toHaveBeenCalledWith(expect.anything(), {
       painelAdmin: false,
       organizacaoId: "org-1",
+      // O token que vai ao navegador nunca vem do cache do servidor.
+      semCache: true,
     });
   });
 
@@ -159,6 +163,7 @@ describe("GET /api/treenity-bot/sso", () => {
     expect(estado.trocarToken).toHaveBeenCalledWith(expect.anything(), {
       painelAdmin: false,
       organizacaoId: "gestao-treenity",
+      semCache: true,
     });
   });
 });
