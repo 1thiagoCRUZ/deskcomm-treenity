@@ -1,3 +1,6 @@
+import { randomUUID } from "node:crypto";
+
+import { executarRetencaoDiaria } from "@/app/api/v1/cron/data-retention/route";
 import { recoverStuckMessages } from "@/app/api/v1/cron/recover-stuck-messages/route";
 import { idsDoContatoEGemeos } from "@/lib/channels/contato-por-telefone";
 import { drainEventLog } from "@/lib/event-log/drain";
@@ -14,10 +17,19 @@ import {
 import { enviarTextoFixoPendente } from "@/lib/followup/enviar-texto-fixo";
 import type { EnrollmentRow } from "@/lib/followup/node-handlers";
 import { createSupabaseSilenceSweepDb, runSilenceSweep } from "@/lib/followup/silence-sweep";
+import { drainStorageRedactionQueue } from "@/lib/lgpd/storage-redaction-queue";
 import { logger } from "@/lib/logger";
+import { ehJanelaDiaria } from "@/lib/relogio/janela-diaria";
 import { runRoutingWorker } from "@/lib/routing/worker";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
+
+/**
+ * O tick tem `maxDuration = 60` s. As tarefas diárias rodam DEPOIS das de
+ * minuto e só até este prazo, contado desde o início do tick; o que sobrar
+ * continua na próxima batida.
+ */
+export const PRAZO_DAS_DIARIAS_MS = 40_000;
 
 export type ResultadoDeTarefa = {
   id: string;
@@ -77,10 +89,11 @@ async function aplicarRespostasQueChegaram(admin: SupabaseClient, deps: TickDeps
  * Roda as tarefas de minuto neste processo — sem depender do crontab da VPS
  * nem do cron pago da Vercel.
  */
-export async function executarTickDoRelogio(): Promise<{
+export async function executarTickDoRelogio(agora: Date = new Date()): Promise<{
   tarefas: ResultadoDeTarefa[];
   mexeu: boolean;
 }> {
+  const inicio = Date.now();
   const admin = createAdminClient();
   const tarefas: ResultadoDeTarefa[] = [];
   let mexeu = false;
@@ -155,6 +168,39 @@ export async function executarTickDoRelogio(): Promise<{
     if (summary.failed > 0) mexeu = true;
     return summary;
   });
+
+  // ── Tarefas DIÁRIAS ─────────────────────────────────────────────────────
+  // Só na janela das 03h (São Paulo); ver `lib/relogio/janela-diaria.ts`. Na
+  // Treenity nada mais as agenda (a Vercel Hobby só tem 1 cron/dia e o
+  // `scheduler` do Docker não é usado).
+  if (ehJanelaDiaria(agora)) {
+    await uma("data-retention", async () => {
+      // Poda de job_queue/auditoria/espelho da agenda + retomada das
+      // anonimizações LGPD incompletas. Já audita sozinha quando há efeito.
+      const resumo = await executarRetencaoDiaria(randomUUID(), inicio + PRAZO_DAS_DIARIAS_MS);
+      if (
+        resumo.jobs_apagados > 0 ||
+        resumo.auditoria_apagada > 0 ||
+        resumo.espelho_apagado > 0 ||
+        resumo.nonces_apagados > 0 ||
+        resumo.anonimizacoes_completadas > 0
+      ) {
+        mexeu = true;
+      }
+      return resumo;
+    });
+
+    await uma("storage-redaction", async () => {
+      // Remove do Storage a mídia de contatos anonimizados (fila LGPD).
+      // Sem tempo, pula (a fila continua pendente para a próxima batida); com
+      // pouco tempo, lote menor.
+      const restante = inicio + PRAZO_DAS_DIARIAS_MS - Date.now();
+      if (restante <= 0) return { adiada: true };
+      const stats = await drainStorageRedactionQueue({ limit: restante < 10_000 ? 50 : 200 });
+      if (stats.deleted > 0 || stats.failed > 0 || stats.skipped > 0) mexeu = true;
+      return stats;
+    });
+  }
 
   return { tarefas, mexeu };
 }

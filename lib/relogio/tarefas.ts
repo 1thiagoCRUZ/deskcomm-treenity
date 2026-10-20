@@ -28,7 +28,24 @@ export const TAREFAS_DO_RELOGIO = [
   },
 ] as const;
 
-export type IdDeTarefaDoRelogio = (typeof TAREFAS_DO_RELOGIO)[number]["id"];
+/**
+ * Tarefas DIÁRIAS: rodam só na janela das 03h20–03h59 (São Paulo), ver
+ * `lib/relogio/janela-diaria.ts`.
+ */
+export const TAREFAS_DIARIAS_DO_RELOGIO = [
+  {
+    id: "data-retention",
+    rotulo: "Limpeza diária e LGPD",
+    porque: "Poda históricos antigos e termina anonimizações que ficaram pela metade.",
+  },
+  {
+    id: "storage-redaction",
+    rotulo: "Apagar mídia de contatos anonimizados",
+    porque: "Remove do armazenamento os arquivos de quem pediu para ser esquecido.",
+  },
+] as const;
+
+export type IdDeTarefaDoRelogio = (typeof TAREFAS_DO_RELOGIO)[number]["id"] | (typeof TAREFAS_DIARIAS_DO_RELOGIO)[number]["id"];
 
 export const CAMINHO_DO_TICK = "/api/v1/system/relogio/tick";
 

@@ -16,8 +16,14 @@
  *
  * Só abrir o aviso resolveria metade e criaria outro problema: na segunda o
  * número volta a atender e o painel seguiria dizendo que está calado. Por isso
- * o teste guarda ABRIR e RESOLVER — e a resolução mora no mesmo ponto do turno
- * que a abertura, não num cron.
+ * o teste guarda ABRIR e RESOLVER.
+ *
+ * ─── Estado atual ────────────────────────────────────────────────────────────
+ *
+ * O ponto do turno que chamava `avisarJanelaFechada` não existe mais, e hoje o
+ * módulo lib/agent-engine/pacing/aviso-de-janela.ts NÃO tem chamador de produção.
+ * Este arquivo testa o módulo isolado: o SQL do aviso, o dedup, o corpo e a
+ * resolução. Não prova que o aviso aparece para o operador numa instalação real.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -152,48 +158,5 @@ describe("aviso de janela fechada", () => {
   it("devolve 0 quando já havia aviso aberto — o chamador sabe não logar de novo", async () => {
     const { db } = dublePool(0);
     expect(await avisarJanelaFechada(db as never, BASE)).toBe(0);
-  });
-});
-
-/**
- * As funções acima podem estar perfeitas e não serem chamadas por ninguém — é o
- * ponto cego clássico de teste de unidade: ele guarda a FUNÇÃO, não o CALL SITE.
- * Um aviso que existe e nunca é aberto deixa o defeito original de pé, com a
- * suíte verde.
- *
- * A cerca é sobre o fonte porque o caminho do turno exige job, pool, provider e
- * orçamento para ser alcançado — exercitá-lo mediria o dublê. O que ela prende é
- * a LIGAÇÃO, e ela vale nas duas direções: abrir sem resolver deixaria um aviso
- * eterno pendurado na segunda-feira.
- */
-describe("o turno realmente CHAMA o aviso — nas duas direções", () => {
-  const turno = readFileSync(
-    join(process.cwd(), "lib/agent-engine/agent/inbound-turn.ts"),
-    "utf8",
-  );
-
-  it("o adiamento por janela abre o aviso", () => {
-    expect(
-      /avisarJanelaFechada\s*\(/.test(turno),
-      "inbound-turn.ts não chama avisarJanelaFechada — o silêncio volta a ser invisível",
-    ).toBe(true);
-  });
-
-  it("a janela aberta resolve o aviso", () => {
-    expect(
-      /resolverAvisoDeJanela\s*\(/.test(turno),
-      "inbound-turn.ts não chama resolverAvisoDeJanela — o aviso ficaria pendurado depois que o número volta a atender",
-    ).toBe(true);
-  });
-
-  it("as duas chamadas estão no MESMO gate — a resolução não pode viver noutro lugar", () => {
-    // Se a resolução migrar para um cron ou para outro ponto do turno, o laço
-    // deixa de fechar onde foi aberto e volta a depender de varredura.
-    const gate = turno.slice(
-      turno.indexOf("janelaDeEnvioAberta(agora, knobs)"),
-      turno.indexOf("Fase 3: stickiness do router"),
-    );
-    expect(gate).toContain("avisarJanelaFechada");
-    expect(gate).toContain("resolverAvisoDeJanela");
   });
 });
