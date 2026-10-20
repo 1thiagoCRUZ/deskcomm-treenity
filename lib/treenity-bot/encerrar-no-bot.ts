@@ -21,16 +21,22 @@ export type DesfechoNoBot = "encerrado" | "sem_atendimento_aberto" | "falhou";
 
 const TEMPO_MAXIMO_MS = 8_000;
 
+export interface ResultadoDoEncerramento {
+  desfecho: DesfechoNoBot;
+  /** O id da venda no bot (criada ou atualizada), quando houve venda. */
+  vendaId: string | null;
+}
+
 export async function encerrarAtendimentoNoBot(pedido: {
   telefone: string;
   usuario: { email: string; nome: string };
   /** Em reais. Ausente = terminou sem venda. */
   valorDaVenda: number | null;
-}): Promise<DesfechoNoBot> {
+}): Promise<ResultadoDoEncerramento> {
   try {
     const config = getConfig();
     const sessao = config ? await trocarToken(pedido.usuario) : null;
-    if (!config || !sessao) return "falhou";
+    if (!config || !sessao) return { desfecho: "falhou", vendaId: null };
 
     const res = await fetch(`${config.apiUrl}/api/atendimentos/encerrar-por-cliente`, {
       method: "POST",
@@ -43,16 +49,17 @@ export async function encerrarAtendimentoNoBot(pedido: {
       cache: "no-store",
       signal: AbortSignal.timeout(TEMPO_MAXIMO_MS),
     });
-    if (res.status === 404) return "sem_atendimento_aberto";
+    if (res.status === 404) return { desfecho: "sem_atendimento_aberto", vendaId: null };
     if (!res.ok) {
       logger.error("[treenity-bot] API do bot recusou o encerramento", { status: res.status });
-      return "falhou";
+      return { desfecho: "falhou", vendaId: null };
     }
-    return "encerrado";
+    const json = (await res.json().catch(() => null)) as { data?: { vendaId?: string | null } } | null;
+    return { desfecho: "encerrado", vendaId: json?.data?.vendaId ?? null };
   } catch (err) {
     logger.error("[treenity-bot] não foi possível encerrar o atendimento no bot", {
       detail: err instanceof Error ? err.message.slice(0, 160) : "desconhecido",
     });
-    return "falhou";
+    return { desfecho: "falhou", vendaId: null };
   }
 }

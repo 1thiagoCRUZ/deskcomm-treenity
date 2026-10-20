@@ -23596,6 +23596,12 @@ select c.organization_id, c.id, least(c.created_at, c.venda_fechada_em), c.venda
  where c.venda_fechada_em is not null
    and not exists (select 1 from public.conversa_vendas v where v.conversation_id = c.id);
 
+-- ---- Cada venda do Inbox aponta para a venda do bot (migration 0244) ----
+-- Liga cada venda registrada no Inbox à venda correspondente no Treenity Bot. Sem esse elo
+-- o painel só sabia mostrar "a venda mais recente do cliente", e a compra nova escondia a
+-- antiga. Nula nas vendas anteriores a esta coluna (o painel cai na mais recente).
+alter table public.conversa_vendas add column if not exists venda_bot_id text;
+
 -- ---- VARREDURA anon: função nova nasce exposta em quem ATUALIZA (migration 0116) ----
 --
 -- ⚠️ ESTE BLOCO É, DE PROPÓSITO, O ÚLTIMO DO ARQUIVO. Apêndice novo entra ANTES

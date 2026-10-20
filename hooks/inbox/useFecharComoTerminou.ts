@@ -38,6 +38,8 @@ export function useFecharComoTerminou() {
     onSettled: (_data, _err, args) => {
       qc.invalidateQueries({ queryKey: ["conversations"] });
       qc.invalidateQueries({ queryKey: ["conversation", args.conversation_id] });
+      // A venda nova entra na lista da aba Fechadas sem esperar o relógio dela.
+      qc.invalidateQueries({ queryKey: ["vendas-fechadas"] });
     },
     onError: (err) => showApiError(err),
   });

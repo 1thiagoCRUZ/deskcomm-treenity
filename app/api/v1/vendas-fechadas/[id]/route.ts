@@ -1,12 +1,10 @@
 /**
- * GET /api/v1/conversations/[id]/venda — a ÚLTIMA venda fechada nesta conversa e o
- * recorte de tempo do atendimento dela (`desde`/`ate`, para o endpoint de mensagens).
+ * GET /api/v1/vendas-fechadas/[id] — UMA venda e o recorte de tempo do atendimento dela
+ * (`desde`/`ate`, para o endpoint de mensagens).
  *
- * `ate` é a primeira mensagem do cliente DEPOIS do fechamento, ou `null` se ele não
- * voltou. Vale mais que a hora do fechamento porque inclui o "obrigado pela compra"
- * que sai logo depois, e para exatamente onde o atendimento seguinte começa.
- *
- * RLS-scoped: quem não enxerga a conversa não enxerga a venda (policy de `conversa_vendas`).
+ * `ate` é a primeira mensagem do cliente DEPOIS do fechamento, ou `null` se ele não voltou.
+ * Vale mais que a hora do fechamento porque inclui o "obrigado pela compra" que sai logo
+ * depois, e para exatamente onde o atendimento seguinte começa.
  */
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
@@ -43,20 +41,18 @@ export async function GET(_req: NextRequest, ctx: RouteCtx): Promise<Response> {
 
   const { data: venda, error } = await supabase
     .from("conversa_vendas")
-    .select("id, iniciada_em, fechada_em, valor")
+    .select("id, conversation_id, iniciada_em, fechada_em, valor, venda_bot_id")
     .eq("organization_id", activeOrg.orgId)
-    .eq("conversation_id", id)
-    .order("fechada_em", { ascending: false })
-    .limit(1)
+    .eq("id", id)
     .maybeSingle();
   if (error) return fail("internal_error", error.message, 500, { requestId });
-  if (!venda) return ok(null, { requestId });
+  if (!venda) return fail("not_found", traduzir("Venda não encontrada.", authUser?.idioma ?? "pt-BR"), 404, { requestId });
 
   const { data: proxima } = await supabase
     .from("messages")
     .select("sent_at")
     .eq("organization_id", activeOrg.orgId)
-    .eq("conversation_id", id)
+    .eq("conversation_id", venda.conversation_id)
     .eq("direction", "inbound")
     .gt("sent_at", venda.fechada_em)
     .order("sent_at", { ascending: true })
@@ -66,9 +62,11 @@ export async function GET(_req: NextRequest, ctx: RouteCtx): Promise<Response> {
   return ok(
     {
       id: venda.id,
+      conversation_id: venda.conversation_id,
       iniciada_em: venda.iniciada_em,
       fechada_em: venda.fechada_em,
       valor: venda.valor === null ? null : Number(venda.valor),
+      venda_bot_id: venda.venda_bot_id ?? null,
       ate: proxima?.sent_at ?? null,
     },
     { requestId },

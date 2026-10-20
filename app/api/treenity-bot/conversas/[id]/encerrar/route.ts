@@ -86,13 +86,14 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
 
   const valor = corpo.data.desfecho === "venda" ? corpo.data.valor : null;
   const telefone = c.contacts?.phone_number ?? null;
-  const noBot = telefone
+  const resultadoBot = telefone
     ? await encerrarAtendimentoNoBot({
         telefone,
         usuario: { email: authz.user.email, nome: authz.user.full_name ?? authz.user.email },
         valorDaVenda: valor,
       })
-    : "sem_atendimento_aberto";
+    : { desfecho: "sem_atendimento_aberto" as const, vendaId: null };
+  const noBot = resultadoBot.desfecho;
   if (noBot === "falhou") {
     return fail(
       "upstream_unavailable",
@@ -124,7 +125,7 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
     .from("conversations")
     .update({
       bot_silenced_until: null,
-      // Só a VENDA entra em Fechadas (e no selo "Já comprou"); o encerramento
+      // Só a VENDA entra em Fechadas (e no selo "Já é nosso cliente"); o encerramento
       // sem venda não. A data fica mesmo que o cliente volte a escrever.
       ...(corpo.data.desfecho === "venda" ? { venda_fechada_em: new Date().toISOString() } : {}),
     })
@@ -151,6 +152,7 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
       fechada_em: fechadaEm.toISOString(),
       valor: corpo.data.valor,
       fechada_por: authz.user.id,
+      venda_bot_id: resultadoBot.vendaId,
     });
     // O fechamento já aconteceu e o bot já foi avisado: falhar aqui não desfaz nada. Só o
     // recorte da conversa deixa de existir, e a aba cai no fio inteiro — registra e segue.
