@@ -18,7 +18,6 @@ import {
 import { ConexaoCaidaBanner } from "@/components/app/ConexaoCaidaBanner";
 import { TreenityBotAlertProvider } from "@/components/app/TreenityBotAlertProvider";
 import { AvisoDeLembretes } from "@/components/app/AvisoDeLembretes";
-import { agendaLigadaParaEquipe } from "@/lib/agenda/da-equipe";
 import { IdiomaProvider } from "@/lib/i18n/IdiomaProvider";
 import { listarConexoesCaidas, type ConexaoCaida } from "@/lib/channels/health";
 import { isConfigured as treenityBotConfigurado } from "@/lib/treenity-bot/config";
@@ -92,7 +91,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       ...activeOrg,
       visibility_mode: mode ?? DEFAULT_VISIBILITY_MODE,
       ...(membrosDaOrg == null ? {} : { tem_equipe: membrosDaOrg > 1 }),
-      agenda_da_equipe: agendaLigadaParaEquipe(orgRow?.settings),
     };
 
     // `marcaDaInstalacao()` é memoizada por TTL no PROCESSO (`lib/branding/
