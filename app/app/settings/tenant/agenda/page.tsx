@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { agendaLigadaParaEquipe } from "@/lib/agenda/da-equipe";
+import { agendaLigadaParaEquipe, podeAbrirAgenda } from "@/lib/agenda/da-equipe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { traduzir } from "@/lib/i18n/dicionario";
@@ -95,7 +95,15 @@ export default async function TiposDeAgendamentoPage() {
             nomes.get(String(p.user_id)) ?? `${String(p.user_id).slice(0, 8)} · ${String(p.role)}`,
         }))}
         usuarioAtualId={user.id}
-        podeConfigurarGoogle={ROLE_RANK[activeOrg.role] >= ROLE_RANK.agent}
+        podeConfigurarGoogle={
+          ROLE_RANK[activeOrg.role] >= ROLE_RANK.agent &&
+          podeAbrirAgenda(
+            user.is_platform_admin,
+            activeOrg.role,
+            activeOrg.interface_settings,
+            agendaLigadaParaEquipe(configDaOrg?.settings),
+          )
+        }
         podeEditar={podeEditar}
         ehDono={activeOrg.role === "admin"}
         agendaDaEquipe={agendaLigadaParaEquipe(configDaOrg?.settings)}

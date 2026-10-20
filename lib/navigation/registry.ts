@@ -1,6 +1,7 @@
 import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
 
 import { type Role } from "@/lib/auth/types";
+import { podeAbrirAgenda } from "@/lib/agenda/da-equipe";
 import { papelDoVinculo } from "@/lib/treenity/papeis";
 import {
   Bell,
@@ -119,11 +120,12 @@ export function sidebarGroups(
   const visible = new Set<string>(
     destinosDaInterface(settings, isPlatformAdmin, role).map((d) => d.href),
   );
-  // A Agenda do Funcionário não é uma tela fixa do papel: aparece quando a empresa
-  // a usa. Só o menu PADRÃO do Funcionário ganha a tela; quem tem lista
-  // personalizada escolheu o que vê, e a escolha do Dono vence.
-  if (contexto.agendaDaEquipe && !isPlatformAdmin && papelDoVinculo(role, settings) === "funcionario") {
-    visible.add("/app/agenda");
+  // A Agenda é da empresa: a regra é uma só, compartilhada com a página
+  // (`podeAbrirAgenda`), para o menu nunca mostrar um link que a página devolve.
+  if (podeAbrirAgenda(isPlatformAdmin, role, settings, !!contexto.agendaDaEquipe)) {
+    if (!isPlatformAdmin && papelDoVinculo(role, settings) === "funcionario") visible.add("/app/agenda");
+  } else {
+    visible.delete("/app/agenda");
   }
   return NAV_GROUPS.filter((group) => !GRUPOS_FORA_DO_MENU.includes(group.id)).map((group) => {
     const items = NAV_DESTINATIONS.filter(

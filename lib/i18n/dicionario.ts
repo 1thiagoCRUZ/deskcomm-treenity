@@ -366,6 +366,7 @@ export const DICIONARIO: Traducoes = {
   "Ligado: os funcionários veem a Agenda no menu. Desligado: só você e os gerentes veem. Cada empresa tem a sua agenda, separada das outras.": { es: "Activado: los empleados ven la Agenda en el menú. Desactivado: solo usted y los gerentes la ven. Cada empresa tiene su propia agenda, separada de las demás." },
   "A equipe agora vê a Agenda.": { es: "El equipo ahora ve la Agenda." },
   "A Agenda saiu do menu da equipe.": { es: "La Agenda salió del menú del equipo." },
+  "Acompanhamento somente leitura ou encerrado.": { es: "Seguimiento solo de lectura o finalizado." },
   "Confirme a verificação em duas etapas.": { es: "Confirme la verificación en dos pasos." },
   "Só o Dono da empresa pode mudar isso.": { es: "Solo el Dueño de la empresa puede cambiar esto." },
   Automação: { es: "Automatización" },
