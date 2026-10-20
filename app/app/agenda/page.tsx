@@ -3,9 +3,8 @@ import { redirect } from "next/navigation";
 
 import { enderecoDeRetorno, faltaParaConectarOGoogle, googleEstaConfigurado } from "@/lib/agenda/google/config";
 import { PROVEDOR_GOOGLE } from "@/lib/agenda/tipos";
-import { agendaLigadaParaEquipe } from "@/lib/agenda/da-equipe";
+import { agendaLigadaParaEquipe, podeAbrirAgenda } from "@/lib/agenda/da-equipe";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
-import { ROLE_RANK } from "@/lib/auth/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -55,14 +54,20 @@ export default async function AgendaPage() {
   // O Funcionário só entra na Agenda quando o Dono ligou para a equipe. Esconder
   // o menu não basta: sem isto a URL abriria a tela de uma empresa que não a usa.
   // Dono, Gerente e Gestão passam sempre. `activeOrg.orgId` vem da sessão.
-  const veSempre = user.is_platform_admin || ROLE_RANK[activeOrg.role] >= ROLE_RANK.manager;
-  if (!veSempre) {
-    const { data: org } = await createAdminClient()
-      .from("organizations")
-      .select("settings")
-      .eq("id", activeOrg.orgId)
-      .maybeSingle();
-    if (!agendaLigadaParaEquipe(org?.settings)) redirect("/app");
+  const { data: org } = await createAdminClient()
+    .from("organizations")
+    .select("settings")
+    .eq("id", activeOrg.orgId)
+    .maybeSingle();
+  if (
+    !podeAbrirAgenda(
+      user.is_platform_admin,
+      activeOrg.role,
+      activeOrg.interface_settings,
+      agendaLigadaParaEquipe(org?.settings),
+    )
+  ) {
+    redirect("/app");
   }
 
   // Resolvido no SERVIDOR: `GOOGLE_CALENDAR_*` é env de servidor e não pode
