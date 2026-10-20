@@ -42,12 +42,12 @@ describe("rota de vendas: ate inclusivo vira exclusivo para o bot", () => {
   it("ate=2026-10-20 chega ao bot como 2026-10-21 e desde segue igual", async () => {
     const res = await vendas(pedido("/api/treenity-bot/vendas?desde=2026-10-01&ate=2026-10-20") as never);
     expect(res.status).toBe(200);
-    expect(deps.vendas).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ desde: "2026-10-01", ate: "2026-10-21" }));
+    expect(deps.vendas).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ desde: "2026-10-01T00:00:00-03:00", ate: "2026-10-21T00:00:00-03:00" }));
   });
 
   it("virada de mês: ate=2026-10-31 vira 2026-11-01", async () => {
     await vendas(pedido("/api/treenity-bot/vendas?ate=2026-10-31") as never);
-    expect(deps.vendas).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ ate: "2026-11-01" }));
+    expect(deps.vendas).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ ate: "2026-11-01T00:00:00-03:00" }));
   });
 
   it("sem ate, o bot não recebe ate", async () => {
@@ -90,7 +90,7 @@ describe("rota de atendimentos: ate inclusivo vira exclusivo e busca passa", () 
     expect(res.status).toBe(200);
     expect(deps.atendimentos).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ desde: "2026-10-01", ate: "2026-10-21", busca: "Ana" }),
+      expect.objectContaining({ desde: "2026-10-01T00:00:00-03:00", ate: "2026-10-21T00:00:00-03:00", busca: "Ana" }),
     );
   });
 

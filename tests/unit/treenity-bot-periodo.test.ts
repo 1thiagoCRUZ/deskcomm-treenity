@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   ateParaOBot,
+  desdeParaOBot,
   atalhoDoPeriodo,
   diaParaExibir,
   hojeNoPainel,
@@ -24,8 +25,10 @@ describe("periodo do painel do Treenity Bot", () => {
   });
 
   it("ate inclusivo vira exclusivo para o bot", () => {
-    expect(ateParaOBot("2026-10-20")).toBe("2026-10-21");
-    expect(ateParaOBot("2026-10-31")).toBe("2026-11-01");
+    expect(ateParaOBot("2026-10-20")).toBe("2026-10-21T00:00:00-03:00");
+    expect(ateParaOBot("2026-10-31")).toBe("2026-11-01T00:00:00-03:00");
+    expect(ateParaOBot("2026-02-31")).toBeUndefined();
+    expect(desdeParaOBot("2026-10-20")).toBe("2026-10-20T00:00:00-03:00");
     expect(ateParaOBot("")).toBeUndefined();
     expect(ateParaOBot(undefined)).toBeUndefined();
     expect(ateParaOBot("lixo")).toBeUndefined();

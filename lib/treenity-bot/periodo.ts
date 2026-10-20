@@ -95,10 +95,24 @@ export function atalhoDoPeriodo(p: Periodo, hoje: string): AtalhoDePeriodo {
   return "personalizado";
 }
 
-/** O `ate` que o bot espera (exclusivo) a partir do dia inclusivo da tela. */
+/** Brasil sem horário de verão: São Paulo é -03:00 o ano todo. */
+const DESLOCAMENTO_SP = "-03:00";
+
+/** Início do dia em São Paulo, em ISO com fuso (o bot corta por instante, não por dia). */
+export function desdeParaOBot(desdeInclusivo: string | undefined): string | undefined {
+  if (!desdeInclusivo || !diaValido(desdeInclusivo)) return undefined;
+  return `${desdeInclusivo}T00:00:00${DESLOCAMENTO_SP}`;
+}
+
+/** O `ate` que o bot espera (exclusivo): começo do dia SEGUINTE em São Paulo, a partir do dia inclusivo da tela. */
 export function ateParaOBot(ateInclusivo: string | undefined): string | undefined {
-  if (!ateInclusivo || !DIA_ISO.test(ateInclusivo)) return undefined;
-  return somarDias(ateInclusivo, 1);
+  if (!ateInclusivo || !diaValido(ateInclusivo)) return undefined;
+  return `${somarDias(ateInclusivo, 1)}T00:00:00${DESLOCAMENTO_SP}`;
+}
+
+/** `YYYY-MM-DD` que existe no calendário (rejeita 2026-02-31). */
+export function diaValido(dia: string): boolean {
+  return DIA_ISO.test(dia) && somarDias(dia, 0) === dia;
 }
 
 /** "2026-10-20" -> "20/10/2026" (só para mostrar nos chips). */
