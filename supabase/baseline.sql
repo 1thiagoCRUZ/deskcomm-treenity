@@ -23602,6 +23602,30 @@ select c.organization_id, c.id, least(c.created_at, c.venda_fechada_em), c.venda
 -- antiga. Nula nas vendas anteriores a esta coluna (o painel cai na mais recente).
 alter table public.conversa_vendas add column if not exists venda_bot_id text;
 
+-- ---- Índices de desempenho (migration 0245) ----
+-- Só índices: nenhuma policy, função ou trigger muda. Cada um foi provado com EXPLAIN contra
+-- a consulta real do código (o porquê de cada um está na migration 0245).
+-- ⚠️ create index segura as escritas da tabela enquanto é montado; em base grande, aplicar
+-- fora do horário de movimento. idx_conversations_org_last_msg ficou redundante com o _id (remover depois).
+create index if not exists idx_contacts_display_name_trgm
+  on public.contacts using gin (display_name public.gin_trgm_ops);
+create index if not exists idx_contacts_phone_number_trgm
+  on public.contacts using gin (phone_number public.gin_trgm_ops);
+create index if not exists idx_conversations_org_last_msg_id
+  on public.conversations (organization_id, last_message_at desc nulls last, id desc);
+create index if not exists idx_conversa_vendas_org_fechada
+  on public.conversa_vendas (organization_id, fechada_em desc);
+-- Predicado = cópia do da contagem "pediu especialista" (conversations/counts/route.ts).
+-- (a função pura pedidoDeEspecialistaAberto também exclui 'resolved' e a contagem não: alinhar exige refazer o índice.)
+create index if not exists idx_conversations_org_pediu_especialista
+  on public.conversations (organization_id)
+  where last_handoff_reason like 'O bot chamou o especialista: %'
+    and assigned_to_user_id is null
+    and status not in ('closed', 'archived');
+create index if not exists idx_event_log_pending_type_created
+  on public.event_log (event_type, created_at)
+  where status = 'pending';
+
 -- ---- VARREDURA anon: função nova nasce exposta em quem ATUALIZA (migration 0116) ----
 --
 -- ⚠️ ESTE BLOCO É, DE PROPÓSITO, O ÚLTIMO DO ARQUIVO. Apêndice novo entra ANTES
