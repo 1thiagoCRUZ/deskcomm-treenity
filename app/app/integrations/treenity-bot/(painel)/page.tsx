@@ -40,6 +40,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
 import { roleAtLeast } from "@/lib/auth/types";
 import { ehGestaoTreenity } from "@/lib/treenity/papeis";
+import { carregarAcessoAoBot } from "@/lib/treenity-bot/acesso";
 import { isConfigured } from "@/lib/treenity-bot/config";
 import { carregarDadosTreenityBot, carregarPainelAdmin } from "@/lib/treenity-bot/client";
 import { normalizarIdioma } from "@/lib/i18n/idiomas";
@@ -104,9 +105,14 @@ async function ConteudoTreenityBot() {
   const ehGestao = user ? ehGestaoTreenity(user) : false;
   const usuarioDoBot = user ? { email: user.email, nome: user.full_name ?? user.email } : null;
 
+  // A API do bot não separa empresas: só o Dono de uma empresa com o bot ligado
+  // (ou a Gestão Treenity) recebe token. Nada do bot é buscado antes desta decisão.
+  const acesso = configured && user ? await carregarAcessoAoBot({ user, org: activeOrg, minimo: "admin" }) : null;
+  const liberado = acesso?.permitido === true;
+
   const [dados, painel] = await Promise.all([
-    configured && usuarioDoBot ? carregarDadosTreenityBot(usuarioDoBot) : null,
-    configured && usuarioDoBot && ehAdmin ? carregarPainelAdmin(usuarioDoBot) : null,
+    liberado && usuarioDoBot && ehAdmin ? carregarDadosTreenityBot(usuarioDoBot) : null,
+    liberado && usuarioDoBot && ehAdmin ? carregarPainelAdmin(usuarioDoBot) : null,
   ]);
 
   const hojeISO = new Date().toISOString().slice(0, 10);
@@ -134,6 +140,19 @@ async function ConteudoTreenityBot() {
               <code className="rounded-md bg-muted px-1 py-0.5 text-xs">.env.local</code>{" "}
               {traduzir("para ativar a integração.", idioma)}
             </CardDescription>
+          </CardHeader>
+        </Card>
+      ) : !liberado ? (
+        <Card className="max-w-2xl">
+          <CardHeader>
+            <CardTitle>
+              {traduzir(
+                acesso?.permitido === false && acesso.motivo === "bot_desligado"
+                  ? "O Treenity Bot não está ligado nesta empresa."
+                  : "Somente o Dono da empresa acessa esta área do Treenity Bot.",
+                idioma,
+              )}
+            </CardTitle>
           </CardHeader>
         </Card>
       ) : !dados ? (

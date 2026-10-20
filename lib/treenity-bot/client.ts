@@ -185,7 +185,8 @@ async function buscarJson(sessao: SessaoRenovavel, path: string): Promise<{ succ
   const uma = async (token: string): Promise<Response | null> => {
     try {
       return await fetch(`${config.apiUrl}${path}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        // O segredo de servidor vai junto, como nas demais chamadas ao bot. Nunca vai ao navegador nem a log.
+        headers: { Authorization: `Bearer ${token}`, "X-SSO-Secret": config.ssoSecret },
         cache: "no-store",
         signal: AbortSignal.timeout(TEMPO_MAXIMO_MS),
       });
@@ -428,7 +429,9 @@ export async function carregarDadosTreenityBot(usuario: {
   const config = getConfig();
   if (!config) return null;
 
-  const sessao = await abrirSessao(usuario);
+  // `/api/dashboard` e `/sinalizados` exigem a permissão de painel na API do bot:
+  // só chame depois de confirmar, no servidor, que a pessoa é admin da empresa.
+  const sessao = await abrirSessao(usuario, { painelAdmin: true });
   if (!sessao) return null;
 
   const [metricas, sinalizados] = await Promise.all([
@@ -477,7 +480,8 @@ export async function carregarConversaTreenityBot(
   usuario: { email: string; nome: string },
   atendimentoId: string,
 ): Promise<ConversaTreenityBot | null> {
-  const sessao = await abrirSessao(usuario);
+  // A transcrição exige a permissão de painel: só chame após confirmar admin no servidor.
+  const sessao = await abrirSessao(usuario, { painelAdmin: true });
   if (!sessao) return null;
 
   return chamarApi<ConversaTreenityBot>(

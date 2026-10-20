@@ -7,18 +7,30 @@
  * avisava a API do bot que a situação foi resolvida. `POST /:id/encerrar`
  * marca `statusFunil: 'Fechada'`; a próxima mensagem desse cliente no bot abre
  * um atendimento novo e a IA volta a responder normalmente.
+ *
+ * Só o Dono (admin) de uma empresa com o bot ligado: a API do bot não separa
+ * empresas, então a separação é feita aqui, antes de qualquer token.
  */
 import { revalidatePath } from "next/cache";
 
-import { loadAuthUser } from "@/lib/auth/server";
+import { requireRole } from "@/lib/auth/require-role";
+import { requireSupportWrite } from "@/lib/impersonate/support";
+import { carregarAcessoAoBot } from "@/lib/treenity-bot/acesso";
 import { getConfig } from "@/lib/treenity-bot/config";
 import { comRenovacaoEm401, trocarToken } from "@/lib/treenity-bot/client";
 
 type ActionResult = { ok: true } | { ok: false; error: string };
 
 export async function encerrarAtendimentoAction(atendimentoId: string): Promise<ActionResult> {
-  const user = await loadAuthUser();
-  if (!user) return { ok: false, error: "unauthenticated" };
+  const supportDenied = await requireSupportWrite();
+  if (supportDenied) return { ok: false, error: "forbidden" };
+
+  const authz = await requireRole("admin", { resource: "treenity_bot" });
+  if (!authz.ok) return { ok: false, error: authz.response.status === 401 ? "unauthenticated" : "forbidden" };
+  const user = authz.user;
+
+  const acesso = await carregarAcessoAoBot({ user, org: authz.org, minimo: "admin" });
+  if (!acesso.permitido) return { ok: false, error: "forbidden" };
 
   const config = getConfig();
   if (!config) return { ok: false, error: "not_configured" };
@@ -33,7 +45,8 @@ export async function encerrarAtendimentoAction(atendimentoId: string): Promise<
       (accessToken) =>
         fetch(`${config.apiUrl}/api/atendimentos/${encodeURIComponent(atendimentoId)}/encerrar`, {
           method: "POST",
-          headers: { Authorization: `Bearer ${accessToken}` },
+          // Segredo de servidor: a API do bot passa a exigi-lo nas mutações. Nunca vai ao navegador nem a log.
+          headers: { Authorization: `Bearer ${accessToken}`, "X-SSO-Secret": config.ssoSecret },
           cache: "no-store",
         }),
     );
