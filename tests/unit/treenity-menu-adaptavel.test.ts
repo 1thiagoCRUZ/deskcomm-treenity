@@ -39,22 +39,13 @@ describe("menu do Dono: enxuto e adaptável", () => {
   });
 });
 
-describe("Agenda do Funcionário: só quando a empresa liga", () => {
+describe("Agenda no menu do Funcionário", () => {
   const agenda = "/app/agenda";
-  const func = PAPEIS_DO_CLIENTE.funcionario.interface;
-
-  it("desligada (padrão), o Funcionário não vê a Agenda; o Dono vê sempre", () => {
-    expect(hrefsDoMenu(false, "agent", func, {})).not.toContain(agenda);
-    expect(hrefsDoMenu(false, "agent", func, { agendaDaEquipe: false })).not.toContain(agenda);
-    expect(hrefsDoMenu(false, "admin", { preset: "completa" }, { agendaDaEquipe: false })).toContain(agenda);
+  it("o Funcionário padrão e o Dono veem a Agenda", () => {
+    expect(hrefsDoMenu(false, "agent", PAPEIS_DO_CLIENTE.funcionario.interface)).toContain(agenda);
+    expect(hrefsDoMenu(false, "admin", { preset: "completa" })).toContain(agenda);
   });
-
-  it("ligada, o Funcionário passa a ver a Agenda", () => {
-    expect(hrefsDoMenu(false, "agent", func, { agendaDaEquipe: true })).toContain(agenda);
-  });
-
-  it("menu personalizado do Dono vence: lista sem Agenda continua sem", () => {
-    const personalizado = { preset: "simplificada" as const, destinos: ["/app/inbox" as const] };
-    expect(hrefsDoMenu(false, "agent", personalizado, { agendaDaEquipe: true })).not.toContain(agenda);
+  it("menu personalizado pelo Dono vence: lista sem Agenda continua sem", () => {
+    expect(hrefsDoMenu(false, "agent", { preset: "simplificada", destinos: ["/app/inbox"] })).not.toContain(agenda);
   });
 });
