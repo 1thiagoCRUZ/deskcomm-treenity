@@ -344,6 +344,8 @@ export interface FiltrosDeAtendimentos {
   canal?: string;
   etapa?: string;
   comVenda?: boolean;
+  /** Só atendimentos ainda abertos (fora de Fechada/Perdida). Bot antigo ignora o parâmetro. */
+  emAndamento?: boolean;
   /** `YYYY-MM-DD` ou ISO, inclusivo — o bot filtra pela última atividade. */
   desde?: string;
   /** `YYYY-MM-DD`, exclusivo. */
@@ -368,10 +370,10 @@ async function buscarPaginaDeAtendimentos(
   sessao: SessaoRenovavel,
   filtros: FiltrosDeAtendimentos,
 ): Promise<PaginaDeAtendimentos | null> {
-  const { comVenda, ...resto } = filtros;
+  const { comVenda, emAndamento, ...resto } = filtros;
   const resposta = await chamarApiCompleta<{ data: AtendimentoPainel[]; proximoCursor: string | null }>(
     sessao,
-    `/api/atendimentos${montarQuery({ ...resto, com_venda: comVenda })}`,
+    `/api/atendimentos${montarQuery({ ...resto, com_venda: comVenda, em_andamento: emAndamento })}`,
   );
   if (!resposta) return null;
   return { itens: resposta.data, proximoCursor: resposta.proximoCursor };
