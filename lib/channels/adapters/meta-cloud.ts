@@ -239,7 +239,27 @@ export const metaCloudAdapter: ChannelAdapter = {
       await arquivo.body?.cancel().catch(() => undefined);
       throw new MediaTooLargeError();
     }
-    const buffer = Buffer.from(await arquivo.arrayBuffer());
+    let buffer: Buffer;
+    if (limite !== undefined && arquivo.body) {
+      // Com teto, lê em pedaços e aborta ao passar dele: não confia em cabeçalho
+      // que pode faltar (corpo em pedaços) para não segurar o arquivo inteiro.
+      const leitor = arquivo.body.getReader();
+      const partes: Uint8Array[] = [];
+      let total = 0;
+      for (;;) {
+        const { done, value } = await leitor.read();
+        if (done) break;
+        total += value.byteLength;
+        if (total > limite) {
+          await leitor.cancel().catch(() => undefined);
+          throw new MediaTooLargeError();
+        }
+        partes.push(value);
+      }
+      buffer = Buffer.concat(partes);
+    } else {
+      buffer = Buffer.from(await arquivo.arrayBuffer());
+    }
     const mime = corpo.mime_type?.split(";")[0]?.trim() || input.hintMime || "application/octet-stream";
     return { buffer, mime };
   },

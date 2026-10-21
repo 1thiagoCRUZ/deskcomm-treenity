@@ -22,7 +22,7 @@ import { after, NextResponse, type NextRequest } from "next/server";
 import { fail } from "@/lib/api/wrappers";
 import { lerEnvelopeMeta } from "@/lib/channels/meta/envelope";
 import { parseMetaWebhook, verificationChallenge, verifyMetaSignature } from "@/lib/channels/meta/webhook";
-import { guardarMidiaNaChegada } from "@/lib/channels/meta/guardar-midia";
+import { guardarMidiaNaChegada, type GuardarMidiaInput } from "@/lib/channels/meta/guardar-midia";
 import { ingestMetaInbound } from "@/lib/channels/meta/ingest";
 import { metaSessionByWebhookToken } from "@/lib/channels/meta/session";
 import { logger } from "@/lib/logger";
@@ -113,6 +113,8 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<NextRespons
    * mesmo assim; reentrega (`duplicate`) fica de fora — o bot já recebeu.
    */
   const conversasDoRepasse: (string | null)[] = [];
+  /** Mídias a copiar depois da resposta, uma de cada vez (memória). */
+  const midiasParaGuardar: GuardarMidiaInput[] = [];
 
   for (const e of eventos) {
     // O evento chega carimbado com a WABA; se não for a desta sessão, ignoramos.
@@ -144,16 +146,7 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<NextRespons
             mediaId: e.media?.id,
             hintMime: e.media?.mime ?? null,
           };
-          try {
-            after(async () => {
-              await guardarMidiaNaChegada(admin, entrada);
-            });
-          } catch (err) {
-            // Fora de escopo de requisição o `after` lança; nunca derruba o ACK.
-            logger.warn("[meta.midia] não agendou a cópia na chegada", {
-              erro: err instanceof Error ? err.message : "desconhecido",
-            });
-          }
+          midiasParaGuardar.push(entrada);
         }
       }
       else if (r.status !== "duplicate") conversasDoRepasse.push(null);
@@ -196,6 +189,19 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<NextRespons
     assinatura: req.headers.get("x-hub-signature-256"),
     conversas: conversasDoRepasse,
   });
+
+  if (midiasParaGuardar.length > 0) {
+    try {
+      after(async () => {
+        for (const entrada of midiasParaGuardar) await guardarMidiaNaChegada(admin, entrada);
+      });
+    } catch (err) {
+      // Fora de escopo de requisição o `after` lança; nunca derruba o ACK.
+      logger.warn("[meta.midia] não agendou a cópia na chegada", {
+        erro: err instanceof Error ? err.message : "desconhecido",
+      });
+    }
+  }
 
   // 200 SEMPRE que a assinatura confere, inclusive para evento que não nos
   // interessa: a Meta re-entrega tudo que não recebe 2xx, e recusar o que
