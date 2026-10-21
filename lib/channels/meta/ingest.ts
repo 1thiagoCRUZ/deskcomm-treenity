@@ -34,7 +34,7 @@ import { referenciaDaMidiaMeta } from "./media-ref";
 type Admin = SupabaseClient;
 
 export type IngestOutcome =
-  | { status: "ingested"; messageId: string; conversationId: string }
+  | { status: "ingested"; messageId: string; conversationId: string; channelSessionId: string }
   | { status: "duplicate" }
   | { status: "no_session" }
   | { status: "failed"; reason: string };
@@ -228,5 +228,6 @@ export async function ingestMetaInbound(
     status: "ingested",
     messageId,
     conversationId: conversationId as string,
+    channelSessionId: sessao.id,
   };
 }
