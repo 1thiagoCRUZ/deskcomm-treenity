@@ -7410,6 +7410,8 @@ export const DICIONARIO: Traducoes = {
   "Proposta / pagamento": { es: "Propuesta / pago" },
   "Não foi possível carregar os atendimentos em andamento agora.": { es: "No se pudieron cargar las atenciones en curso ahora." },
   "Nenhum atendimento em andamento agora": { es: "Ninguna atención en curso ahora" },
+  "Não foi possível carregar mais atendimentos agora.": { es: "No se pudieron cargar más atenciones ahora." },
+  "Nenhum nesta página ainda. Toque em Carregar mais.": { es: "Ninguno en esta página todavía. Toca Cargar más." },
   "Precisa de atenção": { es: "Necesita atención" },
   "Escreva um título para a tarefa.": { es: "Escribe un título para la tarea." },
   "Não foi possível salvar a tarefa.": { es: "No se pudo guardar la tarea." },

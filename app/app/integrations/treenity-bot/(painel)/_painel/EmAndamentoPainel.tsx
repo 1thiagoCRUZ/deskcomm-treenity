@@ -9,6 +9,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { Warning } from "@/lib/ui/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -66,8 +67,12 @@ export function EmAndamentoPainel() {
     if (!silencioso) setCarregando(true);
     const pagina = await baixar(null);
     if (pagina) {
-      setItens(soEmAndamento(pagina.itens));
-      setCursor(pagina.proximoCursor);
+      // Silencioso: mescla com o que já está na tela (quem carregou "mais" não perde as páginas).
+      setItens((prev) => {
+        const novos = new Set(pagina.itens.map((n) => n.id));
+        return soEmAndamento([...pagina.itens, ...(silencioso ? prev.filter((p) => !novos.has(p.id)) : [])]);
+      });
+      setCursor((atual) => (silencioso && atual ? atual : pagina.proximoCursor));
       setErro(false);
     } else if (!silencioso) {
       setErro(true);
@@ -90,7 +95,7 @@ export function EmAndamentoPainel() {
       setItens((prev) => soEmAndamento([...prev, ...pagina.itens.filter((n) => !prev.some((p) => p.id === n.id))]));
       setCursor(pagina.proximoCursor);
     } else {
-      setErro(true);
+      toast.error(t("Não foi possível carregar mais atendimentos agora."));
     }
     setCarregandoMais(false);
   }
@@ -145,7 +150,9 @@ export function EmAndamentoPainel() {
             </div>
           ) : visiveis.length === 0 ? (
             <p className="px-6 py-10 text-center text-base text-muted-foreground">
-              {t("Nenhum atendimento em andamento agora")}
+              {cursor && etapa === null
+                ? t("Nenhum nesta página ainda. Toque em Carregar mais.")
+                : t("Nenhum atendimento em andamento agora")}
             </p>
           ) : (
             <ul className="divide-y divide-border">
@@ -186,7 +193,7 @@ export function EmAndamentoPainel() {
             </ul>
           )}
 
-          {cursor && !carregando && !erro ? (
+          {cursor && !carregando ? (
             <div className="flex justify-center border-t border-border p-4">
               <Button variant="secondary" disabled={carregandoMais} onClick={() => void carregarMais()}>
                 {carregandoMais ? t("Carregando…") : t("Carregar mais")}
