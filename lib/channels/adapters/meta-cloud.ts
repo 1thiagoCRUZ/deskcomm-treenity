@@ -29,7 +29,7 @@ import type {
   OutboundEnvelope,
   RecipientInput,
 } from "../types";
-import type { FetchedMedia } from "@/lib/messaging/media/types";
+import { MediaTooLargeError, type FetchedMedia } from "@/lib/messaging/media/types";
 import { META_MEDIA_PREFIX } from "../meta/media-ref";
 
 /** O token do número só viaja para host da Meta (lookaside.fbsbx.com e afins). */
@@ -207,6 +207,7 @@ export const metaCloudAdapter: ChannelAdapter = {
     sessionRef: string;
     url: string;
     hintMime?: string | null;
+    maxBytes?: number;
   }): Promise<FetchedMedia> {
     const mediaId = input.url.startsWith(META_MEDIA_PREFIX) ? input.url.slice(META_MEDIA_PREFIX.length) : "";
     if (!/^\d+$/.test(mediaId)) throw new Error("meta_media_ref_invalida: referência de mídia fora do formato.");
@@ -222,16 +223,43 @@ export const metaCloudAdapter: ChannelAdapter = {
       headers: auth,
       signal: AbortSignal.timeout(15_000),
     });
-    const corpo = (await info.json().catch(() => ({}))) as { url?: string; mime_type?: string; error?: { message?: string } };
+    const corpo = (await info.json().catch(() => ({}))) as { url?: string; mime_type?: string; file_size?: number | string; error?: { message?: string } };
     // A Meta descarta a mídia depois de ~30 dias: aí o passo 1 já responde erro.
     if (!info.ok || !corpo.url) {
       throw new Error(`meta_media_failed: ${info.status} ${corpo.error?.message ?? ""}`.trim());
     }
     if (!hostDaMeta(corpo.url)) throw new Error("meta_media_host_inesperado: a Graph devolveu URL fora da Meta.");
 
+    const limite = input.maxBytes;
+    if (limite !== undefined && Number(corpo.file_size) > limite) throw new MediaTooLargeError();
+
     const arquivo = await fetch(corpo.url, { headers: auth, signal: AbortSignal.timeout(30_000) });
     if (!arquivo.ok) throw new Error(`meta_media_download_failed: ${arquivo.status}`);
-    const buffer = Buffer.from(await arquivo.arrayBuffer());
+    if (limite !== undefined && Number(arquivo.headers.get("content-length")) > limite) {
+      await arquivo.body?.cancel().catch(() => undefined);
+      throw new MediaTooLargeError();
+    }
+    let buffer: Buffer;
+    if (limite !== undefined && arquivo.body) {
+      // Com teto, lê em pedaços e aborta ao passar dele: não confia em cabeçalho
+      // que pode faltar (corpo em pedaços) para não segurar o arquivo inteiro.
+      const leitor = arquivo.body.getReader();
+      const partes: Uint8Array[] = [];
+      let total = 0;
+      for (;;) {
+        const { done, value } = await leitor.read();
+        if (done) break;
+        total += value.byteLength;
+        if (total > limite) {
+          await leitor.cancel().catch(() => undefined);
+          throw new MediaTooLargeError();
+        }
+        partes.push(value);
+      }
+      buffer = Buffer.concat(partes);
+    } else {
+      buffer = Buffer.from(await arquivo.arrayBuffer());
+    }
     const mime = corpo.mime_type?.split(";")[0]?.trim() || input.hintMime || "application/octet-stream";
     return { buffer, mime };
   },

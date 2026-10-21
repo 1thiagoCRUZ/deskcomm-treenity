@@ -17,11 +17,12 @@
  * qualquer tenant.
  */
 import { randomUUID } from "node:crypto";
-import { NextResponse, type NextRequest } from "next/server";
+import { after, NextResponse, type NextRequest } from "next/server";
 
 import { fail } from "@/lib/api/wrappers";
 import { lerEnvelopeMeta } from "@/lib/channels/meta/envelope";
 import { parseMetaWebhook, verificationChallenge, verifyMetaSignature } from "@/lib/channels/meta/webhook";
+import { guardarMidiaNaChegada, type GuardarMidiaInput } from "@/lib/channels/meta/guardar-midia";
 import { ingestMetaInbound } from "@/lib/channels/meta/ingest";
 import { metaSessionByWebhookToken } from "@/lib/channels/meta/session";
 import { logger } from "@/lib/logger";
@@ -30,6 +31,8 @@ import { repassarAoBot } from "@/lib/treenity-bot/whatsapp";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+// O `after()` (cópia da mídia na chegada) vive dentro deste prazo.
+export const maxDuration = 60;
 
 interface RouteCtx {
   params: Promise<{ token: string }>;
@@ -110,6 +113,8 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<NextRespons
    * mesmo assim; reentrega (`duplicate`) fica de fora — o bot já recebeu.
    */
   const conversasDoRepasse: (string | null)[] = [];
+  /** Mídias a copiar depois da resposta, uma de cada vez (memória). */
+  const midiasParaGuardar: GuardarMidiaInput[] = [];
 
   for (const e of eventos) {
     // O evento chega carimbado com a WABA; se não for a desta sessão, ignoramos.
@@ -127,7 +132,23 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<NextRespons
       // as duas, com 200 na resposta (issue #236).
       const r = await ingestMetaInbound(admin, e, { organizationId: session.organizationId });
       desfechos.push(r.status);
-      if (r.status === "ingested") conversasDoRepasse.push(r.conversationId);
+      if (r.status === "ingested") {
+        conversasDoRepasse.push(r.conversationId);
+        // Guarda imagem/documento na chegada, DEPOIS da resposta à Meta (a
+        // rotina nunca lança). Não espera o repasse ao bot nem o atrasa.
+        if (r.messageId && (e.type === "image" || e.type === "document")) {
+          const entrada = {
+            organizationId: session.organizationId,
+            channelSessionId: r.channelSessionId,
+            conversationId: r.conversationId,
+            messageId: r.messageId,
+            type: e.type,
+            mediaId: e.media?.id,
+            hintMime: e.media?.mime ?? null,
+          };
+          midiasParaGuardar.push(entrada);
+        }
+      }
       else if (r.status !== "duplicate") conversasDoRepasse.push(null);
       if (r.status === "failed" || r.status === "no_session") {
         // 2xx continua (a Meta re-entregaria em loop), mas a falha NÃO fica muda:
@@ -168,6 +189,19 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<NextRespons
     assinatura: req.headers.get("x-hub-signature-256"),
     conversas: conversasDoRepasse,
   });
+
+  if (midiasParaGuardar.length > 0) {
+    try {
+      after(async () => {
+        for (const entrada of midiasParaGuardar) await guardarMidiaNaChegada(admin, entrada);
+      });
+    } catch (err) {
+      // Fora de escopo de requisição o `after` lança; nunca derruba o ACK.
+      logger.warn("[meta.midia] não agendou a cópia na chegada", {
+        erro: err instanceof Error ? err.message : "desconhecido",
+      });
+    }
+  }
 
   // 200 SEMPRE que a assinatura confere, inclusive para evento que não nos
   // interessa: a Meta re-entrega tudo que não recebe 2xx, e recusar o que

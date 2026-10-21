@@ -20,8 +20,8 @@ import {
   type ChannelProvider,
   type ChannelSessionRef,
 } from "@/lib/channels";
+import { gravarMidiaNoStorage } from "@/lib/channels/meta/guardar-midia";
 import { META_MEDIA_PREFIX } from "@/lib/channels/meta/media-ref";
-import { storagePathFor } from "@/lib/messaging/media/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -154,18 +154,12 @@ export async function GET(req: NextRequest, ctx: RouteCtx): Promise<Response> {
       // abre, é o que mantém o histórico de pé — nas próximas, o ramo do
       // storage lá em cima responde. Falhar aqui não impede de servir.
       if (msg.media_url.startsWith(META_MEDIA_PREFIX)) {
-        const path = storagePathFor(activeOrg.orgId, msg.conversation_id, msg.id, media.mime);
-        const admin = createAdminClient();
-        const { error: upErr } = await admin.storage
-          .from("whatsapp-media")
-          .upload(path, media.buffer, { contentType: media.mime, upsert: true });
-        if (!upErr) {
-          await admin
-            .from("messages")
-            .update({ media_storage_path: path, media_mime: media.mime, media_size_bytes: media.buffer.byteLength })
-            .eq("organization_id", activeOrg.orgId)
-            .eq("id", msg.id);
-        }
+        await gravarMidiaNoStorage(createAdminClient(), {
+          organizationId: activeOrg.orgId,
+          conversationId: msg.conversation_id,
+          messageId: msg.id,
+          media,
+        });
       }
 
       return new Response(new Uint8Array(media.buffer), {
