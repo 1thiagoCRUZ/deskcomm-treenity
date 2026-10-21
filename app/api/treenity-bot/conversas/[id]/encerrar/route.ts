@@ -125,6 +125,11 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
     .from("conversations")
     .update({
       bot_silenced_until: null,
+      // O pedido de especialista era DESTE atendimento, que acabou de ser encerrado.
+      // Sem limpar, a faixa "O bot pediu um especialista" ficava na conversa e
+      // reaparecia quando o cliente voltava a escrever (compra nova), dizendo que
+      // pediam ajuda para uma coisa que nem aconteceu naquele atendimento.
+      last_handoff_reason: null,
       // Só a VENDA entra em Fechadas (e no selo "Já é nosso cliente"); o encerramento
       // sem venda não. A data fica mesmo que o cliente volte a escrever.
       ...(corpo.data.desfecho === "venda" ? { venda_fechada_em: new Date().toISOString() } : {}),
