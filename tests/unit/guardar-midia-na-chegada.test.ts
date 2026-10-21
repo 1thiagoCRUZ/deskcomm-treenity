@@ -51,7 +51,7 @@ const JPEG = (n = 10) => Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), Buffer.
 const PDF = Buffer.from("%PDF-1.4 conteudo");
 
 function fakeAdmin(
-  opts: { storagePath?: string | null; uploadError?: boolean; usados?: number | null } = {},
+  opts: { storagePath?: string | null; uploadError?: boolean; usados?: number | null; linhas?: number } = {},
 ) {
   const updates: Array<Record<string, unknown>> = [];
   const upload = vi.fn(async () => ({ error: opts.uploadError ? { message: "x" } : null }));
@@ -71,12 +71,13 @@ function fakeAdmin(
       q.update = (v: Record<string, unknown>) => (updates.push(v), q);
       q.not = () => q;
       q.gte = () => q;
+      q.order = () => q;
       q.limit = () => q;
       q.then = (res: (v: unknown) => unknown) =>
         res(
           opts.usados === null
             ? { data: null, error: { message: "x" } }
-            : { data: [{ media_size_bytes: opts.usados ?? 0 }], error: null },
+            : { data: Array.from({ length: opts.linhas ?? 1 }, () => ({ media_size_bytes: opts.usados ?? 0 })), error: null },
         );
       return q;
     },
@@ -203,6 +204,12 @@ describe("guardarMidiasDoPost", () => {
     const f = fakeAdmin({ usados: COTA_BYTES_POR_ORG_24H });
     const r = await guardarMidiasDoPost(f.admin, entradas(2));
     expect(r.guardadas).toBe(0);
+    expect(baixou).not.toHaveBeenCalled();
+  });
+
+  it("consulta de cota lotada (corte do PostgREST) conta como estourada", async () => {
+    const f = fakeAdmin({ usados: 1, linhas: 999 });
+    expect((await guardarMidiasDoPost(f.admin, entradas(1))).guardadas).toBe(0);
     expect(baixou).not.toHaveBeenCalled();
   });
 

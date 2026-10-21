@@ -20,7 +20,7 @@ import {
   type ChannelProvider,
   type ChannelSessionRef,
 } from "@/lib/channels";
-import { gravarMidiaNoStorage } from "@/lib/channels/meta/guardar-midia";
+import { bytesCasamComMime, gravarMidiaNoStorage, mimeVerificavel } from "@/lib/channels/meta/guardar-midia";
 import { META_MEDIA_PREFIX } from "@/lib/channels/meta/media-ref";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -28,6 +28,7 @@ import { createClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 const SIGNED_URL_TTL_S = 3600;
+const MIMES_INLINE = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 interface RouteCtx {
   params: Promise<{ id: string }>;
@@ -153,7 +154,12 @@ export async function GET(req: NextRequest, ctx: RouteCtx): Promise<Response> {
       // dela vale minutos. Guardar a cópia AGORA, na primeira vez que alguém
       // abre, é o que mantém o histórico de pé — nas próximas, o ramo do
       // storage lá em cima responde. Falhar aqui não impede de servir.
-      if (msg.media_url.startsWith(META_MEDIA_PREFIX)) {
+      // Não guarda o que declara um tipo que conhecemos e não confere nos bytes
+      // (ainda é servido ao atendente abaixo, como antes).
+      if (
+        msg.media_url.startsWith(META_MEDIA_PREFIX) &&
+        (!mimeVerificavel(media.mime) || bytesCasamComMime(media.buffer, media.mime))
+      ) {
         await gravarMidiaNoStorage(createAdminClient(), {
           organizationId: activeOrg.orgId,
           conversationId: msg.conversation_id,
@@ -170,9 +176,16 @@ export async function GET(req: NextRequest, ctx: RouteCtx): Promise<Response> {
           // Serve bytes de terceiros pela NOSSA origem: sem sniffing, e o que não
           // é imagem baixa como anexo em vez de abrir na página.
           "X-Content-Type-Options": "nosniff",
-          ...(media.mime.toLowerCase().startsWith("image/")
+          // Sem JS/estilo mesmo se abrirem a rota numa aba (o SVG é imagem, mas executa).
+          "Content-Security-Policy": "default-src 'none'; sandbox",
+          // Só uma lista fechada abre inline; `image/svg+xml` e o resto baixam.
+          ...(MIMES_INLINE.has(media.mime.split(";")[0]!.trim().toLowerCase())
             ? {}
-            : { "Content-Disposition": "attachment" }),
+            : {
+                "Content-Disposition": nomeDoDownload
+                  ? `attachment; filename="${nomeDoDownload}"`
+                  : "attachment",
+              }),
           "X-Request-Id": requestId,
         },
       });

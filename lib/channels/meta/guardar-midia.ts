@@ -37,7 +37,11 @@ export const MIMES_GUARDAR_NA_CHEGADA: readonly string[] = [
 ];
 /** No máximo tantas mídias copiadas por POST do webhook; as demais ficam `pending` para a primeira abertura. */
 export const MAX_MIDIAS_POR_POST = 5;
-/** O laço de cópias para depois disto (folga sobre o `maxDuration` de 60s do webhook). */
+/**
+ * O laço não COMEÇA item novo depois disto, contado a partir do `after()` (ingest e
+ * repasse ao bot já gastaram parte dos 60s do `maxDuration`). Um item pode passar
+ * disso; a plataforma o corta e ele fica `pending`, que é o estado seguro.
+ */
 export const PRAZO_DO_LACO_MS = 45_000;
 /** Teto do upload ao Storage; passou, vira `pending`. */
 export const TIMEOUT_UPLOAD_MS = 20_000;
@@ -48,6 +52,8 @@ export const TIMEOUT_UPLOAD_MS = 20_000;
  * encher o armazenamento da empresa. Acima disso, o comportamento é o de antes
  * (guarda na primeira abertura).
  */
+/** Abaixo do `max_rows` do PostgREST (1000). */
+const LINHAS_MAX_DA_COTA = 999;
 export const COTA_BYTES_POR_ORG_24H = 500 * 1024 * 1024;
 
 const TIPOS_GUARDAR_NA_CHEGADA: readonly string[] = ["image", "document"];
@@ -79,6 +85,11 @@ export function deveGuardarNaChegada(input: {
  * Confere os primeiros bytes contra o mime declarado. O mime vem da Meta, mas o
  * conteúdo vem do cliente final: não guardamos no bucket o que não é o que diz ser.
  */
+/** Mimes cujo conteúdo sabemos conferir. */
+export function mimeVerificavel(mime: string | null | undefined): boolean {
+  return MIMES_GUARDAR_NA_CHEGADA.includes(mimeBase(mime));
+}
+
 export function bytesCasamComMime(buffer: Buffer, mime: string | null | undefined): boolean {
   const m = mimeBase(mime);
   const b = buffer;
@@ -114,9 +125,9 @@ async function definirStatus(
   status: MediaStatus,
   extra: Record<string, unknown> = {},
 ): Promise<{ error: unknown }> {
-  const { data } = await admin
+  const { data, error: erroLeitura } = await admin
     .from("messages")
-    .select("metadata")
+    .select("metadata, media_storage_path")
     .eq("organization_id", organizationId)
     .eq("id", messageId)
     .maybeSingle();
@@ -124,9 +135,16 @@ async function definirStatus(
     string,
     unknown
   >;
+  // Já guardada (a abertura no Inbox pode ter vencido a corrida): `pending` mentiria.
+  if (status === "pending" && (data as { media_storage_path?: string | null } | null)?.media_storage_path) {
+    return { error: null };
+  }
+  // Se a leitura falhou, NÃO regrava `metadata` (apagaria `voice`, `meta_media_id`...):
+  // grava só os campos de `extra`; sem `extra`, não há o que gravar.
+  if (erroLeitura && Object.keys(extra).length === 0) return { error: erroLeitura };
   const { error } = await admin
     .from("messages")
-    .update({ ...extra, metadata: { ...atual, media_status: status } })
+    .update(erroLeitura ? { ...extra } : { ...extra, metadata: { ...atual, media_status: status } })
     .eq("organization_id", organizationId)
     .eq("id", messageId);
   return { error };
@@ -324,8 +342,13 @@ async function bytesGuardadosEm24h(admin: Admin, organizationId: string): Promis
     .eq("direction", "inbound")
     .not("media_size_bytes", "is", null)
     .gte("created_at", desde)
-    .limit(20000);
+    .order("media_size_bytes", { ascending: false })
+    .limit(LINHAS_MAX_DA_COTA);
   if (error) return null;
+  // O PostgREST corta em `max_rows` (1000 por padrão): lotado, a soma é subestimada
+  // (alguém mandaria centenas de miniaturas e depois PDFs grandes). Ordenado do maior
+  // para o menor, "chegou ao corte" = tratamos a cota como estourada.
+  if ((data ?? []).length >= LINHAS_MAX_DA_COTA) return Number.POSITIVE_INFINITY;
   return ((data ?? []) as Array<{ media_size_bytes: number | null }>).reduce(
     (soma, l) => soma + (l.media_size_bytes ?? 0),
     0,
@@ -344,6 +367,9 @@ export async function guardarMidiasDoPost(
   agora: () => number = Date.now,
 ): Promise<{ guardadas: number; restantes: number }> {
   const inicio = agora();
+  // Corrida aceita: POSTs simultâneos leem a mesma soma, então a cota pode estourar
+  // em até ~50 MB por invocação concorrente. Upload que termina depois do timeout
+  // também fica fora da conta (o objeto sobra no bucket até a primeira abertura).
   try {
     const lote = entradas.slice(0, MAX_MIDIAS_POR_POST);
     let restantes = entradas.length - lote.length;
