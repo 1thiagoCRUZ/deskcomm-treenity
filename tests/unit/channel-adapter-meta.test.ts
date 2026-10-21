@@ -272,6 +272,53 @@ describe("adapter meta_cloud — mídia que o cliente mandou", () => {
     expect(chamadas[1]!.url).toContain("lookaside.fbsbx.com");
   });
 
+  it("com maxBytes: lê em pedaços e aborta ao passar do teto (sem content-length)", async () => {
+    configurar();
+    const pedaco = new Uint8Array(6);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (String(url).includes("graph.facebook.com")) {
+          return new Response(JSON.stringify({ url: "https://lookaside.fbsbx.com/x", mime_type: "image/jpeg" }), {
+            status: 200,
+          });
+        }
+        const corpo = new ReadableStream({
+          start(c) {
+            c.enqueue(pedaco);
+            c.enqueue(pedaco);
+            c.close();
+          },
+        });
+        return new Response(corpo, { status: 200 });
+      }),
+    );
+    const base = { organizationId: ORG, sessionRef: "1103328999528818", url: "meta-media:98765" };
+    const erro = await a().fetchInboundMedia!({ ...base, maxBytes: 10 }).catch((e: Error) => e);
+    expect(erro).toMatchObject({ name: "MediaTooLargeError", limite: 10 });
+    const ok = await a().fetchInboundMedia!({ ...base, maxBytes: 12 });
+    expect(ok.buffer.byteLength).toBe(12);
+  });
+
+  it("com maxBytes: desiste antes do corpo se file_size já passa do teto", async () => {
+    configurar();
+    const chamadas: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        chamadas.push(String(url));
+        return new Response(
+          JSON.stringify({ url: "https://lookaside.fbsbx.com/x", mime_type: "application/pdf", file_size: 99 }),
+          { status: 200 },
+        );
+      }),
+    );
+    await expect(
+      a().fetchInboundMedia!({ organizationId: ORG, sessionRef: "1103328999528818", url: "meta-media:1", maxBytes: 10 }),
+    ).rejects.toMatchObject({ name: "MediaTooLargeError" });
+    expect(chamadas).toHaveLength(1);
+  });
+
   it("não aceita referência fora do formato (nada de URL vinda de fora)", async () => {
     configurar();
     stubMidia();

@@ -22,7 +22,11 @@ import { after, NextResponse, type NextRequest } from "next/server";
 import { fail } from "@/lib/api/wrappers";
 import { lerEnvelopeMeta } from "@/lib/channels/meta/envelope";
 import { parseMetaWebhook, verificationChallenge, verifyMetaSignature } from "@/lib/channels/meta/webhook";
-import { guardarMidiaNaChegada, type GuardarMidiaInput } from "@/lib/channels/meta/guardar-midia";
+import {
+  guardarMidiasDoPost,
+  marcarMidiasPendentes,
+  type GuardarMidiaInput,
+} from "@/lib/channels/meta/guardar-midia";
 import { ingestMetaInbound } from "@/lib/channels/meta/ingest";
 import { metaSessionByWebhookToken } from "@/lib/channels/meta/session";
 import { logger } from "@/lib/logger";
@@ -192,8 +196,11 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<NextRespons
 
   if (midiasParaGuardar.length > 0) {
     try {
+      // `pending` ANTES de agendar: se a função morrer no meio, a mensagem já diz
+      // que a cópia não aconteceu (a primeira abertura cuida). Nunca lança.
+      await marcarMidiasPendentes(admin, midiasParaGuardar);
       after(async () => {
-        for (const entrada of midiasParaGuardar) await guardarMidiaNaChegada(admin, entrada);
+        await guardarMidiasDoPost(admin, midiasParaGuardar);
       });
     } catch (err) {
       // Fora de escopo de requisição o `after` lança; nunca derruba o ACK.

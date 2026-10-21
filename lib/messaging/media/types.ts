@@ -12,8 +12,11 @@ export interface FetchedMedia {
 }
 
 export class MediaTooLargeError extends Error {
-  constructor() {
-    super(`media exceeds ${MAX_MEDIA_BYTES} bytes`);
+  /** Teto realmente aplicado (o do chamador, ou o do bucket por padrão). */
+  readonly limite: number;
+  constructor(limite: number = MAX_MEDIA_BYTES) {
+    super(`media exceeds ${limite} bytes`);
+    this.limite = limite;
     this.name = "MediaTooLargeError";
   }
 }

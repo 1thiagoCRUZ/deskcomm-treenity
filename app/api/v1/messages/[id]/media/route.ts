@@ -167,6 +167,12 @@ export async function GET(req: NextRequest, ctx: RouteCtx): Promise<Response> {
         headers: {
           "Content-Type": media.mime,
           "Cache-Control": "private, max-age=60",
+          // Serve bytes de terceiros pela NOSSA origem: sem sniffing, e o que não
+          // é imagem baixa como anexo em vez de abrir na página.
+          "X-Content-Type-Options": "nosniff",
+          ...(media.mime.toLowerCase().startsWith("image/")
+            ? {}
+            : { "Content-Disposition": "attachment" }),
           "X-Request-Id": requestId,
         },
       });

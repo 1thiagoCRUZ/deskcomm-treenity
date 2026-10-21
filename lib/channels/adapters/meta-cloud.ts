@@ -231,13 +231,13 @@ export const metaCloudAdapter: ChannelAdapter = {
     if (!hostDaMeta(corpo.url)) throw new Error("meta_media_host_inesperado: a Graph devolveu URL fora da Meta.");
 
     const limite = input.maxBytes;
-    if (limite !== undefined && Number(corpo.file_size) > limite) throw new MediaTooLargeError();
+    if (limite !== undefined && Number(corpo.file_size) > limite) throw new MediaTooLargeError(limite);
 
     const arquivo = await fetch(corpo.url, { headers: auth, signal: AbortSignal.timeout(30_000) });
     if (!arquivo.ok) throw new Error(`meta_media_download_failed: ${arquivo.status}`);
     if (limite !== undefined && Number(arquivo.headers.get("content-length")) > limite) {
       await arquivo.body?.cancel().catch(() => undefined);
-      throw new MediaTooLargeError();
+      throw new MediaTooLargeError(limite);
     }
     let buffer: Buffer;
     if (limite !== undefined && arquivo.body) {
@@ -252,7 +252,7 @@ export const metaCloudAdapter: ChannelAdapter = {
         total += value.byteLength;
         if (total > limite) {
           await leitor.cancel().catch(() => undefined);
-          throw new MediaTooLargeError();
+          throw new MediaTooLargeError(limite);
         }
         partes.push(value);
       }
