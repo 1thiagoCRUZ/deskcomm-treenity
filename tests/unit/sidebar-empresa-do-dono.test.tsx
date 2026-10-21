@@ -1,9 +1,10 @@
 /**
- * O DONO PRECISA LER O NOME DA PRÓPRIA EMPRESA.
+ * O NOME NO MENU É O DA MARCA, e só.
  *
- * O TenantSwitcher some com ≤1 organização, e o cabeçalho do menu mostra a
- * marca da instalação ("TreenityCRM"). Medido em 2026-10-02: o dono da Top Ultra
- * renomeou a empresa e não achou o nome em lugar nenhum da tela.
+ * Havia uma linha extra com o nome cadastrado da empresa abaixo do logo
+ * (pedido de 02/10). Em 21/10 o Dono decidiu o contrário: o nome que aparece é o
+ * que ele define em Configurações → Marca; sem isso, vale o da instalação. Uma
+ * linha com um segundo nome confundia ("de onde vem este Top Ultra?").
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
@@ -30,24 +31,17 @@ const membro = { organization_id: "org-1" } as AuthUser["organizations"][number]
 afterEach(cleanup);
 
 describe("nome da empresa no menu", () => {
-  it("⭐ dono de uma empresa só vê o nome dela", () => {
+  it("⭐ sem nome em Marca, não aparece o nome cadastrado da empresa", () => {
     authRef.user = { is_platform_admin: false, organizations: [membro] };
     authRef.activeOrg = { orgId: "org-1", name: "Top Ultra", role: "admin" };
+    render(<Sidebar collapsed={false} />);
+    expect(screen.queryByText("Top Ultra")).toBeNull();
+  });
+
+  it("com nome definido em Marca, o cabeçalho mostra esse nome", () => {
+    authRef.user = { is_platform_admin: false, organizations: [membro] };
+    authRef.activeOrg = { orgId: "org-1", name: "Razão X", role: "admin", marca: { nome: "Top Ultra" } };
     render(<Sidebar collapsed={false} />);
     expect(screen.getByText("Top Ultra")).toBeTruthy();
-  });
-
-  it("quem tem várias empresas já lê o nome no seletor — não repete", () => {
-    authRef.user = { is_platform_admin: false, organizations: [membro, { ...membro, organization_id: "org-2" }] };
-    authRef.activeOrg = { orgId: "org-1", name: "Top Ultra", role: "admin" };
-    render(<Sidebar collapsed={false} />);
-    expect(screen.queryByText("Top Ultra")).toBeNull();
-  });
-
-  it("menu recolhido não mostra a linha", () => {
-    authRef.user = { is_platform_admin: false, organizations: [membro] };
-    authRef.activeOrg = { orgId: "org-1", name: "Top Ultra", role: "admin" };
-    render(<Sidebar collapsed />);
-    expect(screen.queryByText("Top Ultra")).toBeNull();
   });
 });
