@@ -116,6 +116,14 @@ describe("guardarMidiaNaChegada", () => {
     expect(f.upload).not.toHaveBeenCalled();
   });
 
+  it("adapter que desiste por tamanho: ignorada, sem pending", async () => {
+    const { MediaTooLargeError } = await import("@/lib/messaging/media/types");
+    falhaDoAdapter = new MediaTooLargeError();
+    const f = fakeAdmin();
+    expect(await guardarMidiaNaChegada(f.admin, base)).toBe("ignorada");
+    expect(f.updates).toHaveLength(0);
+  });
+
   it("falha do adapter não propaga e marca pending", async () => {
     falhaDoAdapter = new Error("meta fora");
     const f = fakeAdmin();

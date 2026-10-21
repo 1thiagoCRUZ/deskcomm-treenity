@@ -31,6 +31,8 @@ import { repassarAoBot } from "@/lib/treenity-bot/whatsapp";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+// O `after()` (cópia da mídia na chegada) vive dentro deste prazo.
+export const maxDuration = 60;
 
 interface RouteCtx {
   params: Promise<{ token: string }>;

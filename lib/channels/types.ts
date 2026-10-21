@@ -265,6 +265,8 @@ export interface ChannelAdapter {
     url: string;
     /** Mime declarado no webhook, quando houve. Dica, não verdade. */
     hintMime?: string | null;
+    /** Desiste (MediaTooLargeError) antes de ler o corpo se o arquivo declarar mais que isto. */
+    maxBytes?: number;
   }): Promise<FetchedMedia>;
 
   sendTemplate?(input: ChannelTenantScope & {

@@ -22,7 +22,7 @@ import {
   type ChannelSessionRef,
 } from "@/lib/channels";
 import { logger } from "@/lib/logger";
-import { storagePathFor } from "@/lib/messaging/media/types";
+import { MediaTooLargeError, storagePathFor } from "@/lib/messaging/media/types";
 
 import { META_MEDIA_PREFIX } from "./media-ref";
 
@@ -79,7 +79,7 @@ export async function gravarMidiaNoStorage(
     .from("whatsapp-media")
     .upload(path, media.buffer, { contentType: media.mime, upsert: true });
   if (upErr) return null;
-  await admin
+  const { error: updErr } = await admin
     .from("messages")
     .update({
       media_storage_path: path,
@@ -88,7 +88,7 @@ export async function gravarMidiaNoStorage(
     })
     .eq("organization_id", organizationId)
     .eq("id", messageId);
-  return path;
+  return updErr ? null : path;
 }
 
 export interface GuardarMidiaInput {
@@ -166,6 +166,7 @@ export async function guardarMidiaNaChegada(
       sessionRef,
       url: `${META_MEDIA_PREFIX}${input.mediaId}`,
       hintMime: input.hintMime ?? null,
+      maxBytes: MAX_BYTES_GUARDAR_NA_CHEGADA,
     });
 
     if (
@@ -193,6 +194,10 @@ export async function guardarMidiaNaChegada(
     }
     return "guardada";
   } catch (err) {
+    if (err instanceof MediaTooLargeError) {
+      logger.info("[meta.midia] arquivo acima do teto, não guardado na chegada", ctx);
+      return "ignorada";
+    }
     logger.error("[meta.midia] falha ao guardar na chegada", {
       ...ctx,
       erro: err instanceof Error ? err.message : "desconhecido",
