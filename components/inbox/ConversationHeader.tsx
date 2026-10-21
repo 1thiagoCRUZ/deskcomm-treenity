@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { JanelaSelo } from "@/components/inbox/JanelaSelo";
+import { AbrirNoWhatsApp } from "@/components/inbox/AbrirNoWhatsApp";
 import { Phone, ArrowRight, Bell, ChatsCircle } from "@/lib/ui/icons";
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import { useClaimConversation } from "@/hooks/inbox/useClaimConversation";
@@ -321,6 +322,13 @@ export function ConversationHeader({ conversation }: Props) {
           onClick={() => reopen.mutate({ conversation_id: conversation.id, expected_revision: conversation.service_revision })}>
           {t("Reabrir")}
         </Button>}
+        {/* Continuar a conversa no WhatsApp do aparelho (útil com a janela de
+            24h fechada). Só com canal e telefone válido; ver AbrirNoWhatsApp. */}
+        <AbrirNoWhatsApp
+          telefone={c?.phone_number}
+          provider={conversation.channel_sessions?.provider ?? null}
+          lastInboundAt={conversation.last_inbound_at}
+        />
         {/* Levar ESTA conversa para o Chat da equipe: o Dono pergunta ao
             funcionário "por que você fez isso?" mostrando qual conversa, ou
             avisa "fica de olho nesse cliente" (pedido de 02/10). Abre o chat
