@@ -434,6 +434,8 @@ export const DICIONARIO: Traducoes = {
   "Pediu especialista": { es: "Pidió especialista" },
   "mensagens novas": { es: "mensajes nuevos" },
   "Falar com a equipe": { es: "Hablar con el equipo" },
+  "Abrir no WhatsApp": { es: "Abrir en WhatsApp" },
+  "Isto abre o seu WhatsApp. A mensagem sai do número do seu aparelho, não do número da empresa, e não fica registrada no sistema.": { es: "Esto abre tu WhatsApp. El mensaje sale del número de tu teléfono, no del número de la empresa, y no queda registrado en el sistema." },
   "Adicionar mais": { es: "Agregar más" },
   "Arquivo": { es: "Archivo" },
   "Arraste para marcar a área do recorte": { es: "Arrastra para marcar el área del recorte" },
