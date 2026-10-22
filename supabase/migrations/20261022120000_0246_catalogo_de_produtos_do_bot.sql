@@ -369,7 +369,10 @@ end$$;
 
 -- ---- Ficha completa de um produto ----
 -- p_produto pode ser o id (uuid), o sku ou o nome (sem acento/maiúscula). Só produtos ativos.
--- Ordem: id, sku, nome exato, e por último "nome que contém a frase" quando só UM casa.
+-- Ordem: id, sku, nome exato, e por último "nome que contém a frase".
+-- Se "nome que contém a frase" casa MAIS DE UM produto ativo da empresa ("Topfix" casa TF01,
+-- TF02 e TF03), devolve {"candidatos": [até 5 nomes distintos, do mais curto ao mais longo]} para o bot
+-- perguntar qual; nunca nome de produto de outra empresa. Nada encontrado: nulo.
 create or replace function public.catalogo_detalhes(p_phone_number_id text, p_produto text)
   returns jsonb
   language plpgsql
@@ -419,6 +422,19 @@ begin
     select count(*), min(p.id::text)::uuid into v_n, v_id from public.produtos p
      where p.organization_id = v_org and p.ativo
        and position(' ' || v_q || ' ' in ' ' || public.catalogo_normalizar(p.nome) || ' ') > 0;
+    if v_n > 1 then
+      return jsonb_build_object('candidatos', (
+        select jsonb_agg(c.nome order by length(c.nome), c.nome)
+          from (
+            select p.nome from public.produtos p
+             where p.organization_id = v_org and p.ativo
+               and position(' ' || v_q || ' ' in ' ' || public.catalogo_normalizar(p.nome) || ' ') > 0
+             group by p.nome
+             order by length(p.nome), p.nome
+             limit 5
+          ) c
+      ));
+    end if;
     if v_n <> 1 then
       v_id := null;
     end if;
@@ -513,6 +529,12 @@ end$$;
 -- de duplicar). Nome que casa com mais de um produto recusa ("nome ambíguo"), nunca duplica.
 -- Atualiza SÓ colunas da loja; nunca toca conhecimento/termos.
 -- Campo que vier nulo ou ausente mantém o valor anterior (uma leitura falha não zera preço/estoque).
+-- Para LIMPAR de propósito há dois sinais opcionais (ausentes = regra acima):
+--   "estoque_controlado": false  grava estoque = NULL (a loja não controla estoque); vale mais que
+--                                 um "estoque" mandado junto.
+--   "sem_preco_de": true          grava preco_de = NULL (a promoção acabou); vale mais que um
+--                                 "preco_de" mandado junto.
+-- Aceitam booleano json ou o texto "true"/"false"; outra coisa é recusada.
 -- ativo=true em toda gravação: "ativo" aqui quer dizer "está no site". Esconder um produto do bot
 -- por decisão do dono, quando existir a tela, pede uma coluna própria.
 create or replace function public.catalogo_gravar_do_site(p_organization_id uuid, p_dados jsonb)
@@ -542,6 +564,9 @@ declare
   v_altura     numeric;
   v_profund    numeric;
   v_tentativa  int := 0;
+  v_limpa_estoque  boolean := false;
+  v_limpa_preco_de boolean := false;
+  v_sinal      text;
 begin
   if p_organization_id is null
      or not exists (select 1 from public.organizations o where o.id = p_organization_id) then
@@ -575,6 +600,29 @@ begin
   if coalesce(v_peso, 0) < 0 or coalesce(v_largura, 0) < 0
      or coalesce(v_altura, 0) < 0 or coalesce(v_profund, 0) < 0 then
     raise exception 'catalogo: peso ou medida negativa rejeitada (%)', v_nome using errcode = '22023';
+  end if;
+
+  if p_dados ? 'estoque_controlado' and jsonb_typeof(p_dados -> 'estoque_controlado') <> 'null' then
+    v_sinal := lower(btrim(p_dados ->> 'estoque_controlado'));
+    if v_sinal not in ('true', 'false') then
+      raise exception 'catalogo: o campo estoque_controlado não é true/false: %', p_dados ->> 'estoque_controlado'
+        using errcode = '22023';
+    end if;
+    v_limpa_estoque := (v_sinal = 'false');
+  end if;
+  if p_dados ? 'sem_preco_de' and jsonb_typeof(p_dados -> 'sem_preco_de') <> 'null' then
+    v_sinal := lower(btrim(p_dados ->> 'sem_preco_de'));
+    if v_sinal not in ('true', 'false') then
+      raise exception 'catalogo: o campo sem_preco_de não é true/false: %', p_dados ->> 'sem_preco_de'
+        using errcode = '22023';
+    end if;
+    v_limpa_preco_de := (v_sinal = 'true');
+  end if;
+  if v_limpa_estoque then
+    v_estoque := null;
+  end if;
+  if v_limpa_preco_de then
+    v_preco_de := null;
   end if;
 
   if p_dados ? 'disponivel' and jsonb_typeof(p_dados -> 'disponivel') <> 'null' then
@@ -626,9 +674,10 @@ begin
           external_id     = coalesce(v_ext, p.external_id),
           categoria       = coalesce(v_categoria, p.categoria),
           preco           = coalesce(v_preco, p.preco),
-          preco_de        = coalesce(v_preco_de, p.preco_de),
+          preco_de        = case when v_limpa_preco_de then null else coalesce(v_preco_de, p.preco_de) end,
           preco_pix       = coalesce(v_preco_pix, p.preco_pix),
-          estoque         = coalesce(round(v_estoque)::integer, p.estoque),
+          estoque         = case when v_limpa_estoque then null
+                                 else coalesce(round(v_estoque)::integer, p.estoque) end,
           disponivel      = coalesce(v_disponivel, p.disponivel),
           peso_kg         = coalesce(v_peso, p.peso_kg),
           largura_cm      = coalesce(v_largura, p.largura_cm),
@@ -669,21 +718,34 @@ end$$;
 -- origem 'site' que não foram lidos desde então saem do bot (ativo=false). Conhecimento e termos
 -- ficam guardados. Se nenhum produto foi lido desde p_desde (leitura que falhou inteira), não
 -- desliga nada: devolve 0. Devolve quantos foram desligados.
+-- Trava contra desligar em massa: se os produtos de origem 'site' lidos desde p_desde forem
+-- MENOS de 70% dos produtos de origem 'site' ativos da empresa (contados antes de desligar), a
+-- leitura é tratada como parcial (site fora do ar, página que mudou): não desliga nada, devolve 0
+-- e avisa por RAISE NOTICE.
 create or replace function public.catalogo_desativar_nao_lidos(p_organization_id uuid, p_desde timestamptz)
   returns integer
   language plpgsql
   set search_path to 'public', 'pg_temp'
 as $$
 declare
-  v_n int;
+  v_n      int;
+  v_lidos  int;
+  v_ativos int;
 begin
   if p_organization_id is null or p_desde is null then
     raise exception 'catalogo: empresa e hora de início da leitura são obrigatórias' using errcode = '22023';
   end if;
-  if not exists (
-    select 1 from public.produtos p
-     where p.organization_id = p_organization_id and p.origem = 'site' and p.lido_do_site_em >= p_desde
-  ) then
+  select count(*) filter (where p.lido_do_site_em >= p_desde),
+         count(*) filter (where p.ativo)
+    into v_lidos, v_ativos
+    from public.produtos p
+   where p.organization_id = p_organization_id and p.origem = 'site';
+  if v_lidos = 0 then
+    return 0;
+  end if;
+  if v_lidos * 10 < v_ativos * 7 then
+    raise notice 'catalogo: leitura parcial na empresa %: % produtos do site lidos de % ativos (menos de 70%%); nada foi desligado',
+      p_organization_id, v_lidos, v_ativos;
     return 0;
   end if;
   update public.produtos p set ativo = false

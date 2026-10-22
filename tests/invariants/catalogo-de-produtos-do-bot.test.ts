@@ -378,21 +378,158 @@ describe("0246 · busca: ordem", () => {
 });
 
 describe("0246 · desligar o que sumiu do site", () => {
+  // Empresa própria para as contas da trava de 70% não dependerem dos outros testes.
+  const ORG_C = "d0d0d0d0-0000-4000-8000-000000000003";
+  const PROD_MANUAL_C = "d0d0d0d0-3333-4000-8000-000000000031";
+  const gravarC = (n: number) =>
+    sql(`select public.catalogo_gravar_do_site('${ORG_C}', '{"sku":"C-${n}","nome":"Produto C ${n}"}'::jsonb);`);
+  const ativosC = () =>
+    sql(`select count(*) from public.produtos where organization_id = '${ORG_C}' and origem = 'site' and ativo;`);
+
+  beforeAll(() => {
+    sql(`insert into public.organizations (id, slug, legal_name, display_name)
+           values ('${ORG_C}', 'inv-catalogo-c', 'Catalogo C', 'Catalogo C') on conflict do nothing;
+         insert into public.produtos (id, organization_id, origem, nome)
+           values ('${PROD_MANUAL_C}', '${ORG_C}', 'manual', 'Manual C');`);
+    for (let n = 1; n <= 10; n++) gravarC(n);
+    sql(`insert into public.produto_termos (organization_id, produto_id, termo)
+           select '${ORG_C}', id, 'termo do c10' from public.produtos where organization_id = '${ORG_C}' and sku = 'C-10';
+         insert into public.produto_conhecimento (produto_id, organization_id, para_que_serve)
+           select id, '${ORG_C}', 'serve' from public.produtos where organization_id = '${ORG_C}' and sku = 'C-10';`);
+  });
+
   it("leitura que não gravou nada não desliga nada", () => {
     expect(sql(`select public.catalogo_desativar_nao_lidos('${ORG_B}', clock_timestamp());`)).toBe("0");
     expect(sql(`select ativo from public.produtos where id = '${PROD_BIOTOP_B}';`)).toBe("t");
+    expect(sql(`select public.catalogo_desativar_nao_lidos('${ORG_C}', clock_timestamp());`)).toBe("0");
+    expect(ativosC()).toBe("10");
   });
 
-  it("depois de uma leitura, só os produtos do site não lidos saem; manual fica; outra empresa não muda", () => {
+  it("leitura parcial (6 de 10, menos de 70%) não desliga nada", () => {
     const inicio = sql(`select clock_timestamp();`);
-    sql(`select public.catalogo_gravar_do_site('${ORG_A}', '{"sku":"KIT-1","nome":"Kit Adjuvante Herbicida"}'::jsonb);`);
-    const n = Number(sql(`select public.catalogo_desativar_nao_lidos('${ORG_A}', '${inicio}');`));
-    expect(n).toBeGreaterThanOrEqual(1);
-    expect(sql(`select ativo from public.produtos where id = '${PROD_KIT_A}';`)).toBe("t");
-    expect(sql(`select ativo from public.produtos where id = '${PROD_BIONP_A}';`)).toBe("f");
-    expect(sql(`select ativo from public.produtos where id = '${PROD_OLEO_A}';`)).toBe("t");
+    for (let n = 1; n <= 6; n++) gravarC(n);
+    expect(sql(`select public.catalogo_desativar_nao_lidos('${ORG_C}', '${inicio}');`)).toBe("0");
+    expect(ativosC()).toBe("10");
+  });
+
+  it("leitura normal (7 de 10) desliga só os do site não lidos; manual fica; outra empresa não muda", () => {
+    const inicio = sql(`select clock_timestamp();`);
+    for (let n = 1; n <= 7; n++) gravarC(n);
+    expect(sql(`select public.catalogo_desativar_nao_lidos('${ORG_C}', '${inicio}');`)).toBe("3");
+    expect(ativosC()).toBe("7");
+    expect(sql(`select string_agg(sku, ',' order by sku) from public.produtos
+                 where organization_id = '${ORG_C}' and not ativo;`)).toBe("C-10,C-8,C-9");
+    expect(sql(`select ativo from public.produtos where id = '${PROD_MANUAL_C}';`)).toBe("t");
+    // desligar não apaga o que nós sabemos do produto
+    expect(sql(`select count(*) from public.produto_termos t join public.produtos p on p.id = t.produto_id
+                 where p.organization_id = '${ORG_C}' and p.sku = 'C-10';`)).toBe("1");
+    expect(sql(`select count(*) from public.produto_conhecimento k join public.produtos p on p.id = k.produto_id
+                 where p.organization_id = '${ORG_C}' and p.sku = 'C-10';`)).toBe("1");
     expect(sql(`select ativo from public.produtos where id = '${PROD_BIOTOP_B}';`)).toBe("t");
-    expect(sql(`select count(*) from public.produto_termos where produto_id = '${PROD_BIONP_A}';`)).toBe("1");
+    expect(sql(`select count(*) from public.produtos where organization_id = '${ORG_A}' and not ativo;`)).toBe("1");
+  });
+
+  it("a trava conta os ativos de antes: com 7 ativos, ler 5 (71%) desliga os outros 2", () => {
+    const inicio = sql(`select clock_timestamp();`);
+    for (let n = 1; n <= 5; n++) gravarC(n);
+    expect(sql(`select public.catalogo_desativar_nao_lidos('${ORG_C}', '${inicio}');`)).toBe("2");
+    expect(ativosC()).toBe("5");
+  });
+});
+
+describe("0246 · detalhes: mais de um produto casa, devolve candidatos", () => {
+  beforeAll(() => {
+    sql(`insert into public.produtos (organization_id, origem, nome, ativo) values
+           ('${ORG_A}', 'site', 'Topfix TF03 Galão', true),
+           ('${ORG_A}', 'site', 'Topfix TF01', true),
+           ('${ORG_A}', 'site', 'Topfix TF02', true),
+           ('${ORG_A}', 'manual', 'Topfix TF02', true),
+           ('${ORG_A}', 'site', 'Topfix TF04 Antigo', false),
+           ('${ORG_B}', 'site', 'Topfix', true),
+           ('${ORG_B}', 'site', 'Topfix B1', true),
+           ('${ORG_A}', 'site', 'Kit Top Ultra 1', true),
+           ('${ORG_A}', 'site', 'Kit Top Ultra 2 Plus', true),
+           ('${ORG_A}', 'site', 'Kit Top Ultra 3 Plus Max', true),
+           ('${ORG_A}', 'site', 'Kit Top Ultra 4 Plus Max X', true),
+           ('${ORG_A}', 'site', 'Kit Top Ultra 5 Plus Max XY', true),
+           ('${ORG_A}', 'site', 'Kit Top Ultra 6 Plus Max XYZ', true);`);
+  });
+
+  it("'Topfix' casa 3 da empresa A: candidatos do nome mais curto, sem inativo nem produto da B", () => {
+    const j = JSON.parse(sql(`select public.catalogo_detalhes('${PN_A}', 'topfix')::text;`)) as Record<string, unknown>;
+    expect(j).toEqual({ candidatos: ["Topfix TF01", "Topfix TF02", "Topfix TF03 Galão"] });
+  });
+
+  it("no máximo 5 candidatos, os de nome mais curto", () => {
+    const j = JSON.parse(sql(`select public.catalogo_detalhes('${PN_A}', 'Kit Top Ultra')::text;`)) as { candidatos: string[] };
+    expect(j.candidatos).toEqual([
+      "Kit Top Ultra 1",
+      "Kit Top Ultra 2 Plus",
+      "Kit Top Ultra 3 Plus Max",
+      "Kit Top Ultra 4 Plus Max X",
+      "Kit Top Ultra 5 Plus Max XY",
+    ]);
+  });
+
+  it("caso único continua devolvendo a ficha; nada encontrado continua nulo", () => {
+    expect(sql(`select public.catalogo_detalhes('${PN_A}', 'tf01') ->> 'nome';`)).toBe("Topfix TF01");
+    expect(sql(`select public.catalogo_detalhes('${PN_A}', 'tf01') ? 'candidatos';`)).toBe("f");
+    expect(sql(`select coalesce(public.catalogo_detalhes('${PN_A}', 'tf99')::text, 'NULO');`)).toBe("NULO");
+  });
+
+  it("pelo número da B, 'topfix' é nome exato da B e não traz nada da A", () => {
+    expect(sql(`select public.catalogo_detalhes('${PN_B}', 'topfix') ->> 'nome';`)).toBe("Topfix");
+    const j = JSON.parse(sql(`select public.catalogo_detalhes('${PN_B}', 'b1')::text;`)) as Record<string, unknown>;
+    expect(j.nome).toBe("Topfix B1");
+  });
+});
+
+describe("0246 · gravar do site: sinais para limpar estoque e preço de", () => {
+  const gravar = (dados: string) =>
+    lastLine(sql(`select public.catalogo_gravar_do_site('${ORG_A}', '${dados}'::jsonb);`));
+  const ler = (id: string) =>
+    sql(`select coalesce(estoque::text, 'NULO') || '|' || coalesce(preco_de::text, 'NULO') || '|' || preco
+           from public.produtos where id = '${id}';`);
+
+  it("sem os sinais, nulo e ausente continuam mantendo o valor", () => {
+    const id = gravar(`{"sku":"LIM-1","nome":"Limpeza Teste","preco":80,"preco_de":100,"estoque":5}`);
+    gravar(`{"sku":"LIM-1","nome":"Limpeza Teste","preco_de":null,"estoque":null}`);
+    expect(ler(id)).toBe("5|100.00|80.00");
+    gravar(`{"sku":"LIM-1","nome":"Limpeza Teste","estoque_controlado":true,"sem_preco_de":false}`);
+    expect(ler(id)).toBe("5|100.00|80.00");
+  });
+
+  it("estoque_controlado false grava estoque nulo, mesmo com estoque junto; preço de fica", () => {
+    const id = gravar(`{"sku":"LIM-1","nome":"Limpeza Teste","estoque_controlado":false,"estoque":9}`);
+    expect(ler(id)).toBe("NULO|100.00|80.00");
+    gravar(`{"sku":"LIM-1","nome":"Limpeza Teste","estoque":4}`);
+    expect(ler(id)).toBe("4|100.00|80.00");
+  });
+
+  it("sem_preco_de true grava preço de nulo, mesmo com preco_de junto; estoque fica", () => {
+    const id = gravar(`{"sku":"LIM-1","nome":"Limpeza Teste","sem_preco_de":"true","preco_de":120}`);
+    expect(ler(id)).toBe("4|NULO|80.00");
+  });
+
+  it("produto novo com os sinais nasce sem estoque e sem preço de", () => {
+    const id = gravar(`{"sku":"LIM-2","nome":"Limpeza Nova","preco":10,"preco_de":20,"estoque":3,"estoque_controlado":false,"sem_preco_de":true}`);
+    expect(ler(id)).toBe("NULO|NULO|10.00");
+  });
+
+  it("sinal que não é true/false é recusado e nada muda", () => {
+    expect(erroDe(() => gravar(`{"sku":"LIM-1","nome":"Limpeza Teste","estoque_controlado":"talvez"}`)))
+      .toContain("estoque_controlado não é true/false");
+    expect(erroDe(() => gravar(`{"sku":"LIM-1","nome":"Limpeza Teste","sem_preco_de":1}`)))
+      .toContain("sem_preco_de não é true/false");
+    expect(sql(`select coalesce(estoque::text, 'NULO') from public.produtos where organization_id = '${ORG_A}' and sku = 'LIM-1';`)).toBe("4");
+  });
+
+  it("os sinais não mexem no produto de mesmo sku da outra empresa", () => {
+    sql(`insert into public.produtos (organization_id, origem, sku, nome, preco_de, estoque)
+           values ('${ORG_B}', 'site', 'LIM-1', 'Limpeza B', 50, 7);`);
+    gravar(`{"sku":"LIM-1","nome":"Limpeza Teste","estoque_controlado":false,"sem_preco_de":true}`);
+    expect(sql(`select preco_de || '|' || estoque from public.produtos where organization_id = '${ORG_B}' and sku = 'LIM-1';`))
+      .toBe("50.00|7");
   });
 });
 
