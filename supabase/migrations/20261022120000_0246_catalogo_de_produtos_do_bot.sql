@@ -208,7 +208,7 @@ $$;
 
 -- ---- Busca do bot ----
 -- casou_por diz por onde o produto entrou: 'lista' (busca vazia), 'nome_exato', 'sku',
--- 'termo:<termo>', 'nome', 'indicacao:<indicação>', 'categoria', 'palavra:<palavra>'.
+-- 'termo:<termo>', 'nome', 'indicacao:<indicação>', 'categoria', 'palavra:<palavras que casaram>'.
 -- Casamento sempre por palavra inteira: 'oi' não casa dentro de 'coisa'.
 create or replace function public.catalogo_buscar(
   p_phone_number_id text,
@@ -287,25 +287,22 @@ begin
     select b.id, 'nome_exato'::text as por, 100::numeric as rel from base b where b.nome_n = v_q
     union all
     select b.id, 'sku', 100 from base b where b.sku_n <> '' and b.sku_n = v_q
-    -- termo cadastrado contido na frase do cliente (termo mais longo pesa um pouco mais)
+    -- nome inteiro do produto citado na frase: vale mais que um termo genérico
+    -- ("quero o fertilizante x" acha "Fertilizante X" antes do produto do termo "fertilizante")
     union all
-    select b.id, 'termo:' || t.termo, 90 + least(length(t.termo), 99)::numeric / 1000
+    select b.id, 'nome', 95 from base b
+     where b.nome_n <> '' and position(' ' || b.nome_n || ' ' in ' ' || v_q || ' ') > 0
+    -- termo cadastrado contido na frase do cliente; termo de mais palavras pesa mais
+    union all
+    select b.id, 'termo:' || t.termo,
+           90 + least(array_length(string_to_array(t.termo, ' '), 1), 4)::numeric
       from base b
       join public.produto_termos t on t.produto_id = b.id and t.organization_id = v_org
      where position(' ' || t.termo || ' ' in ' ' || v_q || ' ') > 0
-    -- nome do produto contido na frase / frase contida no nome
-    union all
-    select b.id, 'nome', 85 from base b
-     where b.nome_n <> '' and position(' ' || b.nome_n || ' ' in ' ' || v_q || ' ') > 0
+    -- frase contida no nome
     union all
     select b.id, 'nome', 80 from base b
      where position(' ' || v_q || ' ' in ' ' || b.nome_n || ' ') > 0
-    -- frase contida num termo (cliente digitou só um pedaço do termo)
-    union all
-    select b.id, 'termo:' || t.termo, 65
-      from base b
-      join public.produto_termos t on t.produto_id = b.id and t.organization_id = v_org
-     where position(' ' || v_q || ' ' in ' ' || t.termo || ' ') > 0
     -- indicações (pragas/problemas/objetivos), nos dois sentidos
     union all
     select b.id, 'indicacao:' || i.ind, 70
@@ -317,32 +314,44 @@ begin
      where i.ind <> ''
        and (position(' ' || i.ind || ' ' in ' ' || v_q || ' ') > 0
             or position(' ' || v_q || ' ' in ' ' || i.ind || ' ') > 0)
+    -- frase contida num termo (cliente digitou só um pedaço do termo)
+    union all
+    select b.id, 'termo:' || t.termo, 65
+      from base b
+      join public.produto_termos t on t.produto_id = b.id and t.organization_id = v_org
+     where position(' ' || v_q || ' ' in ' ' || t.termo || ' ') > 0
     -- categoria, nos dois sentidos
     union all
     select b.id, 'categoria', 50 from base b
      where b.cat_n <> ''
        and (position(' ' || b.cat_n || ' ' in ' ' || v_q || ' ') > 0
             or position(' ' || v_q || ' ' in ' ' || b.cat_n || ' ') > 0)
-    -- palavra a palavra: uma palavra da frase aparece inteira no nome/sku, termo, indicação ou categoria
+    -- palavra a palavra: quanto MAIS palavras da frase casam, maior a relevância (teto 45)
     union all
-    select b.id, 'palavra:' || w, 30 from base b, unnest(v_palavras) w
-     where position(' ' || w || ' ' in ' ' || b.nome_n || ' ' || b.sku_n || ' ') > 0
-    union all
-    select b.id, 'palavra:' || w, 25
-      from base b
-      join public.produto_termos t on t.produto_id = b.id and t.organization_id = v_org
-      cross join unnest(v_palavras) w
-     where position(' ' || w || ' ' in ' ' || t.termo || ' ') > 0
-    union all
-    select b.id, 'palavra:' || w, 25
-      from base b
-      join public.produto_conhecimento k on k.produto_id = b.id
-      cross join unnest(k.indicacoes) x
-      cross join unnest(v_palavras) w
-     where position(' ' || w || ' ' in ' ' || public.catalogo_normalizar(x) || ' ') > 0
-    union all
-    select b.id, 'palavra:' || w, 15 from base b, unnest(v_palavras) w
-     where position(' ' || w || ' ' in ' ' || b.cat_n || ' ') > 0
+    select pa.id,
+           'palavra:' || string_agg(distinct pa.w, ' '),
+           least(max(pa.peso) + 3 * (count(distinct pa.w) - 1), 45)::numeric
+      from (
+        select b.id, w, 30 as peso from base b, unnest(v_palavras) w
+         where position(' ' || w || ' ' in ' ' || b.nome_n || ' ' || b.sku_n || ' ') > 0
+        union all
+        select b.id, w, 25
+          from base b
+          join public.produto_termos t on t.produto_id = b.id and t.organization_id = v_org
+          cross join unnest(v_palavras) w
+         where position(' ' || w || ' ' in ' ' || t.termo || ' ') > 0
+        union all
+        select b.id, w, 25
+          from base b
+          join public.produto_conhecimento k on k.produto_id = b.id
+          cross join unnest(k.indicacoes) x
+          cross join unnest(v_palavras) w
+         where position(' ' || w || ' ' in ' ' || public.catalogo_normalizar(x) || ' ') > 0
+        union all
+        select b.id, w, 15 from base b, unnest(v_palavras) w
+         where position(' ' || w || ' ' in ' ' || b.cat_n || ' ') > 0
+      ) pa
+     group by pa.id
   ),
   melhor as (
     select distinct on (c.id) c.id, c.por, c.rel
@@ -394,6 +403,7 @@ begin
     select p.id into v_id from public.produtos p
      where p.organization_id = v_org and p.ativo
        and public.catalogo_normalizar(p.sku) = v_q
+     order by p.created_at, p.id
      limit 1;
   end if;
 
@@ -401,7 +411,7 @@ begin
     select p.id into v_id from public.produtos p
      where p.organization_id = v_org and p.ativo
        and public.catalogo_normalizar(p.nome) = v_q
-     order by p.created_at
+     order by p.created_at, p.id
      limit 1;
   end if;
 
@@ -461,8 +471,9 @@ begin
   );
 end$$;
 
--- ---- Número vindo do leitor do site (aceita 12.5, "12,50", "R$ 1.234,56") ----
+-- ---- Número vindo do leitor do site (aceita 12.5, "12,50", "R$ 1.234,56", "R$ 1.234") ----
 -- Vazio vira null; texto que não é número levanta erro (melhor parar do que gravar lixo).
+-- "1.234" sem vírgula: em PREÇO o ponto é separador de milhar (1234); em medida/peso é decimal.
 create or replace function public.catalogo_ler_numero(p_valor jsonb, p_campo text)
   returns numeric
   language plpgsql
@@ -478,12 +489,14 @@ begin
   if jsonb_typeof(p_valor) = 'number' then
     return (p_valor #>> '{}')::numeric;
   end if;
-  v_txt := regexp_replace(coalesce(p_valor #>> '{}', ''), '[R$[:space:]]', '', 'g');
+  v_txt := regexp_replace(coalesce(p_valor #>> '{}', ''), '(r\$|[[:space:]]|' || chr(160) || ')', '', 'gi');
   if v_txt = '' then
     return null;
   end if;
   if position(',' in v_txt) > 0 then
     v_txt := replace(replace(v_txt, '.', ''), ',', '.');
+  elsif p_campo like 'preco%' and v_txt ~ '^-?[0-9]{1,3}([.][0-9]{3})+$' then
+    v_txt := replace(v_txt, '.', '');
   end if;
   begin
     return v_txt::numeric;
@@ -494,9 +507,14 @@ begin
 end$$;
 
 -- ---- Gravar o que o leitor do site leu ----
--- Upsert por external_id, depois sku, e (se não vier nenhum dos dois) pelo nome quando só um
--- produto da empresa tem esse nome. Atualiza SÓ colunas da loja; nunca toca conhecimento/termos.
+-- Acha o produto por external_id, depois por sku, e por último pelo nome: nome vale contra
+-- qualquer produto quando o leitor não mandou sku nem external_id, e só contra produtos SEM
+-- sku e SEM external_id quando mandou (assim o produto gravado antes sem sku ganha o sku em vez
+-- de duplicar). Nome que casa com mais de um produto recusa ("nome ambíguo"), nunca duplica.
+-- Atualiza SÓ colunas da loja; nunca toca conhecimento/termos.
 -- Campo que vier nulo ou ausente mantém o valor anterior (uma leitura falha não zera preço/estoque).
+-- ativo=true em toda gravação: "ativo" aqui quer dizer "está no site". Esconder um produto do bot
+-- por decisão do dono, quando existir a tela, pede uma coluna própria.
 create or replace function public.catalogo_gravar_do_site(p_organization_id uuid, p_dados jsonb)
   returns uuid
   language plpgsql
@@ -513,6 +531,7 @@ declare
   v_imagem     text := nullif(btrim(p_dados ->> 'imagem_url'), '');
   v_descricao  text := nullif(btrim(p_dados ->> 'descricao_site'), '');
   v_origem     text := coalesce(nullif(btrim(p_dados ->> 'origem'), ''), 'site');
+  v_disp_txt   text;
   v_disponivel boolean;
   v_preco      numeric;
   v_preco_de   numeric;
@@ -550,10 +569,31 @@ begin
   if coalesce(v_preco, 0) < 0 or coalesce(v_preco_de, 0) < 0 or coalesce(v_preco_pix, 0) < 0 then
     raise exception 'catalogo: preço negativo rejeitado (%)', v_nome using errcode = '22023';
   end if;
+  if coalesce(v_estoque, 0) < 0 then
+    raise exception 'catalogo: estoque negativo rejeitado (%)', v_nome using errcode = '22023';
+  end if;
+  if coalesce(v_peso, 0) < 0 or coalesce(v_largura, 0) < 0
+     or coalesce(v_altura, 0) < 0 or coalesce(v_profund, 0) < 0 then
+    raise exception 'catalogo: peso ou medida negativa rejeitada (%)', v_nome using errcode = '22023';
+  end if;
 
   if p_dados ? 'disponivel' and jsonb_typeof(p_dados -> 'disponivel') <> 'null' then
-    v_disponivel := (p_dados ->> 'disponivel')::boolean;
+    v_disp_txt := public.catalogo_normalizar(p_dados ->> 'disponivel');
+    if v_disp_txt in ('true', 't', '1', 'sim', 's', 'disponivel', 'em estoque') then
+      v_disponivel := true;
+    elsif v_disp_txt in ('false', 'f', '0', 'nao', 'n', 'indisponivel', 'esgotado', 'sem estoque') then
+      v_disponivel := false;
+    elsif v_disp_txt <> '' then
+      raise exception 'catalogo: o campo disponivel não é sim/não: %', p_dados ->> 'disponivel'
+        using errcode = '22023';
+    end if;
   end if;
+
+  -- Uma gravação por vez para o mesmo nome na mesma empresa: duas leituras simultâneas do
+  -- mesmo produto não inserem duas linhas.
+  perform pg_advisory_xact_lock(
+    hashtextextended('catalogo:' || p_organization_id::text || ':' || public.catalogo_normalizar(v_nome), 0)
+  );
 
   loop
     v_tentativa := v_tentativa + 1;
@@ -567,12 +607,14 @@ begin
       select p.id into v_id from public.produtos p
        where p.organization_id = p_organization_id and p.sku = v_sku;
     end if;
-    if v_id is null and v_ext is null and v_sku is null then
+    if v_id is null then
       select count(*), min(p.id::text)::uuid into v_n, v_id from public.produtos p
        where p.organization_id = p_organization_id
-         and public.catalogo_normalizar(p.nome) = public.catalogo_normalizar(v_nome);
-      if v_n <> 1 then
-        v_id := null;
+         and public.catalogo_normalizar(p.nome) = public.catalogo_normalizar(v_nome)
+         and ((v_ext is null and v_sku is null) or (p.sku is null and p.external_id is null));
+      if v_n > 1 then
+        raise exception 'catalogo: nome ambíguo, % produtos se chamam "%"; mande sku ou external_id',
+          v_n, v_nome using errcode = '22023';
       end if;
     end if;
 
@@ -612,12 +654,45 @@ begin
       end if;
       return v_id;
     exception when unique_violation then
-      -- Duas leituras do mesmo produto ao mesmo tempo: a segunda acha a linha e atualiza.
+      -- Primeira vez: outra leitura gravou o mesmo sku/external_id ao mesmo tempo; procura de
+      -- novo e atualiza. Segunda vez: o sku e o external_id apontam para produtos diferentes.
       if v_tentativa >= 2 then
-        raise;
+        raise exception 'catalogo: sku % ou external_id % já pertence a outro produto da empresa (%)',
+          coalesce(v_sku, '-'), coalesce(v_ext, '-'), v_nome using errcode = '23505';
       end if;
     end;
   end loop;
+end$$;
+
+-- ---- Desligar o que sumiu do site ----
+-- Depois de uma leitura completa, o n8n chama com a hora em que a leitura COMEÇOU: produtos de
+-- origem 'site' que não foram lidos desde então saem do bot (ativo=false). Conhecimento e termos
+-- ficam guardados. Se nenhum produto foi lido desde p_desde (leitura que falhou inteira), não
+-- desliga nada: devolve 0. Devolve quantos foram desligados.
+create or replace function public.catalogo_desativar_nao_lidos(p_organization_id uuid, p_desde timestamptz)
+  returns integer
+  language plpgsql
+  set search_path to 'public', 'pg_temp'
+as $$
+declare
+  v_n int;
+begin
+  if p_organization_id is null or p_desde is null then
+    raise exception 'catalogo: empresa e hora de início da leitura são obrigatórias' using errcode = '22023';
+  end if;
+  if not exists (
+    select 1 from public.produtos p
+     where p.organization_id = p_organization_id and p.origem = 'site' and p.lido_do_site_em >= p_desde
+  ) then
+    return 0;
+  end if;
+  update public.produtos p set ativo = false
+   where p.organization_id = p_organization_id
+     and p.origem = 'site'
+     and p.ativo
+     and (p.lido_do_site_em is null or p.lido_do_site_em < p_desde);
+  get diagnostics v_n = row_count;
+  return v_n;
 end$$;
 
 -- ---- Execução: só o servidor (postgres / service role) ----
@@ -628,6 +703,7 @@ revoke execute on function public.catalogo_buscar(text, text, int) from public, 
 revoke execute on function public.catalogo_detalhes(text, text) from public, anon, authenticated;
 revoke execute on function public.catalogo_ler_numero(jsonb, text) from public, anon, authenticated;
 revoke execute on function public.catalogo_gravar_do_site(uuid, jsonb) from public, anon, authenticated;
+revoke execute on function public.catalogo_desativar_nao_lidos(uuid, timestamptz) from public, anon, authenticated;
 
 grant execute on function public.catalogo_normalizar(text) to service_role;
 grant execute on function public.fn_produto_termos_normaliza() to service_role;
@@ -636,3 +712,4 @@ grant execute on function public.catalogo_buscar(text, text, int) to service_rol
 grant execute on function public.catalogo_detalhes(text, text) to service_role;
 grant execute on function public.catalogo_ler_numero(jsonb, text) to service_role;
 grant execute on function public.catalogo_gravar_do_site(uuid, jsonb) to service_role;
+grant execute on function public.catalogo_desativar_nao_lidos(uuid, timestamptz) to service_role;

@@ -286,6 +286,7 @@ describe("0246 · quem lê e quem escreve", () => {
       "public.catalogo_detalhes(text, text)",
       "public.catalogo_ler_numero(jsonb, text)",
       "public.catalogo_gravar_do_site(uuid, jsonb)",
+      "public.catalogo_desativar_nao_lidos(uuid, timestamptz)",
     ];
     for (const f of fns) {
       expect(sql(`select has_function_privilege('anon', '${f}', 'execute');`), f).toBe("f");
@@ -305,6 +306,93 @@ describe("0246 · quem lê e quem escreve", () => {
         sql(`insert into public.produto_conhecimento (produto_id, organization_id) values ('${PROD_KIT_A}', '${ORG_B}');`),
       ),
     ).toContain("produto_conhecimento_produto_fk");
+  });
+});
+
+describe("0246 · gravar do site: casos de borda da revisão", () => {
+  it("preço com milhar sem centavos, R$ minúsculo e espaço não separável", () => {
+    sql(`select public.catalogo_gravar_do_site('${ORG_A}', '{"sku":"KIT-1","nome":"Kit Adjuvante Herbicida","preco":"R$ 1.234"}'::jsonb);`);
+    expect(sql(`select preco from public.produtos where id = '${PROD_KIT_A}';`)).toBe("1234.00");
+    sql(`select public.catalogo_gravar_do_site('${ORG_A}', '{"sku":"KIT-1","nome":"Kit Adjuvante Herbicida","preco":"r$\\u00a0312,50"}'::jsonb);`);
+    expect(sql(`select preco from public.produtos where id = '${PROD_KIT_A}';`)).toBe("312.50");
+    // em peso o ponto é decimal
+    sql(`select public.catalogo_gravar_do_site('${ORG_A}', '{"sku":"KIT-1","nome":"Kit Adjuvante Herbicida","peso_kg":"1.250"}'::jsonb);`);
+    expect(sql(`select peso_kg from public.produtos where id = '${PROD_KIT_A}';`)).toBe("1.250");
+  });
+
+  it("disponivel aceita sim/não e recusa outra coisa com mensagem clara; estoque negativo recusa", () => {
+    sql(`select public.catalogo_gravar_do_site('${ORG_A}', '{"sku":"KIT-1","nome":"Kit Adjuvante Herbicida","disponivel":"Não"}'::jsonb);`);
+    expect(sql(`select disponivel from public.produtos where id = '${PROD_KIT_A}';`)).toBe("f");
+    sql(`select public.catalogo_gravar_do_site('${ORG_A}', '{"sku":"KIT-1","nome":"Kit Adjuvante Herbicida","disponivel":"sim"}'::jsonb);`);
+    expect(sql(`select disponivel from public.produtos where id = '${PROD_KIT_A}';`)).toBe("t");
+    expect(erroDe(() => sql(`select public.catalogo_gravar_do_site('${ORG_A}', '{"sku":"KIT-1","nome":"K","disponivel":"talvez"}'::jsonb);`)))
+      .toContain("não é sim/não");
+    expect(erroDe(() => sql(`select public.catalogo_gravar_do_site('${ORG_A}', '{"sku":"KIT-1","nome":"K","estoque":-3}'::jsonb);`)))
+      .toContain("estoque negativo");
+  });
+
+  it("produto gravado antes sem sku ganha o sku em vez de duplicar", () => {
+    const antes = lastLine(sql(`select public.catalogo_gravar_do_site('${ORG_A}', '{"nome":"Adubo Sem Código","preco":10}'::jsonb);`));
+    const depois = lastLine(sql(`select public.catalogo_gravar_do_site('${ORG_A}', '{"nome":"adubo sem codigo","sku":"ASC-1","preco":11}'::jsonb);`));
+    expect(depois).toBe(antes);
+    expect(sql(`select sku || '|' || preco from public.produtos where id = '${antes}';`)).toBe("ASC-1|11.00");
+  });
+
+  it("nome repetido sem sku recusa em vez de criar mais uma cópia", () => {
+    sql(`insert into public.produtos (organization_id, nome) values ('${ORG_A}', 'Vaso'), ('${ORG_A}', 'VASO');`);
+    expect(erroDe(() => sql(`select public.catalogo_gravar_do_site('${ORG_A}', '{"nome":"Vaso","preco":10}'::jsonb);`)))
+      .toContain("nome ambíguo");
+    expect(sql(`select count(*) from public.produtos where organization_id = '${ORG_A}' and lower(nome) = 'vaso';`)).toBe("2");
+    sql(`delete from public.produtos where organization_id = '${ORG_A}' and lower(nome) = 'vaso';`);
+  });
+
+  it("sku e external_id de produtos diferentes: erro claro, nada muda", () => {
+    sql(`select public.catalogo_gravar_do_site('${ORG_A}', '{"external_id":"E-NP","sku":"NP-1","nome":"BIO NP"}'::jsonb);`);
+    expect(sql(`select external_id from public.produtos where id = '${PROD_BIONP_A}';`)).toBe("E-NP");
+    expect(erroDe(() => sql(`select public.catalogo_gravar_do_site('${ORG_A}', '{"external_id":"E-NP","sku":"KIT-1","nome":"BIO NP"}'::jsonb);`)))
+      .toContain("já pertence a outro produto");
+    expect(sql(`select sku from public.produtos where id = '${PROD_BIONP_A}';`)).toBe("NP-1");
+  });
+});
+
+describe("0246 · busca: ordem", () => {
+  beforeAll(() => {
+    sql(`
+      insert into public.produtos (id, organization_id, origem, nome) values
+        ('d0d0d0d0-3333-4000-8000-000000000021', '${ORG_A}', 'manual', 'Fertilizante X'),
+        ('d0d0d0d0-3333-4000-8000-000000000022', '${ORG_A}', 'manual', 'Super Crescimento'),
+        ('d0d0d0d0-3333-4000-8000-000000000023', '${ORG_A}', 'manual', 'Adubo Orquídea'),
+        ('d0d0d0d0-3333-4000-8000-000000000024', '${ORG_A}', 'manual', 'Adubo Bonsai');
+      insert into public.produto_termos (organization_id, produto_id, termo)
+        values ('${ORG_A}', 'd0d0d0d0-3333-4000-8000-000000000022', 'fertilizante');
+    `);
+  });
+
+  it("nome inteiro citado na frase vem antes de um termo genérico", () => {
+    expect(buscar(PN_A, "quero o fertilizante x")[0]).toBe("d0d0d0d0-3333-4000-8000-000000000021");
+  });
+
+  it("mais palavras casadas, mais relevância", () => {
+    expect(buscar(PN_A, "adubo para orquidea de vaso")[0]).toBe("d0d0d0d0-3333-4000-8000-000000000023");
+  });
+});
+
+describe("0246 · desligar o que sumiu do site", () => {
+  it("leitura que não gravou nada não desliga nada", () => {
+    expect(sql(`select public.catalogo_desativar_nao_lidos('${ORG_B}', clock_timestamp());`)).toBe("0");
+    expect(sql(`select ativo from public.produtos where id = '${PROD_BIOTOP_B}';`)).toBe("t");
+  });
+
+  it("depois de uma leitura, só os produtos do site não lidos saem; manual fica; outra empresa não muda", () => {
+    const inicio = sql(`select clock_timestamp();`);
+    sql(`select public.catalogo_gravar_do_site('${ORG_A}', '{"sku":"KIT-1","nome":"Kit Adjuvante Herbicida"}'::jsonb);`);
+    const n = Number(sql(`select public.catalogo_desativar_nao_lidos('${ORG_A}', '${inicio}');`));
+    expect(n).toBeGreaterThanOrEqual(1);
+    expect(sql(`select ativo from public.produtos where id = '${PROD_KIT_A}';`)).toBe("t");
+    expect(sql(`select ativo from public.produtos where id = '${PROD_BIONP_A}';`)).toBe("f");
+    expect(sql(`select ativo from public.produtos where id = '${PROD_OLEO_A}';`)).toBe("t");
+    expect(sql(`select ativo from public.produtos where id = '${PROD_BIOTOP_B}';`)).toBe("t");
+    expect(sql(`select count(*) from public.produto_termos where produto_id = '${PROD_BIONP_A}';`)).toBe("1");
   });
 });
 
