@@ -252,6 +252,17 @@ beforeAll(() => {
             values (v_org, 'trocar_numero', '{"numero_novo":"+5511900000000"}');
         end if;
 
+        -- produtos / produto_conhecimento / produto_termos (0246): o catálogo do bot.
+        -- Leitura para qualquer membro da empresa; escrita só pelo servidor.
+        if not exists (select 1 from public.produtos where organization_id = v_org) then
+          insert into public.produtos (organization_id, origem, sku, nome)
+            values (v_org, 'manual', 'RLS-' || v_org::text, 'Produto de invariante');
+          insert into public.produto_conhecimento (produto_id, organization_id, para_que_serve)
+            select id, v_org, 'invariante' from public.produtos where organization_id = v_org;
+          insert into public.produto_termos (organization_id, produto_id, termo)
+            select v_org, id, 'termo de invariante' from public.produtos where organization_id = v_org;
+        end if;
+
         if not exists (select 1 from public.push_subscriptions where organization_id = v_org) then
           insert into public.push_subscriptions
             (organization_id, user_id, endpoint, p256dh, auth)
@@ -322,6 +333,11 @@ export const TABLES = [
   "pedidos_a_gestao",
   // 0243 — o recorte da venda. Leitura por quem enxerga a conversa; escrita só pelo servidor.
   "conversa_vendas",
+  // 0246 — o catálogo do bot. Leitura por qualquer membro da empresa; escrita só pelo
+  // servidor. As funções que o n8n chama são medidas em catalogo-de-produtos-do-bot.test.ts.
+  "produtos",
+  "produto_conhecimento",
+  "produto_termos",
   // 0227 — texto de sugestões: org + visibilidade da conversa por authenticated.
   "ai_reply_drafts",
   // ⚠️ `webhook_lead_captures` (migration 0174) NÃO entra nesta lista, e a
