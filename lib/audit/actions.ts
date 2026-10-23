@@ -92,6 +92,8 @@ export const AUDIT_ACTIONS = [
   "conversation.transferred",
   "conversation.released",
   "conversation.closed",
+  // Fechar com Treenity Bot: o bot já encerrou, mas a conversa mudou de mãos/estado e não foi fechada.
+  "conversation.close_conflict",
   // O par que faltava do `ai.reactivated_by_agent`: pausar o atendimento
   // automático numa conversa não tinha rota e, portanto, não tinha ação de
   // auditoria. Desligar uma automação é decisão auditável tanto quanto religá-la.

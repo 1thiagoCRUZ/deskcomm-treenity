@@ -14,8 +14,8 @@
  *    a rodada agendada.
  *
  * **Venda = paga.** Fechar com "teve venda" é a confirmação de que o cliente pagou: o bot
- * marca a venda como "Paga" (a do atendimento; sem atendimento aberto, a única que estiver
- * aguardando) e grava quem confirmou. Com mais de uma aguardando, nada é adivinhado: a
+ * marca a venda como "Paga" (a do atendimento; sem atendimento aberto, SÓ a única aguardando
+ * com o mesmo valor digitado e criada depois do início desta conversa, enviado como `desde`) e grava quem confirmou. Com mais de uma aguardando, nada é adivinhado: a
  * resposta traz `aviso_pagamento` e a tela pede para conferir em Vendas. Nenhum texto de
  * mensagem entra nessa decisão, só o clique.
  *
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
 
   const { data: conversa, error: erroLeitura } = await supabase
     .from("conversations")
-    .select("id, organization_id, contact_id, service_revision, service_started_at, created_at, contacts:contact_id(phone_number)")
+    .select("id, organization_id, contact_id, service_revision, assigned_to_user_id, service_started_at, created_at, contacts:contact_id(phone_number)")
     .eq("id", id)
     .eq("organization_id", authz.org.orgId)
     .maybeSingle();
@@ -85,6 +85,7 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
     organization_id: string;
     contact_id: string | null;
     service_revision: number;
+    assigned_to_user_id: string | null;
     service_started_at: string | null;
     created_at: string;
     contacts: { phone_number: string | null } | null;
@@ -96,7 +97,11 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
     ? await encerrarAtendimentoNoBot({
         telefone,
         usuario: { email: authz.user.email, nome: authz.user.full_name ?? authz.user.email },
+        // LGPD: quem confirmou o pagamento vai ao bot só pelo primeiro nome, nunca e-mail.
+        fechadaPor: authz.user.full_name?.trim().split(/\s+/)[0] || "Equipe",
         valorDaVenda: valor,
+        // Só fato: vendas criadas depois do início desta conversa no painel podem ser marcadas sozinhas.
+        desde: c.service_started_at ?? c.created_at,
       })
     : { desfecho: "sem_atendimento_aberto" as const, vendaId: null, aguardandoPendentes: 0 };
   const noBot = resultadoBot.desfecho;
@@ -121,17 +126,43 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
   if (erroFechar?.code === "40001") {
     const { data: atual } = await admin
       .from("conversations")
-      .select("service_revision")
+      .select("status, service_revision, assigned_to_user_id")
       .eq("organization_id", c.organization_id)
       .eq("id", c.id)
       .maybeSingle();
-    if (atual) {
+    // Só repete se a conversa segue aberta e ninguém novo assumiu (dono igual ao de antes, ou
+    // livre, ou o próprio usuário). Senão, não fecha por cima: avisa e audita.
+    const encerrada = !atual || ["closed", "resolved", "archived"].includes(atual.status);
+    const outroAssumiu = !!atual?.assigned_to_user_id
+      && atual.assigned_to_user_id !== c.assigned_to_user_id
+      && atual.assigned_to_user_id !== authz.user.id;
+    if (atual && !encerrada && !outroAssumiu) {
       ({ error: erroFechar } = await admin.rpc("fn_service_status", {
         p_org: c.organization_id,
         p_conversation: c.id,
         p_status: "closed",
         p_expected: atual.service_revision,
       }));
+    } else {
+      await audit({
+        action: "conversation.close_conflict",
+        actorUserId: authz.user.id,
+        organizationId: c.organization_id,
+        resourceType: "conversation",
+        resourceId: c.id,
+        requestId,
+        metadata: {
+          motivo: encerrada ? "ja_encerrada" : "outro_atendente_assumiu",
+          treenity_bot: noBot,
+          venda_bot_id: resultadoBot.vendaId,
+        },
+      });
+      return fail(
+        "conflict",
+        t("O atendimento mudou durante o fechamento: o bot já foi avisado, mas a conversa não foi fechada aqui. Atualize a tela e confira antes de fechar de novo."),
+        409,
+        { requestId },
+      );
     }
   }
   if (erroFechar) {

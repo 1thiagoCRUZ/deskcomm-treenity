@@ -37,6 +37,10 @@ export async function encerrarAtendimentoNoBot(pedido: {
   usuario: { email: string; nome: string };
   /** Em reais. Ausente = terminou sem venda. */
   valorDaVenda: number | null;
+  /** Só o primeiro nome de quem fechou (LGPD: nunca e-mail). */
+  fechadaPor: string;
+  /** Início do atendimento atual da conversa (ISO): só vendas criadas depois dele podem ser marcadas sozinhas. */
+  desde?: string | null;
 }): Promise<ResultadoDoEncerramento> {
   try {
     const config = getConfig();
@@ -54,7 +58,8 @@ export async function encerrarAtendimentoNoBot(pedido: {
       body: JSON.stringify({
         id_faces: idsFaceDoTelefone(pedido.telefone),
         ...(pedido.valorDaVenda !== null ? { venda: { valor_total: pedido.valorDaVenda } } : {}),
-        fechada_por: pedido.usuario.nome,
+        fechada_por: pedido.fechadaPor,
+        ...(pedido.desde ? { desde: pedido.desde } : {}),
       }),
       cache: "no-store",
       signal: AbortSignal.timeout(TEMPO_MAXIMO_MS),

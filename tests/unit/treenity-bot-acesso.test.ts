@@ -224,13 +224,13 @@ describe("encerrarAtendimentoAction", () => {
 
 describe("chamadas servidor-para-servidor ao bot", () => {
   it("encerrar-por-cliente envia X-SSO-Secret mantendo o Bearer e não vaza o segredo em erro", async () => {
-    await encerrarAtendimentoNoBot({ telefone: "5514999990000", usuario: { email: "a@b.c", nome: "Ana" }, valorDaVenda: null });
+    await encerrarAtendimentoNoBot({ telefone: "5514999990000", usuario: { email: "a@b.c", nome: "Ana" }, valorDaVenda: null, fechadaPor: "Ana" });
     const [url, init] = estado.fetch.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("https://bot.test/api/atendimentos/encerrar-por-cliente");
     expect(init.headers).toMatchObject({ Authorization: "Bearer tok-usuario", "X-SSO-Secret": SEGREDO });
 
     estado.fetch.mockResolvedValue(new Response("{}", { status: 500 }));
-    const r = await encerrarAtendimentoNoBot({ telefone: "5514999990000", usuario: { email: "a@b.c", nome: "Ana" }, valorDaVenda: null });
+    const r = await encerrarAtendimentoNoBot({ telefone: "5514999990000", usuario: { email: "a@b.c", nome: "Ana" }, valorDaVenda: null, fechadaPor: "Ana" });
     expect(r.desfecho).toBe("falhou");
     expect(JSON.stringify(r)).not.toContain(SEGREDO);
     expect(JSON.stringify(estado.logs)).not.toContain(SEGREDO);
@@ -241,14 +241,14 @@ describe("chamadas servidor-para-servidor ao bot", () => {
     estado.fetch.mockResolvedValue(
       new Response(JSON.stringify({ success: true, data: { vendaId: "v-1", aguardandoPendentes: 2 } }), { status: 200 }),
     );
-    const r = await encerrarAtendimentoNoBot({ telefone: "5514999990000", usuario, valorDaVenda: 150 });
+    const r = await encerrarAtendimentoNoBot({ telefone: "5514999990000", usuario, valorDaVenda: 150, fechadaPor: "Ana", desde: "2026-10-20T10:00:00Z" });
     expect(r).toEqual({ desfecho: "encerrado", vendaId: "v-1", aguardandoPendentes: 2 });
     const [, init] = estado.fetch.mock.calls.at(-1) as [string, RequestInit];
-    expect(JSON.parse(String(init.body))).toMatchObject({ venda: { valor_total: 150 }, fechada_por: "Ana" });
+    expect(JSON.parse(String(init.body))).toMatchObject({ venda: { valor_total: 150 }, fechada_por: "Ana", desde: "2026-10-20T10:00:00Z" });
 
     // Bot antigo (sem o campo): nenhum pendente, sem quebrar.
     estado.fetch.mockResolvedValue(new Response(JSON.stringify({ data: { vendaId: "v-2" } }), { status: 200 }));
-    const antigo = await encerrarAtendimentoNoBot({ telefone: "5514999990000", usuario, valorDaVenda: 150 });
+    const antigo = await encerrarAtendimentoNoBot({ telefone: "5514999990000", usuario, valorDaVenda: 150, fechadaPor: "Ana", desde: "2026-10-20T10:00:00Z" });
     expect(antigo).toEqual({ desfecho: "encerrado", vendaId: "v-2", aguardandoPendentes: 0 });
   });
 

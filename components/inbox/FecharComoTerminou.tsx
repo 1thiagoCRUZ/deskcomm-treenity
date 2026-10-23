@@ -70,7 +70,7 @@ export function FecharComoTerminou({ conversationId }: { conversationId: string 
           // A conversa fechou, mas o pagamento pede conferência humana: não é erro.
           if (dados?.aviso_pagamento === "nao_marcada") {
             toast.warning(
-              t("Nenhuma venda do bot foi marcada como paga (não há uma única venda aguardando). Confira em Vendas e marque a paga."),
+              t("Nenhuma venda do bot foi marcada como paga (não há uma única venda aguardando, de mesmo valor, criada nesta conversa). Confira em Vendas e marque a paga."),
             );
           } else if (dados?.aviso_pagamento === "outras_aguardando") {
             toast.warning(t("Este cliente tem outras vendas ainda aguardando pagamento. Confira em Vendas."));
