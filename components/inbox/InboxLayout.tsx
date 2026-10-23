@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import { useClaimConversation } from "@/hooks/inbox/useClaimConversation";
 import { useCloseConversation } from "@/hooks/inbox/useCloseConversation";
+import { useTreenityBotNoInbox } from "@/hooks/inbox/useFecharComoTerminou";
 import { useMarkAsRead } from "@/hooks/inbox/useMarkAsRead";
 import {
   useConversationsRealtime,
@@ -307,6 +308,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
 
   const claim = useClaimConversation();
   const close = useCloseConversation();
+  const { data: treenityBotNoInbox } = useTreenityBotNoInbox();
 
   // A leitura da conversa aberta é do upstream e fica: sem ela o contador de
   // não-lidas nunca zera para quem abre a conversa.
@@ -342,8 +344,11 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
   }, [claim, selectedConversation]);
   const handleClose = useCallback(() => {
     if (!selectedConversation) return;
+    // O atalho E já barra antes do confirm quando a org usa o Treenity Bot; aqui é só a rede.
+    // Enquanto o hook carrega/falha (undefined) também barra: só fecha comum com false explícito.
+    if (treenityBotNoInbox !== false) return;
     close.mutate({ conversation_id: selectedConversation.id });
-  }, [close, selectedConversation]);
+  }, [close, selectedConversation, treenityBotNoInbox]);
 
   const blockedReason = selectedConversation?.contacts?.is_blocked
     ? t("Contato bloqueado — envio de mensagens desabilitado.")
@@ -564,6 +569,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
           onFocusReply={handleFocusReply}
           onClaim={supportReadonly ? () => {} : handleClaim}
           onClose={supportReadonly ? () => {} : handleClose}
+          fecharExigeDesfecho={treenityBotNoInbox !== false}
           onToggleHelp={() => setHelpOpen((v) => !v)}
         />
         <ShortcutsHelpDialog open={helpOpen} onOpenChange={setHelpOpen} />

@@ -18,7 +18,7 @@ export function useTreenityBotNoInbox() {
       return r.data.ativo;
     },
     staleTime: 5 * 60_000,
-    // Silencioso: sem a resposta, o "Fechar" comum continua funcionando.
+    // Sem a resposta (undefined) o Fechar fica travado até saber; só false libera o fechar comum.
     retry: 1,
   });
 }
@@ -30,7 +30,14 @@ export function useFecharComoTerminou() {
   return useMutation({
     mutationFn: async (args: { conversation_id: string } & ComoTerminou) => {
       const { conversation_id, ...corpo } = args;
-      return apiClient.post<{ data: { fechada: boolean; treenity_bot: string } }>(
+      return apiClient.post<{
+        data: {
+          fechada: boolean;
+          treenity_bot: string;
+          venda_paga?: boolean;
+          aviso_pagamento?: "nao_marcada" | "outras_aguardando" | null;
+        };
+      }>(
         `/api/treenity-bot/conversas/${conversation_id}/encerrar`,
         corpo,
       );

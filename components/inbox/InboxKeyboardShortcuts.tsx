@@ -1,5 +1,6 @@
 "use client";
 import { useHotkeys } from "react-hotkeys-hook";
+import { toast } from "sonner";
 import { useT } from "@/hooks/i18n/useT";
 
 interface Props {
@@ -10,6 +11,8 @@ interface Props {
   onFocusReply: () => void;
   onClaim: () => void;
   onClose: () => void;
+  /** Org com Treenity Bot: fechar exige dizer como terminou (botão Fechar da conversa). undefined = não é Treenity. */
+  fecharExigeDesfecho?: boolean;
   onToggleHelp: () => void;
   enabled?: boolean;
 }
@@ -21,6 +24,7 @@ export function InboxKeyboardShortcuts({
   onFocusReply,
   onClaim,
   onClose,
+  fecharExigeDesfecho = false,
   onToggleHelp,
   enabled = true,
 }: Props) {
@@ -49,6 +53,11 @@ export function InboxKeyboardShortcuts({
   useHotkeys(
     "e",
     () => {
+      // Antes do confirm: com o Treenity Bot o atalho não fecha às escuras.
+      if (fecharExigeDesfecho) {
+        toast.info(t("Para fechar e dizer como terminou, use o botão Fechar da conversa."));
+        return;
+      }
       if (confirm(t("Fechar conversa?"))) onClose();
     },
     { enabled, preventDefault: true },

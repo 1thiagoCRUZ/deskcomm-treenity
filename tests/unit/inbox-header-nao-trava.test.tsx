@@ -50,6 +50,12 @@ vi.mock("@/hooks/inbox/useReleaseConversation", () => ({
 vi.mock("@/hooks/inbox/useResumeAiAttendance", () => ({
   useResumeAiAttendance: () => ({ mutate: vi.fn(), isPending: false }),
 }));
+// Org sem Treenity Bot (false explícito): só então o Fechar comum aparece. Com undefined
+// (carregando/falha) o header não oferece Fechar, para não fechar sem o desfecho.
+vi.mock("@/hooks/inbox/useFecharComoTerminou", async (orig) => ({
+  ...(await orig<typeof import("@/hooks/inbox/useFecharComoTerminou")>()),
+  useTreenityBotNoInbox: () => ({ data: false }),
+}));
 vi.mock("@/hooks/auth/AuthProvider", () => ({
   usePermission: () => true,
   useAuth: () => ({ user: { id: "u-1" }, activeOrg: { orgId: "org-1", role: "manager" } }),

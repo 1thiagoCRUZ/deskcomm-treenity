@@ -304,7 +304,7 @@ export function ConversationHeader({ conversation }: Props) {
           />
         )}
         {!encerrada && treenityBotNoInbox && <FecharComoTerminou conversationId={conversation.id} />}
-        {!encerrada && !treenityBotNoInbox && (
+        {!encerrada && treenityBotNoInbox === false && (
           <Button
             size="sm"
             variant="outline"

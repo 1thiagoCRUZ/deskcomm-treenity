@@ -13,6 +13,12 @@
  * 3. **Funil:** roda o sincronismo depois da resposta, para o card não esperar
  *    a rodada agendada.
  *
+ * **Venda = paga.** Fechar com "teve venda" é a confirmação de que o cliente pagou: o bot
+ * marca a venda como "Paga" (a do atendimento; sem atendimento aberto, SÓ a única aguardando
+ * com o mesmo valor digitado e criada depois do início desta conversa, enviado como `desde`) e grava quem confirmou. Com mais de uma aguardando, nada é adivinhado: a
+ * resposta traz `aviso_pagamento` e a tela pede para conferir em Vendas. Nenhum texto de
+ * mensagem entra nessa decisão, só o clique.
+ *
  * Se o bot falhar, a conversa NÃO é fechada: fechar só no Inbox deixaria o
  * atendimento aberto no bot e a venda fora do faturamento — o desencontro que
  * esta rota existe para evitar. A pessoa vê o erro e tenta de novo.
@@ -68,7 +74,7 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
 
   const { data: conversa, error: erroLeitura } = await supabase
     .from("conversations")
-    .select("id, organization_id, contact_id, service_revision, service_started_at, created_at, contacts:contact_id(phone_number)")
+    .select("id, organization_id, contact_id, service_revision, assigned_to_user_id, service_started_at, created_at, contacts:contact_id(phone_number)")
     .eq("id", id)
     .eq("organization_id", authz.org.orgId)
     .maybeSingle();
@@ -79,6 +85,7 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
     organization_id: string;
     contact_id: string | null;
     service_revision: number;
+    assigned_to_user_id: string | null;
     service_started_at: string | null;
     created_at: string;
     contacts: { phone_number: string | null } | null;
@@ -90,9 +97,13 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
     ? await encerrarAtendimentoNoBot({
         telefone,
         usuario: { email: authz.user.email, nome: authz.user.full_name ?? authz.user.email },
+        // LGPD: quem confirmou o pagamento vai ao bot só pelo primeiro nome, nunca e-mail.
+        fechadaPor: authz.user.full_name?.trim().split(/\s+/)[0] || "Equipe",
         valorDaVenda: valor,
+        // Só fato: vendas criadas depois do início desta conversa no painel podem ser marcadas sozinhas.
+        desde: c.service_started_at ?? c.created_at,
       })
-    : { desfecho: "sem_atendimento_aberto" as const, vendaId: null };
+    : { desfecho: "sem_atendimento_aberto" as const, vendaId: null, aguardandoPendentes: 0 };
   const noBot = resultadoBot.desfecho;
   if (noBot === "falhou") {
     return fail(
@@ -104,12 +115,59 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
   }
 
   const admin = createAdminClient();
-  const { error: erroFechar } = await admin.rpc("fn_service_status", {
+  let { error: erroFechar } = await admin.rpc("fn_service_status", {
     p_org: c.organization_id,
     p_conversation: c.id,
     p_status: "closed",
     p_expected: c.service_revision,
   });
+  // O bot já encerrou (e pagou) a esta altura: um conflito de revisão não pode obrigar a
+  // repetir o Fechar, porque a repetição cairia em outra venda. Relê a revisão e tenta uma vez.
+  if (erroFechar?.code === "40001") {
+    const { data: atual } = await admin
+      .from("conversations")
+      .select("status, service_revision, assigned_to_user_id")
+      .eq("organization_id", c.organization_id)
+      .eq("id", c.id)
+      .maybeSingle();
+    // Só repete se a conversa segue aberta e ninguém novo assumiu (dono igual ao de antes, ou
+    // livre, ou o próprio usuário). Senão, não fecha por cima: avisa e audita.
+    const encerrada = !atual || ["closed", "resolved", "archived"].includes(atual.status);
+    const outroAssumiu = !!atual?.assigned_to_user_id
+      && atual.assigned_to_user_id !== c.assigned_to_user_id
+      && atual.assigned_to_user_id !== authz.user.id;
+    if (atual && !encerrada && !outroAssumiu) {
+      ({ error: erroFechar } = await admin.rpc("fn_service_status", {
+        p_org: c.organization_id,
+        p_conversation: c.id,
+        p_status: "closed",
+        p_expected: atual.service_revision,
+      }));
+    } else {
+      await audit({
+        action: "conversation.close_conflict",
+        actorUserId: authz.user.id,
+        organizationId: c.organization_id,
+        resourceType: "conversation",
+        resourceId: c.id,
+        requestId,
+        metadata: {
+          motivo: encerrada ? "ja_encerrada" : "outro_atendente_assumiu",
+          treenity_bot: noBot,
+          venda_bot_id: resultadoBot.vendaId,
+        },
+      });
+      const vendaPaga = corpo.data.desfecho === "venda" && resultadoBot.vendaId !== null;
+      return fail(
+        "conflict",
+        vendaPaga
+          ? t("A venda já foi marcada como paga no bot, mas a conversa não foi fechada aqui. Atualize a tela e feche a conversa sem registrar a venda de novo.")
+          : t("O atendimento mudou durante o fechamento: o bot já foi avisado, mas a conversa não foi fechada aqui. Atualize a tela e confira antes de fechar de novo."),
+        409,
+        { requestId, details: { venda_bot_id: resultadoBot.vendaId, venda_paga: vendaPaga } },
+      );
+    }
+  }
   if (erroFechar) {
     return fail(
       erroFechar.code === "40001" ? "conflict" : "internal_error",
@@ -178,7 +236,16 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
     resourceType: "conversation",
     resourceId: c.id,
     requestId,
-    metadata: { desfecho: corpo.data.desfecho, valor, treenity_bot: noBot },
+    metadata: {
+      desfecho: corpo.data.desfecho,
+      valor,
+      treenity_bot: noBot,
+      // Fechar com venda = venda PAGA: o bot marca "Paga" e guarda quem confirmou (o nome
+      // de quem fechou). Aqui fica o registro do lado do painel: quem, e qual venda.
+      venda_bot_id: resultadoBot.vendaId,
+      venda_marcada_paga: corpo.data.desfecho === "venda" && resultadoBot.vendaId !== null,
+      vendas_aguardando_pendentes: resultadoBot.aguardandoPendentes,
+    },
   });
 
   after(() =>
@@ -189,5 +256,24 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
     }),
   );
 
-  return ok({ fechada: true, treenity_bot: noBot }, { requestId });
+  // Aviso (nunca erro): a conversa fechou, mas o pagamento precisa de olho humano.
+  //  - "nao_marcada": disse que teve venda e nenhuma venda do bot pôde ser marcada como paga
+  //    (sem venda aguardando, ou várias e o sistema não adivinha);
+  //  - "outras_aguardando": a venda foi marcada, mas o cliente tem outras ainda aguardando.
+  let aviso: "nao_marcada" | "outras_aguardando" | null = null;
+  if (corpo.data.desfecho === "venda") {
+    if (resultadoBot.vendaId === null) aviso = "nao_marcada";
+    else if (resultadoBot.aguardandoPendentes > 0) aviso = "outras_aguardando";
+  }
+
+  return ok(
+    {
+      fechada: true,
+      treenity_bot: noBot,
+      venda_paga: corpo.data.desfecho === "venda" && resultadoBot.vendaId !== null,
+      aviso_pagamento: aviso,
+      vendas_aguardando_pendentes: resultadoBot.aguardandoPendentes,
+    },
+    { requestId },
+  );
 }
