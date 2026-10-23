@@ -12,7 +12,9 @@
 -- primeiro em "midias"; quem escolhe é o n8n). No máximo uma ativa por produto; 'extra' = enviada depois, na ordem de "ordem" (menor primeiro).
 -- url é guardada SEM SAS (o n8n acrescenta o SAS do Azure na hora do envio): por isso a url não
 -- pode ter '?' nem '#'. Imagem só .jpg/.jpeg/.png (o WhatsApp não aceita webp como imagem);
--- vídeo só .mp4.
+-- vídeo só .mp4. Host preso ao Azure Blob (<conta>.blob.core.windows.net): o n8n anexa o SAS
+-- à url, e um host de fora receberia a credencial do container.
+-- descricao é nota interna do dono: não vai ao cliente nem sai em catalogo_apresentacao.
 --
 -- Escrita só pelo servidor (service role / postgres): nenhuma policy de escrita.
 -- Leitura para membros da própria empresa, para a futura tela "Produtos".
@@ -37,7 +39,9 @@ create table if not exists public.produto_midias (
     on delete cascade on update cascade,
   constraint produto_midias_papel_check check (papel in ('principal', 'extra')),
   constraint produto_midias_tipo_check check (tipo in ('imagem', 'video')),
-  constraint produto_midias_url_formato check (url ~ '^https://[^[:space:]?#]+$'),
+  -- Só Azure Blob: o n8n anexa o SAS a esta url; host de fora receberia a credencial.
+  constraint produto_midias_url_formato
+    check (url ~ '^https://[a-z0-9]{3,24}\.blob\.core\.windows\.net/[^[:space:][:cntrl:]?#]+$'),
   constraint produto_midias_url_extensao check (
     (tipo = 'imagem' and url ~* '\.(jpe?g|png)$')
     or (tipo = 'video' and url ~* '\.mp4$')
@@ -94,6 +98,8 @@ begin
     return v_detalhes;
   end if;
 
+  -- De propósito resolve a empresa de novo e filtra por ela, além da FK composta:
+  -- defesa redundante, não "otimizar".
   v_org := public.catalogo_org_por_numero(p_phone_number_id);
   v_produto := (v_detalhes ->> 'produto_id')::uuid;
 

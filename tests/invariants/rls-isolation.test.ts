@@ -266,7 +266,7 @@ beforeAll(() => {
         -- produto_midias (0248): mídias do produto do catálogo. Mesma regra do catálogo.
         if not exists (select 1 from public.produto_midias where organization_id = v_org) then
           insert into public.produto_midias (organization_id, produto_id, papel, tipo, url)
-            select v_org, id, 'principal', 'imagem', 'https://invariante.test/' || v_org::text || '.jpg'
+            select v_org, id, 'principal', 'imagem', 'https://invariante.blob.core.windows.net/' || v_org::text || '.jpg'
               from public.produtos where organization_id = v_org;
         end if;
 
