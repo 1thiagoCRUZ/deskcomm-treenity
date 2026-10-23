@@ -13,7 +13,7 @@ burro"). Cada empresa só enxerga os próprios produtos.
 Aplicar a migration `0246_catalogo_de_produtos_do_bot.sql` no Supabase de produção (SQL Editor) antes
 de ligar o fluxo novo do bot no n8n.
 
-## Como o bot usa
+**Como o bot usa**
 
 - Quando o cliente pede um nome que serve para vários produtos ("Topfix"), o bot recebe a lista de
   até 5 nomes e pergunta qual deles, em vez de ficar sem resposta.
