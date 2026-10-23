@@ -27,6 +27,9 @@ const PROD_APAGAR_A = "d1d1d1d1-3333-4000-8000-000000000005";
 const PROD_B = "d1d1d1d1-3333-4000-8000-000000000011";
 const PN_A = "pn-midias-a";
 const PN_B = "pn-midias-b";
+const PN_ARQUIVADO_A = "pn-midias-arquivado-a";
+const ORG_C = "d1d1d1d1-0000-4000-8000-000000000003";
+const PROD_C = "d1d1d1d1-3333-4000-8000-000000000021";
 const BASE = "https://conta.blob.core.windows.net/midias";
 
 function erroDe(fn: () => unknown): string {
@@ -68,6 +71,8 @@ beforeAll(() => {
     insert into public.channel_sessions (organization_id, provider, meta_phone_number_id, webhook_secret_encrypted)
       values ('${ORG_A}', 'meta_cloud', '${PN_A}', '\\x00'::bytea),
              ('${ORG_B}', 'meta_cloud', '${PN_B}', '\\x00'::bytea);
+    insert into public.channel_sessions (organization_id, provider, meta_phone_number_id, webhook_secret_encrypted, archived_at)
+      values ('${ORG_A}', 'meta_cloud', '${PN_ARQUIVADO_A}', '\\x00'::bytea, now());
 
     insert into public.produtos (id, organization_id, origem, sku, nome, imagem_url) values
       ('${PROD_A}', '${ORG_A}', 'site', 'BM-1', 'Biomax Raiz', '${BASE}/site-a.jpg'),
@@ -129,6 +134,15 @@ describe("0248 · quem lê e quem escreve", () => {
     expect(sql(`select prosecdef from pg_proc where oid = '${f}'::regprocedure;`)).toBe("f");
   });
 
+  it("o servidor não move mídia da B para produto da A por update (FK composta)", () => {
+    expect(
+      erroDe(() =>
+        sql(`update public.produto_midias set produto_id = '${PROD_A}'
+              where organization_id = '${ORG_B}' and url = '${BASE}/b-video.mp4';`),
+      ),
+    ).toMatch(/produto_midias_produto_fk/);
+  });
+
   it("mídia da empresa B não se liga a produto da empresa A (FK composta)", () => {
     expect(
       erroDe(() => inserirMidia(ORG_B, PROD_A, "extra", "imagem", `${BASE}/cruzada.jpg`)),
@@ -179,6 +193,41 @@ describe("0248 · o que a mídia aceita", () => {
     ).toBe("2");
   });
 
+  it("update também respeita as regras: religar segunda principal, virar principal, principal virar vídeo", () => {
+    // ck-principal-1 está desligada e ck-principal-2 ligada (teste anterior)
+    expect(
+      erroDe(() =>
+        sql(`update public.produto_midias set ativo = true
+              where produto_id = '${PROD_CHECKS_A}' and url = '${BASE}/ck-principal-1.jpg';`),
+      ),
+    ).toMatch(/produto_midias_principal_ativa_uidx/);
+    inserirMidia(ORG_A, PROD_CHECKS_A, "extra", "imagem", `${BASE}/ck-promover.jpg`);
+    expect(
+      erroDe(() =>
+        sql(`update public.produto_midias set papel = 'principal'
+              where produto_id = '${PROD_CHECKS_A}' and url = '${BASE}/ck-promover.jpg';`),
+      ),
+    ).toMatch(/produto_midias_principal_ativa_uidx/);
+    expect(
+      erroDe(() =>
+        sql(`update public.produto_midias set tipo = 'video'
+              where produto_id = '${PROD_CHECKS_A}' and url = '${BASE}/ck-principal-2.jpg';`),
+      ),
+    ).toMatch(/produto_midias_principal_e_imagem|produto_midias_url_extensao/);
+  });
+
+  it("updated_at anda no update", () => {
+    const mudou = sql(`
+      update public.produto_midias set updated_at = now() - interval '1 day', created_at = now() - interval '1 day'
+       where produto_id = '${PROD_CHECKS_A}' and url = '${BASE}/ck-promover.jpg';
+      update public.produto_midias set ordem = 7
+       where produto_id = '${PROD_CHECKS_A}' and url = '${BASE}/ck-promover.jpg';
+      select updated_at > created_at + interval '1 hour' from public.produto_midias
+       where produto_id = '${PROD_CHECKS_A}' and url = '${BASE}/ck-promover.jpg';
+    `);
+    expect(mudou.split("\n").pop()).toBe("t");
+  });
+
   it("a mesma url não se repete no mesmo produto", () => {
     inserirMidia(ORG_A, PROD_CHECKS_A, "extra", "imagem", `${BASE}/ck-dup.jpg`);
     expect(
@@ -223,8 +272,9 @@ describe("0248 · catalogo_apresentacao", () => {
     expect(apresentacao(PN_A, PROD_B)).toBeNull();
   });
 
-  it("número desconhecido devolve nulo", () => {
+  it("número desconhecido ou de canal arquivado devolve nulo", () => {
     expect(apresentacao("nao-existe", "biomax raiz")).toBeNull();
+    expect(apresentacao(PN_ARQUIVADO_A, "biomax raiz")).toBeNull();
     expect(apresentacao("nao-existe", PROD_A)).toBeNull();
   });
 
@@ -239,6 +289,28 @@ describe("0248 · catalogo_apresentacao", () => {
 });
 
 describe("0248 · o que é apagado e a migration de novo", () => {
+  it("desligar não apaga: a linha fica, some da apresentação e volta ao religar", () => {
+    const url = `${BASE}/a-extra-0.jpeg`;
+    sql(`update public.produto_midias set ativo = false where produto_id = '${PROD_A}' and url = '${url}';`);
+    expect(sql(`select count(*) from public.produto_midias where produto_id = '${PROD_A}' and url = '${url}';`)).toBe("1");
+    expect((apresentacao(PN_A, PROD_A)?.midias as Array<Record<string, unknown>>).map((m) => m.url)).not.toContain(url);
+    sql(`update public.produto_midias set ativo = true where produto_id = '${PROD_A}' and url = '${url}';`);
+    expect((apresentacao(PN_A, PROD_A)?.midias as Array<Record<string, unknown>>).map((m) => m.url)).toContain(url);
+  });
+
+  it("apagar a empresa apaga as mídias dela, e só as dela", () => {
+    sql(`
+      insert into public.organizations (id, slug, legal_name, display_name)
+        values ('${ORG_C}', 'inv-midias-c', 'Midias C', 'Midias C') on conflict do nothing;
+      insert into public.produtos (id, organization_id, origem, nome) values ('${PROD_C}', '${ORG_C}', 'manual', 'Produto C');
+    `);
+    inserirMidia(ORG_C, PROD_C, "principal", "imagem", `${BASE}/c.jpg`);
+    const outras = sql(`select count(*) from public.produto_midias where organization_id <> '${ORG_C}';`);
+    sql(`delete from public.organizations where id = '${ORG_C}';`);
+    expect(sql(`select count(*) from public.produto_midias where organization_id = '${ORG_C}';`)).toBe("0");
+    expect(sql(`select count(*) from public.produto_midias where organization_id <> '${ORG_C}';`)).toBe(outras);
+  });
+
   it("apagar o produto apaga as mídias dele", () => {
     inserirMidia(ORG_A, PROD_APAGAR_A, "principal", "imagem", `${BASE}/apagar.jpg`);
     inserirMidia(ORG_A, PROD_APAGAR_A, "extra", "video", `${BASE}/apagar.mp4`);

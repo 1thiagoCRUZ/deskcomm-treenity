@@ -7,8 +7,9 @@
 -- (produto_id, organization_id) -> produtos(id, organization_id), então a mídia fica presa à
 -- MESMA empresa do produto, e apagar o produto apaga as mídias.
 --
--- papel 'principal' = imagem que SUBSTITUI produtos.imagem_url na apresentação (no máximo uma
--- ativa por produto); 'extra' = enviada depois, na ordem de "ordem" (menor primeiro).
+-- papel 'principal' = imagem que o bot usa NO LUGAR de produtos.imagem_url na apresentação
+-- (catalogo_apresentacao devolve as duas: imagem_url segue a do site, e a principal vem em
+-- primeiro em "midias"; quem escolhe é o n8n). No máximo uma ativa por produto; 'extra' = enviada depois, na ordem de "ordem" (menor primeiro).
 -- url é guardada SEM SAS (o n8n acrescenta o SAS do Azure na hora do envio): por isso a url não
 -- pode ter '?' nem '#'. Imagem só .jpg/.jpeg/.png (o WhatsApp não aceita webp como imagem);
 -- vídeo só .mp4.
