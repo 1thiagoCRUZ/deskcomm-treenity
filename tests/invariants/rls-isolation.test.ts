@@ -263,6 +263,13 @@ beforeAll(() => {
             select v_org, id, 'termo de invariante' from public.produtos where organization_id = v_org;
         end if;
 
+        -- produto_midias (0248): mídias do produto do catálogo. Mesma regra do catálogo.
+        if not exists (select 1 from public.produto_midias where organization_id = v_org) then
+          insert into public.produto_midias (organization_id, produto_id, papel, tipo, url)
+            select v_org, id, 'principal', 'imagem', 'https://invariante.test/' || v_org::text || '.jpg'
+              from public.produtos where organization_id = v_org;
+        end if;
+
         if not exists (select 1 from public.push_subscriptions where organization_id = v_org) then
           insert into public.push_subscriptions
             (organization_id, user_id, endpoint, p256dh, auth)
@@ -338,6 +345,8 @@ export const TABLES = [
   "produtos",
   "produto_conhecimento",
   "produto_termos",
+  // 0248 — mídias do produto do catálogo. Mesma regra; medidas em produto-midias.test.ts.
+  "produto_midias",
   // 0227 — texto de sugestões: org + visibilidade da conversa por authenticated.
   "ai_reply_drafts",
   // ⚠️ `webhook_lead_captures` (migration 0174) NÃO entra nesta lista, e a
