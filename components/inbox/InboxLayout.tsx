@@ -347,7 +347,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
     if (!selectedConversation) return;
     // Com o Treenity Bot, fechar é dizer como terminou (venda paga ou não): o atalho não
     // pode fechar às escuras e deixar a venda "Aguardando" no bot.
-    if (treenityBotNoInbox) {
+    if (treenityBotNoInbox !== false) {
       toast.info(t("Para fechar e dizer como terminou, use o botão Fechar da conversa."));
       return;
     }

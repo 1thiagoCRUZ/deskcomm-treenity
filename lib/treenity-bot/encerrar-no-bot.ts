@@ -65,11 +65,12 @@ export async function encerrarAtendimentoNoBot(pedido: {
       return { desfecho: "falhou", vendaId: null, aguardandoPendentes: 0 };
     }
     const json = (await res.json().catch(() => null)) as {
-      data?: { vendaId?: string | null; aguardandoPendentes?: number };
+      data?: { atendimentoId?: string | null; vendaId?: string | null; aguardandoPendentes?: number };
     } | null;
     const pendentes = json?.data?.aguardandoPendentes;
     return {
-      desfecho: "encerrado",
+      // Bot novo devolve atendimentoId null quando não havia atendimento aberto.
+      desfecho: json?.data && json.data.atendimentoId === null ? "sem_atendimento_aberto" : "encerrado",
       vendaId: json?.data?.vendaId ?? null,
       aguardandoPendentes: typeof pendentes === "number" && pendentes > 0 ? Math.floor(pendentes) : 0,
     };

@@ -110,12 +110,30 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
   }
 
   const admin = createAdminClient();
-  const { error: erroFechar } = await admin.rpc("fn_service_status", {
+  let { error: erroFechar } = await admin.rpc("fn_service_status", {
     p_org: c.organization_id,
     p_conversation: c.id,
     p_status: "closed",
     p_expected: c.service_revision,
   });
+  // O bot já encerrou (e pagou) a esta altura: um conflito de revisão não pode obrigar a
+  // repetir o Fechar, porque a repetição cairia em outra venda. Relê a revisão e tenta uma vez.
+  if (erroFechar?.code === "40001") {
+    const { data: atual } = await admin
+      .from("conversations")
+      .select("service_revision")
+      .eq("organization_id", c.organization_id)
+      .eq("id", c.id)
+      .maybeSingle();
+    if (atual) {
+      ({ error: erroFechar } = await admin.rpc("fn_service_status", {
+        p_org: c.organization_id,
+        p_conversation: c.id,
+        p_status: "closed",
+        p_expected: atual.service_revision,
+      }));
+    }
+  }
   if (erroFechar) {
     return fail(
       erroFechar.code === "40001" ? "conflict" : "internal_error",
