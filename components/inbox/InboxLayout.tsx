@@ -345,7 +345,8 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
   const handleClose = useCallback(() => {
     if (!selectedConversation) return;
     // O atalho E já barra antes do confirm quando a org usa o Treenity Bot; aqui é só a rede.
-    if (treenityBotNoInbox) return;
+    // Enquanto o hook carrega/falha (undefined) também barra: só fecha comum com false explícito.
+    if (treenityBotNoInbox !== false) return;
     close.mutate({ conversation_id: selectedConversation.id });
   }, [close, selectedConversation, treenityBotNoInbox]);
 
@@ -568,7 +569,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
           onFocusReply={handleFocusReply}
           onClaim={supportReadonly ? () => {} : handleClaim}
           onClose={supportReadonly ? () => {} : handleClose}
-          fecharExigeDesfecho={treenityBotNoInbox === true}
+          fecharExigeDesfecho={treenityBotNoInbox !== false}
           onToggleHelp={() => setHelpOpen((v) => !v)}
         />
         <ShortcutsHelpDialog open={helpOpen} onOpenChange={setHelpOpen} />

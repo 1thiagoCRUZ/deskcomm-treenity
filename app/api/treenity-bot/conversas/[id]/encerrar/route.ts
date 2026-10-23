@@ -157,11 +157,14 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
           venda_bot_id: resultadoBot.vendaId,
         },
       });
+      const vendaPaga = corpo.data.desfecho === "venda" && resultadoBot.vendaId !== null;
       return fail(
         "conflict",
-        t("O atendimento mudou durante o fechamento: o bot já foi avisado, mas a conversa não foi fechada aqui. Atualize a tela e confira antes de fechar de novo."),
+        vendaPaga
+          ? t("A venda já foi marcada como paga no bot, mas a conversa não foi fechada aqui. Atualize a tela e feche a conversa sem registrar a venda de novo.")
+          : t("O atendimento mudou durante o fechamento: o bot já foi avisado, mas a conversa não foi fechada aqui. Atualize a tela e confira antes de fechar de novo."),
         409,
-        { requestId },
+        { requestId, details: { venda_bot_id: resultadoBot.vendaId, venda_paga: vendaPaga } },
       );
     }
   }

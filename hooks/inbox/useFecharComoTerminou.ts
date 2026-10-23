@@ -18,7 +18,7 @@ export function useTreenityBotNoInbox() {
       return r.data.ativo;
     },
     staleTime: 5 * 60_000,
-    // Silencioso: sem a resposta, o "Fechar" comum continua funcionando.
+    // Sem a resposta (undefined) o Fechar fica travado até saber; só false libera o fechar comum.
     retry: 1,
   });
 }

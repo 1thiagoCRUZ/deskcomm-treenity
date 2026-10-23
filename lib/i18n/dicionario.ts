@@ -7571,6 +7571,7 @@ export const DICIONARIO: Traducoes = {
   "Venda registrada como paga e conversa fechada.": { es: "Venta registrada como pagada y conversación cerrada." },
   "Nenhuma venda do bot foi marcada como paga (não há uma única venda aguardando, de mesmo valor, criada nesta conversa). Confira em Vendas e marque a paga.": { es: "Ninguna venta del bot se marcó como pagada (no hay una única venta en espera, del mismo valor, creada en esta conversación). Revise en Ventas y marque la pagada." },
   "O atendimento mudou durante o fechamento: o bot já foi avisado, mas a conversa não foi fechada aqui. Atualize a tela e confira antes de fechar de novo.": { es: "La atención cambió durante el cierre: el bot ya fue avisado, pero la conversación no se cerró aquí. Actualice la pantalla y revise antes de cerrar de nuevo." },
+  "A venda já foi marcada como paga no bot, mas a conversa não foi fechada aqui. Atualize a tela e feche a conversa sem registrar a venda de novo.": { es: "La venta ya se marcó como pagada en el bot, pero la conversación no se cerró aquí. Actualice la pantalla y cierre la conversación sin registrar la venta de nuevo." },
   "Este cliente tem outras vendas ainda aguardando pagamento. Confira em Vendas.": { es: "Este cliente tiene otras ventas aún esperando pago. Revise en Ventas." },
   "Teve venda (paga)": { es: "Hubo venta (pagada)" },
   "Para fechar e dizer como terminou, use o botão Fechar da conversa.": { es: "Para cerrar e indicar cómo terminó, use el botón Cerrar de la conversación." },
