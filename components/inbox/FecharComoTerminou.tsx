@@ -58,8 +58,23 @@ export function FecharComoTerminou({ conversationId }: { conversationId: string 
         ? { conversation_id: conversationId, desfecho: "venda", valor: valor as number }
         : { conversation_id: conversationId, desfecho: "sem_venda" },
       {
-        onSuccess: () => {
-          toast.success(teveVenda ? t("Venda registrada e conversa fechada.") : t("Conversa fechada sem venda."));
+        onSuccess: (resposta) => {
+          const dados = resposta?.data;
+          toast.success(
+            teveVenda
+              ? dados?.venda_paga
+                ? t("Venda registrada como paga e conversa fechada.")
+                : t("Venda registrada e conversa fechada.")
+              : t("Conversa fechada sem venda."),
+          );
+          // A conversa fechou, mas o pagamento pede conferência humana: não é erro.
+          if (dados?.aviso_pagamento === "nao_marcada") {
+            toast.warning(
+              t("Nenhuma venda do bot foi marcada como paga (não há uma única venda aguardando). Confira em Vendas e marque a paga."),
+            );
+          } else if (dados?.aviso_pagamento === "outras_aguardando") {
+            toast.warning(t("Este cliente tem outras vendas ainda aguardando pagamento. Confira em Vendas."));
+          }
           reiniciar(false);
         },
       },
@@ -82,7 +97,7 @@ export function FecharComoTerminou({ conversationId }: { conversationId: string 
 
           <div className="grid grid-cols-2 gap-2">
             <Button variant={teveVenda === true ? "default" : "outline"} onClick={() => setTeveVenda(true)}>
-              {t("Teve venda")}
+              {t("Teve venda (paga)")}
             </Button>
             <Button variant={teveVenda === false ? "default" : "outline"} onClick={() => setTeveVenda(false)}>
               {t("Sem venda")}

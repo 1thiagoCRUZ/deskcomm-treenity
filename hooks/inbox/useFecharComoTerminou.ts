@@ -30,7 +30,14 @@ export function useFecharComoTerminou() {
   return useMutation({
     mutationFn: async (args: { conversation_id: string } & ComoTerminou) => {
       const { conversation_id, ...corpo } = args;
-      return apiClient.post<{ data: { fechada: boolean; treenity_bot: string } }>(
+      return apiClient.post<{
+        data: {
+          fechada: boolean;
+          treenity_bot: string;
+          venda_paga?: boolean;
+          aviso_pagamento?: "nao_marcada" | "outras_aguardando" | null;
+        };
+      }>(
         `/api/treenity-bot/conversas/${conversation_id}/encerrar`,
         corpo,
       );

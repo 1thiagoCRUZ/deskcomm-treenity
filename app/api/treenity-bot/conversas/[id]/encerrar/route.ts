@@ -13,6 +13,12 @@
  * 3. **Funil:** roda o sincronismo depois da resposta, para o card não esperar
  *    a rodada agendada.
  *
+ * **Venda = paga.** Fechar com "teve venda" é a confirmação de que o cliente pagou: o bot
+ * marca a venda como "Paga" (a do atendimento; sem atendimento aberto, a única que estiver
+ * aguardando) e grava quem confirmou. Com mais de uma aguardando, nada é adivinhado: a
+ * resposta traz `aviso_pagamento` e a tela pede para conferir em Vendas. Nenhum texto de
+ * mensagem entra nessa decisão, só o clique.
+ *
  * Se o bot falhar, a conversa NÃO é fechada: fechar só no Inbox deixaria o
  * atendimento aberto no bot e a venda fora do faturamento — o desencontro que
  * esta rota existe para evitar. A pessoa vê o erro e tenta de novo.
@@ -92,7 +98,7 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
         usuario: { email: authz.user.email, nome: authz.user.full_name ?? authz.user.email },
         valorDaVenda: valor,
       })
-    : { desfecho: "sem_atendimento_aberto" as const, vendaId: null };
+    : { desfecho: "sem_atendimento_aberto" as const, vendaId: null, aguardandoPendentes: 0 };
   const noBot = resultadoBot.desfecho;
   if (noBot === "falhou") {
     return fail(
@@ -178,7 +184,16 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
     resourceType: "conversation",
     resourceId: c.id,
     requestId,
-    metadata: { desfecho: corpo.data.desfecho, valor, treenity_bot: noBot },
+    metadata: {
+      desfecho: corpo.data.desfecho,
+      valor,
+      treenity_bot: noBot,
+      // Fechar com venda = venda PAGA: o bot marca "Paga" e guarda quem confirmou (o nome
+      // de quem fechou). Aqui fica o registro do lado do painel: quem, e qual venda.
+      venda_bot_id: resultadoBot.vendaId,
+      venda_marcada_paga: corpo.data.desfecho === "venda" && resultadoBot.vendaId !== null,
+      vendas_aguardando_pendentes: resultadoBot.aguardandoPendentes,
+    },
   });
 
   after(() =>
@@ -189,5 +204,24 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
     }),
   );
 
-  return ok({ fechada: true, treenity_bot: noBot }, { requestId });
+  // Aviso (nunca erro): a conversa fechou, mas o pagamento precisa de olho humano.
+  //  - "nao_marcada": disse que teve venda e nenhuma venda do bot pôde ser marcada como paga
+  //    (sem venda aguardando, ou várias e o sistema não adivinha);
+  //  - "outras_aguardando": a venda foi marcada, mas o cliente tem outras ainda aguardando.
+  let aviso: "nao_marcada" | "outras_aguardando" | null = null;
+  if (corpo.data.desfecho === "venda") {
+    if (resultadoBot.vendaId === null) aviso = "nao_marcada";
+    else if (resultadoBot.aguardandoPendentes > 0) aviso = "outras_aguardando";
+  }
+
+  return ok(
+    {
+      fechada: true,
+      treenity_bot: noBot,
+      venda_paga: corpo.data.desfecho === "venda" && resultadoBot.vendaId !== null,
+      aviso_pagamento: aviso,
+      vendas_aguardando_pendentes: resultadoBot.aguardandoPendentes,
+    },
+    { requestId },
+  );
 }

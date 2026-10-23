@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import { useClaimConversation } from "@/hooks/inbox/useClaimConversation";
 import { useCloseConversation } from "@/hooks/inbox/useCloseConversation";
+import { useTreenityBotNoInbox } from "@/hooks/inbox/useFecharComoTerminou";
+import { toast } from "sonner";
 import { useMarkAsRead } from "@/hooks/inbox/useMarkAsRead";
 import {
   useConversationsRealtime,
@@ -307,6 +309,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
 
   const claim = useClaimConversation();
   const close = useCloseConversation();
+  const { data: treenityBotNoInbox } = useTreenityBotNoInbox();
 
   // A leitura da conversa aberta é do upstream e fica: sem ela o contador de
   // não-lidas nunca zera para quem abre a conversa.
@@ -342,8 +345,14 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
   }, [claim, selectedConversation]);
   const handleClose = useCallback(() => {
     if (!selectedConversation) return;
+    // Com o Treenity Bot, fechar é dizer como terminou (venda paga ou não): o atalho não
+    // pode fechar às escuras e deixar a venda "Aguardando" no bot.
+    if (treenityBotNoInbox) {
+      toast.info(t("Para fechar e dizer como terminou, use o botão Fechar da conversa."));
+      return;
+    }
     close.mutate({ conversation_id: selectedConversation.id });
-  }, [close, selectedConversation]);
+  }, [close, selectedConversation, treenityBotNoInbox, t]);
 
   const blockedReason = selectedConversation?.contacts?.is_blocked
     ? t("Contato bloqueado — envio de mensagens desabilitado.")

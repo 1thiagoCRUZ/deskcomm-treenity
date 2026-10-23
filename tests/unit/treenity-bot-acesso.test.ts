@@ -236,6 +236,22 @@ describe("chamadas servidor-para-servidor ao bot", () => {
     expect(JSON.stringify(estado.logs)).not.toContain(SEGREDO);
   });
 
+  it("encerrar-por-cliente repassa a venda marcada como paga e as que seguem aguardando", async () => {
+    const usuario = { email: "a@b.c", nome: "Ana" };
+    estado.fetch.mockResolvedValue(
+      new Response(JSON.stringify({ success: true, data: { vendaId: "v-1", aguardandoPendentes: 2 } }), { status: 200 }),
+    );
+    const r = await encerrarAtendimentoNoBot({ telefone: "5514999990000", usuario, valorDaVenda: 150 });
+    expect(r).toEqual({ desfecho: "encerrado", vendaId: "v-1", aguardandoPendentes: 2 });
+    const [, init] = estado.fetch.mock.calls.at(-1) as [string, RequestInit];
+    expect(JSON.parse(String(init.body))).toMatchObject({ venda: { valor_total: 150 }, fechada_por: "Ana" });
+
+    // Bot antigo (sem o campo): nenhum pendente, sem quebrar.
+    estado.fetch.mockResolvedValue(new Response(JSON.stringify({ data: { vendaId: "v-2" } }), { status: 200 }));
+    const antigo = await encerrarAtendimentoNoBot({ telefone: "5514999990000", usuario, valorDaVenda: 150 });
+    expect(antigo).toEqual({ desfecho: "encerrado", vendaId: "v-2", aguardandoPendentes: 0 });
+  });
+
   it("devolver-ao-bot envia X-SSO-Secret mantendo o Bearer e não vaza o segredo em erro", async () => {
     const dados: Record<string, unknown> = {
       organizations: { settings: COM_BOT },

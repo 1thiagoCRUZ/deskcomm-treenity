@@ -25,6 +25,11 @@ export interface ResultadoDoEncerramento {
   desfecho: DesfechoNoBot;
   /** O id da venda no bot (criada ou atualizada), quando houve venda. */
   vendaId: string | null;
+  /**
+   * Vendas do cliente que seguem "Aguardando Pagamento" e NÃO foram marcadas (o bot não
+   * escolhe entre várias). 0 também quando o bot é antigo e não informa.
+   */
+  aguardandoPendentes: number;
 }
 
 export async function encerrarAtendimentoNoBot(pedido: {
@@ -36,7 +41,7 @@ export async function encerrarAtendimentoNoBot(pedido: {
   try {
     const config = getConfig();
     const sessao = config ? await trocarToken(pedido.usuario) : null;
-    if (!config || !sessao) return { desfecho: "falhou", vendaId: null };
+    if (!config || !sessao) return { desfecho: "falhou", vendaId: null, aguardandoPendentes: 0 };
 
     const res = await comRenovacaoEm401(pedido.usuario, sessao.accessToken, (accessToken) => fetch(`${config.apiUrl}/api/atendimentos/encerrar-por-cliente`, {
       method: "POST",
@@ -54,17 +59,24 @@ export async function encerrarAtendimentoNoBot(pedido: {
       cache: "no-store",
       signal: AbortSignal.timeout(TEMPO_MAXIMO_MS),
     }));
-    if (res.status === 404) return { desfecho: "sem_atendimento_aberto", vendaId: null };
+    if (res.status === 404) return { desfecho: "sem_atendimento_aberto", vendaId: null, aguardandoPendentes: 0 };
     if (!res.ok) {
       logger.error("[treenity-bot] API do bot recusou o encerramento", { status: res.status });
-      return { desfecho: "falhou", vendaId: null };
+      return { desfecho: "falhou", vendaId: null, aguardandoPendentes: 0 };
     }
-    const json = (await res.json().catch(() => null)) as { data?: { vendaId?: string | null } } | null;
-    return { desfecho: "encerrado", vendaId: json?.data?.vendaId ?? null };
+    const json = (await res.json().catch(() => null)) as {
+      data?: { vendaId?: string | null; aguardandoPendentes?: number };
+    } | null;
+    const pendentes = json?.data?.aguardandoPendentes;
+    return {
+      desfecho: "encerrado",
+      vendaId: json?.data?.vendaId ?? null,
+      aguardandoPendentes: typeof pendentes === "number" && pendentes > 0 ? Math.floor(pendentes) : 0,
+    };
   } catch (err) {
     logger.error("[treenity-bot] não foi possível encerrar o atendimento no bot", {
       detail: err instanceof Error ? err.message.slice(0, 160) : "desconhecido",
     });
-    return { desfecho: "falhou", vendaId: null };
+    return { desfecho: "falhou", vendaId: null, aguardandoPendentes: 0 };
   }
 }
