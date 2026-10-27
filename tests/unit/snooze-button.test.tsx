@@ -64,6 +64,22 @@ describe("SnoozeButton", () => {
     );
   });
 
+  it("'Em 1 mês' marca retorno de 720 horas", async () => {
+    postMock.mockResolvedValue({ data: { snooze_until: "2026-11-26T12:00:00.000Z" } });
+    render(wrap(<SnoozeButton conversationId="conv-1" snoozeUntil={null} />));
+    openTrigger(screen.getByRole("button", { name: /lembrar/i }));
+    fireEvent.click(await screen.findByText("Em 1 mês"));
+    await waitFor(() =>
+      expect(postMock).toHaveBeenCalledWith("/api/v1/conversations/conv-1/snooze", { duration_hours: 720 }),
+    );
+  });
+
+  it("retorno ativo mostra a data no botão", () => {
+    const daqui10dias = new Date(Date.now() + 10 * 86_400_000).toISOString();
+    render(wrap(<SnoozeButton conversationId="conv-1" snoozeUntil={daqui10dias} />));
+    expect(screen.getByRole("button", { name: /lembrete ativo/i }).textContent).toMatch(/Lembrete \d{2}\/\d{2}/);
+  });
+
   it("disabled prop desabilita o botão", () => {
     render(wrap(<SnoozeButton conversationId="conv-1" snoozeUntil={null} disabled />));
     expect(screen.getByRole("button", { name: /lembrar/i })).toBeDisabled();

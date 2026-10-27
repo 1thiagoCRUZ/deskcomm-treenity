@@ -6,6 +6,10 @@
  * fechada/arquivada, reabre (`status='open'`, sobe na lista) e cria um aviso
  * interno `snooze_expired` — nada é enviado ao cliente.
  *
+ * RETORNO (7 dias, 15 dias, 1 mês ou data escolhida; ver `ehRetorno`): avisa e
+ * reabre SEMPRE, mesmo que o cliente tenha respondido e mesmo com a conversa
+ * fechada — é o "voltar no cliente depois da venda". Arquivada continua de fora.
+ *
  * Saiu de dentro de `app/api/v1/cron/snooze-watcher` para ter dois chamadores:
  *   - o cron da instalação (VPS: o contêiner `scheduler`), todas as empresas;
  *   - `/api/treenity-bot/lembretes/vencer`, que o n8n chama a cada 5 minutos com
@@ -18,6 +22,8 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { ehRetorno } from "@/lib/schemas/snooze";
+
 /** Max conversas processadas por invocação (safety cap). */
 const SCAN_LIMIT = 200;
 
@@ -25,6 +31,7 @@ interface ConversaVencida {
   id: string;
   organization_id: string;
   snoozed_at: string | null;
+  snooze_until: string | null;
   snoozed_by_user_id: string | null;
   last_inbound_at: string | null;
   status: string;
@@ -42,7 +49,7 @@ export async function vencerLembretes(
   const nowIso = (opts.agora ?? new Date()).toISOString();
   let consulta = admin
     .from("conversations")
-    .select("id, organization_id, snoozed_at, snoozed_by_user_id, last_inbound_at, status")
+    .select("id, organization_id, snoozed_at, snooze_until, snoozed_by_user_id, last_inbound_at, status")
     .not("snooze_until", "is", null)
     .lte("snooze_until", nowIso);
   if (opts.organizationId) consulta = consulta.eq("organization_id", opts.organizationId);
@@ -64,7 +71,10 @@ export async function vencerLembretes(
     // Quem criou o lembrete é lido ANTES de limpar: o clear zera a coluna.
     const autor = c.snoozed_by_user_id;
     const clear = { snooze_until: null, snoozed_at: null, snoozed_by_user_id: null };
-    const willReopen = !leadReplied && c.status !== "closed" && c.status !== "archived";
+    const retorno = ehRetorno(c.snoozed_at, c.snooze_until);
+    const willReopen = retorno
+      ? c.status !== "archived"
+      : !leadReplied && c.status !== "closed" && c.status !== "archived";
     const fields = willReopen ? { ...clear, status: "open", last_message_at: nowIso } : clear;
 
     // O clear É o claim atômico: `.not("snooze_until","is",null)` garante que só
@@ -85,7 +95,7 @@ export async function vencerLembretes(
         organization_id: c.organization_id,
         kind: "snooze_expired",
         severity: "warn",
-        title: "Lead não respondeu no prazo",
+        title: retorno ? "Retorno combinado: hora de falar com o cliente" : "Lead não respondeu no prazo",
         body: autor ? JSON.stringify({ lembrete_de: autor }) : null,
         ref_kind: "conversation",
         ref_id: c.id,

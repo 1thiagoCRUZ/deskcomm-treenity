@@ -1,6 +1,7 @@
 import { requireSupportWrite } from "@/lib/impersonate/support";
 /**
- * POST   /api/v1/conversations/[id]/snooze — define lembrete ("avise se o lead não responder em X h").
+ * POST   /api/v1/conversations/[id]/snooze — define lembrete: `duration_hours` (1, 3, 24 h = "avise se
+ *        o lead não responder"; 7, 15, 30 dias = retorno) ou `ate` (data escolhida, retorno).
  * DELETE /api/v1/conversations/[id]/snooze — cancela o lembrete ativo.
  *
  * Reabertura + aviso interno no vencimento é responsabilidade do cron
@@ -19,7 +20,7 @@ import { type NextRequest } from "next/server";
 import { audit } from "@/lib/audit";
 import { fail, ok, noContent } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
-import { snoozeSchema } from "@/lib/schemas/snooze";
+import { MAX_DIAS_DATA, RETORNO_A_PARTIR_HORAS, snoozeSchema } from "@/lib/schemas/snooze";
 import { createClient } from "@/lib/supabase/server";
 import { traduzir } from "@/lib/i18n/dicionario";
 
@@ -48,10 +49,19 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<R
       details: parsed.error.flatten().fieldErrors as Record<string, unknown>,
     });
   }
-  const { duration_hours } = parsed.data;
-
-  const nowIso = new Date().toISOString();
-  const snoozeUntil = new Date(Date.now() + duration_hours * 3600_000).toISOString();
+  const agora = Date.now();
+  const nowIso = new Date(agora).toISOString();
+  let snoozeUntil: string;
+  if ("ate" in parsed.data) {
+    // Data escolhida: retorno, de 2 dias a 1 ano. Antes disso, os prazos curtos servem.
+    const ate = new Date(parsed.data.ate).getTime();
+    if (ate < agora + RETORNO_A_PARTIR_HORAS * 3600_000 - 60_000 || ate > agora + MAX_DIAS_DATA * 86_400_000) {
+      return fail("validation_failed", t("Escolha uma data entre 2 dias e 1 ano a partir de hoje."), 422, { requestId });
+    }
+    snoozeUntil = new Date(ate).toISOString();
+  } else {
+    snoozeUntil = new Date(agora + parsed.data.duration_hours * 3600_000).toISOString();
+  }
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -71,7 +81,7 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<R
     resourceType: "conversation",
     resourceId: data.id,
     requestId,
-    metadata: { duration_hours },
+    metadata: { ...parsed.data, snooze_until: snoozeUntil },
   });
   return ok({ snooze_until: snoozeUntil }, { requestId });
 }

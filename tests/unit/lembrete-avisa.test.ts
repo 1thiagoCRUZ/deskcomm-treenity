@@ -87,6 +87,26 @@ describe("vencerLembretes", () => {
     expect(db.filtrosUsados[0]).toMatchObject({ organization_id: "org-1" });
   });
 
+  it("retorno de 1 mês: avisa e reabre mesmo com o cliente tendo respondido e a conversa fechada", async () => {
+    const db = bancoFalso([conversa({
+      snoozed_at: "2026-10-10T10:00:00Z", snooze_until: "2026-11-09T10:00:00Z",
+      last_inbound_at: "2026-10-20T11:00:00Z", status: "closed",
+    })]);
+    expect(await vencerLembretes(db as never, { organizationId: "org-1" })).toEqual({ scanned: 1, reopened: 1 });
+    expect(db.itens[0]).toMatchObject({ kind: "snooze_expired", title: "Retorno combinado: hora de falar com o cliente" });
+  });
+
+  it("retorno não mexe em conversa arquivada", async () => {
+    const db = bancoFalso([conversa({ snooze_until: "2026-11-09T10:00:00Z", status: "archived" })]);
+    expect(await vencerLembretes(db as never, { organizationId: "org-1" })).toEqual({ scanned: 1, reopened: 0 });
+    expect(db.itens).toHaveLength(0);
+  });
+
+  it("lembrete curto com a conversa fechada continua sem aviso", async () => {
+    const db = bancoFalso([conversa({ status: "closed" })]);
+    expect(await vencerLembretes(db as never, { organizationId: "org-1" })).toEqual({ scanned: 1, reopened: 0 });
+  });
+
   it("dois ticks seguidos não avisam duas vezes", async () => {
     const db = bancoFalso([conversa()]);
     await vencerLembretes(db as never, { organizationId: "org-1" });
