@@ -4555,6 +4555,17 @@ export const DICIONARIO: Traducoes = {
   "Em 1 hora": { es: "En 1 hora" },
   "Em 3 horas": { es: "En 3 horas" },
   "Em 24 horas": { es: "En 24 horas" },
+  "Em 7 dias": { es: "En 7 días" },
+  "Em 15 dias": { es: "En 15 días" },
+  "Em 1 mês": { es: "En 1 mes" },
+  "Escolher data...": { es: "Elegir fecha..." },
+  "Se ele não responder": { es: "Si no responde" },
+  "Voltar no cliente (avisa sempre)": { es: "Volver al cliente (avisa siempre)" },
+  "Voltar no cliente": { es: "Volver al cliente" },
+  "No dia escolhido, às 9h, você recebe um aviso e a conversa volta para o topo do Inbox.": { es: "El día elegido, a las 9 h, recibes un aviso y la conversación vuelve arriba del Inbox." },
+  "Data do retorno": { es: "Fecha del regreso" },
+  "Lembrete": { es: "Recordatorio" },
+  "Escolha uma data entre 2 dias e 1 ano a partir de hoje.": { es: "Elige una fecha entre 2 días y 1 año a partir de hoy." },
 
   // ─── Inbox: composer (anexos, áudio, contato, templates) ───
   Anexar: { es: "Adjuntar" },
