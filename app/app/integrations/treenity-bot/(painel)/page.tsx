@@ -174,6 +174,16 @@ async function ConteudoTreenityBot() {
             <TabsTrigger value="visao-geral" className={tabTriggerClass}>
               {traduzir("Visão geral", idioma)}
             </TabsTrigger>
+            {ehAdmin ? (
+              <>
+                <TabsTrigger value="conversas" className={tabTriggerClass}>
+                  {traduzir("Conversas", idioma)}
+                </TabsTrigger>
+                <TabsTrigger value="vendas" className={tabTriggerClass}>
+                  {traduzir("Vendas", idioma)}
+                </TabsTrigger>
+              </>
+            ) : null}
             {ehGestao ? (
               <TabsTrigger value="automacoes" className={tabTriggerClass}>
                 {traduzir("Automações", idioma)}
@@ -245,10 +255,20 @@ async function ConteudoTreenityBot() {
                 </div>
               </div>
             </Card>
-
-            {ehAdmin ? <EmAndamentoPainel /> : null}
-            {ehAdmin ? <VendasPainel inicial={painel?.vendas ?? null} /> : null}
           </TabsContent>
+
+          {/* Conversas e Vendas em abas próprias (pedido do Rodrigo, 27/10/2026):
+              empilhadas na Visão geral, uma empurrava a outra para fora da tela. */}
+          {ehAdmin ? (
+            <>
+              <TabsContent value="conversas" className="mt-0 min-h-0 flex-1 overflow-y-auto">
+                <EmAndamentoPainel />
+              </TabsContent>
+              <TabsContent value="vendas" className="mt-0 min-h-0 flex-1 overflow-y-auto">
+                <VendasPainel inicial={painel?.vendas ?? null} />
+              </TabsContent>
+            </>
+          ) : null}
 
           {/* "Precisando de atenção" e "Atendimentos" viraram o Inbox (Fila e
               Todas) — "um lugar para cada coisa". O Chat interno ganhou item
