@@ -1,14 +1,16 @@
 /**
- * O "Lembrar" do Inbox vencendo: conversas com `snooze_until` vencido.
+ * O "Me lembrar" do Inbox vencendo: conversas com `snooze_until` vencido.
  *
- * Para cada uma, limpa o lembrete SEMPRE (não reprocessa no próximo tick). Se o
- * cliente NÃO respondeu desde que o lembrete foi criado e a conversa não está
- * fechada/arquivada, reabre (`status='open'`, sobe na lista) e cria um aviso
- * interno `snooze_expired` — nada é enviado ao cliente.
+ * Para cada uma, limpa o lembrete SEMPRE (não reprocessa no próximo tick), e,
+ * se a conversa não está arquivada, reabre (`status='open'`, sobe na lista) e
+ * cria um aviso interno `snooze_expired` — nada é enviado ao cliente.
  *
- * RETORNO (7 dias, 15 dias, 1 mês ou data escolhida; ver `ehRetorno`): avisa e
- * reabre SEMPRE, mesmo que o cliente tenha respondido e mesmo com a conversa
- * fechada — é o "voltar no cliente depois da venda". Arquivada continua de fora.
+ * Avisa SEMPRE, mesmo que o cliente tenha respondido e mesmo com a conversa
+ * fechada (pedido do Rodrigo, 27/10/2026): o lembrete é da pessoa que o marcou
+ * ("voltar no cliente daqui a 3 meses"). Até então o prazo curto (1 h, 3 h,
+ * 24 h) só avisava se o cliente não respondesse; esse papel passou para a parte
+ * "Janela aberta", que manda a mensagem ao cliente
+ * (`lib/inbox/mensagens-agendadas.ts`).
  *
  * Saiu de dentro de `app/api/v1/cron/snooze-watcher` para ter dois chamadores:
  *   - o cron da instalação (VPS: o contêiner `scheduler`), todas as empresas;
@@ -22,8 +24,6 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { ehRetorno } from "@/lib/schemas/snooze";
-
 /** Max conversas processadas por invocação (safety cap). */
 const SCAN_LIMIT = 200;
 
@@ -33,7 +33,6 @@ interface ConversaVencida {
   snoozed_at: string | null;
   snooze_until: string | null;
   snoozed_by_user_id: string | null;
-  last_inbound_at: string | null;
   status: string;
 }
 
@@ -49,7 +48,7 @@ export async function vencerLembretes(
   const nowIso = (opts.agora ?? new Date()).toISOString();
   let consulta = admin
     .from("conversations")
-    .select("id, organization_id, snoozed_at, snooze_until, snoozed_by_user_id, last_inbound_at, status")
+    .select("id, organization_id, snoozed_at, snooze_until, snoozed_by_user_id, status")
     .not("snooze_until", "is", null)
     .lte("snooze_until", nowIso);
   if (opts.organizationId) consulta = consulta.eq("organization_id", opts.organizationId);
@@ -60,21 +59,10 @@ export async function vencerLembretes(
   let reopened = 0;
 
   for (const c of conversas) {
-    // Comparar como Date, não string: dois timestamptz ISO com formatos sutilmente
-    // diferentes (Z vs +00:00, frações de precisão distinta) quebrariam a ordem
-    // lexicográfica — e esta comparação decide se a conversa reabre.
-    const leadReplied = !!(
-      c.last_inbound_at &&
-      c.snoozed_at &&
-      new Date(c.last_inbound_at).getTime() > new Date(c.snoozed_at).getTime()
-    );
     // Quem criou o lembrete é lido ANTES de limpar: o clear zera a coluna.
     const autor = c.snoozed_by_user_id;
     const clear = { snooze_until: null, snoozed_at: null, snoozed_by_user_id: null };
-    const retorno = ehRetorno(c.snoozed_at, c.snooze_until);
-    const willReopen = retorno
-      ? c.status !== "archived"
-      : !leadReplied && c.status !== "closed" && c.status !== "archived";
+    const willReopen = c.status !== "archived";
     const fields = willReopen ? { ...clear, status: "open", last_message_at: nowIso } : clear;
 
     // O clear É o claim atômico: `.not("snooze_until","is",null)` garante que só
@@ -95,7 +83,7 @@ export async function vencerLembretes(
         organization_id: c.organization_id,
         kind: "snooze_expired",
         severity: "warn",
-        title: retorno ? "Retorno combinado: hora de falar com o cliente" : "Lead não respondeu no prazo",
+        title: "Lembrete: hora de falar com o cliente",
         body: autor ? JSON.stringify({ lembrete_de: autor }) : null,
         ref_kind: "conversation",
         ref_id: c.id,

@@ -34,8 +34,8 @@ describe("lembretes vencidos", () => {
   it("devolve o meu e o sem autor; o do colega não", async () => {
     const corpo = await (await GET()).json();
     expect(corpo.data).toEqual([
-      { id: "i1", conversa_id: "cv-1", contato: "João", vencido_em: "2026-10-10T13:00:00Z" },
-      { id: "i3", conversa_id: "cv-3", contato: "Maria", vencido_em: "2026-10-10T13:00:00Z" },
+      { id: "i1", conversa_id: "cv-1", contato: "João", titulo: null, vencido_em: "2026-10-10T13:00:00Z" },
+      { id: "i3", conversa_id: "cv-3", contato: "Maria", titulo: null, vencido_em: "2026-10-10T13:00:00Z" },
     ]);
   });
 });

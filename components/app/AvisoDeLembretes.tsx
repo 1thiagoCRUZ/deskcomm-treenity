@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Avisa quando um lembrete ("Lembrar" no Inbox) que VOCÊ criou venceu sem o
- * cliente responder — toast na tela e notificação do sistema, com som (pedido
+ * Avisa quando um lembrete ("Lembrar" no Inbox) que VOCÊ criou venceu, ou
+ * quando a mensagem que você marcou não foi ao cliente — toast na tela e notificação do sistema, com som (pedido
  * do usuário em 10/10: o cliente diz "vou ver e te falo", e o lembrete chama
  * a equipe de volta na hora marcada).
  *
@@ -24,6 +24,7 @@ interface LembreteVencido {
   id: string;
   conversa_id: string;
   contato: string;
+  titulo: string | null;
 }
 
 const INTERVALO_MS = 60_000;
@@ -68,8 +69,9 @@ export function AvisoDeLembretes() {
       for (const item of itens) {
         if (avisados.has(item.id)) continue;
         avisados.add(item.id);
-        const title = tRef.current("Lembrete: hora de voltar no cliente");
-        const body = `${item.contato} ${tRef.current("não respondeu desde o lembrete.")}`;
+        // O título vem do servidor: lembrete vencido ou mensagem marcada que não foi.
+        const title = tRef.current(item.titulo ?? "Lembrete: hora de falar com o cliente");
+        const body = item.contato;
         const href = `/app/inbox?id=${item.conversa_id}`;
         if (canalLigado("lembrete", "in_app")) {
           toast.warning(title, {

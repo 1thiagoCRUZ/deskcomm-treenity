@@ -1,6 +1,7 @@
 /**
- * GET /api/v1/inbox/lembretes-vencidos — os lembretes ("Lembrar") que venceram
- * nas últimas 12 horas sem o cliente responder, criados por QUEM PERGUNTA.
+ * GET /api/v1/inbox/lembretes-vencidos — os avisos do "Lembrar" das últimas
+ * 12 horas, criados por QUEM PERGUNTA: o "Me lembrar" que venceu e a mensagem
+ * marcada que não foi (cliente respondeu antes, janela fechou). `titulo` diz qual.
  *
  * Quem chama é a tela (`components/app/AvisoDeLembretes.tsx`), a cada minuto,
  * para avisar com toast e notificação do sistema. O aviso é o `snooze_expired`
@@ -37,7 +38,7 @@ export async function GET(): Promise<Response> {
   const desde = new Date(Date.now() - JANELA_MS).toISOString();
   const { data: itens, error } = await supabase
     .from("agent_inbox_items")
-    .select("id, ref_id, body, created_at")
+    .select("id, ref_id, title, body, created_at")
     .eq("organization_id", authz.org.orgId)
     .eq("kind", "snooze_expired")
     .is("resolved_at", null)
@@ -70,6 +71,7 @@ export async function GET(): Promise<Response> {
       id: i.id as string,
       conversa_id: i.ref_id as string,
       contato: nomePorConversa.get(i.ref_id as string) ?? "Cliente",
+      titulo: (i.title as string | null) ?? null,
       vencido_em: i.created_at as string,
     })),
     { requestId },

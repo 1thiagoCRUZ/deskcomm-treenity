@@ -1,7 +1,8 @@
 /**
  * POST /api/treenity-bot/lembretes/vencer — vence os lembretes ("Lembrar" do
- * Inbox) da empresa da chave `tbw_`. O n8n chama a cada 5 minutos (fluxo
- * `[Cron] | Vencer Lembretes`).
+ * Inbox) da empresa da chave `tbw_` e manda as mensagens marcadas na parte
+ * "Janela aberta" (`lib/inbox/mensagens-agendadas.ts`). O n8n chama a cada 5
+ * minutos (fluxo `[Cron] | Vencer Lembretes`).
  *
  * Existe porque na Vercel (plano Hobby) não há cron de 5 minutos: sem esta
  * rota o lembrete nunca vencia. A regra é a do cron da instalação
@@ -10,6 +11,7 @@
  */
 import { NextResponse, type NextRequest } from "next/server";
 
+import { enviarMensagensAgendadas } from "@/lib/inbox/mensagens-agendadas";
 import { vencerLembretes } from "@/lib/inbox/vencer-lembretes";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -26,7 +28,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
   try {
     const r = await vencerLembretes(admin, { organizationId: dono.organizationId });
-    return NextResponse.json({ data: r });
+    const mensagens = await enviarMensagensAgendadas(admin, { organizationId: dono.organizationId });
+    return NextResponse.json({ data: { ...r, mensagens } });
   } catch (err) {
     logger.error("[treenity-bot.lembretes] não foi possível vencer os lembretes", {
       organization_id: dono.organizationId,

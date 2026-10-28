@@ -4,7 +4,7 @@ import { apiClient } from "@/lib/api/client";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 
 type SnoozeArgs =
-  | { conversation_id: string; duration_hours: number }
+  | { conversation_id: string; minutos: number }
   | { conversation_id: string; ate: string };
 
 interface CancelArgs {
@@ -23,7 +23,7 @@ export function useSnoozeConversation() {
     mutationFn: async (args: SnoozeArgs) =>
       apiClient.post<{ data: { snooze_until: string } }>(
         `/api/v1/conversations/${args.conversation_id}/snooze`,
-        "ate" in args ? { ate: args.ate } : { duration_hours: args.duration_hours },
+        "ate" in args ? { ate: args.ate } : { minutos: args.minutos },
       ),
     onError: showApiError,
     onSuccess: (_data, args) => invalidate(args.conversation_id),

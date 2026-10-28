@@ -8,6 +8,7 @@ import { JanelaSelo } from "@/components/inbox/JanelaSelo";
 import { AbrirNoWhatsApp } from "@/components/inbox/AbrirNoWhatsApp";
 import { Phone, ArrowRight, Bell, ChatsCircle } from "@/lib/ui/icons";
 import { useAuth } from "@/hooks/auth/AuthProvider";
+import { ROLE_RANK } from "@/lib/auth/types";
 import { useClaimConversation } from "@/hooks/inbox/useClaimConversation";
 import { useReleaseConversation } from "@/hooks/inbox/useReleaseConversation";
 import { useCloseConversation, useReopenConversation } from "@/hooks/inbox/useCloseConversation";
@@ -57,7 +58,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 export function ConversationHeader({ conversation }: Props) {
   const t = useT();
-  const { user } = useAuth();
+  const { user, activeOrg } = useAuth();
   const claim = useClaimConversation();
   const release = useReleaseConversation();
   const close = useCloseConversation();
@@ -301,6 +302,9 @@ export function ConversationHeader({ conversation }: Props) {
           <SnoozeButton
             conversationId={conversation.id}
             snoozeUntil={conversation.snooze_until ?? null}
+            provider={conversation.channel_sessions?.provider ?? null}
+            lastInboundAt={conversation.last_inbound_at ?? null}
+            podeEditarOpcoes={!!activeOrg && ROLE_RANK[activeOrg.role] >= ROLE_RANK.manager}
           />
         )}
         {!encerrada && treenityBotNoInbox && <FecharComoTerminou conversationId={conversation.id} />}

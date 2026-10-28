@@ -6,7 +6,8 @@
  * respondeu desde que o snooze foi criado (last_inbound_at <= snoozed_at, ou
  * nunca respondeu) e a conversa não está closed/archived, reabre
  * (status='open') e cria um aviso interno `snooze_expired` — nada é enviado
- * ao cliente.
+ * ao cliente. Na mesma rodada, manda as mensagens marcadas na parte "Janela
+ * aberta" do Lembrar (`lib/inbox/mensagens-agendadas.ts`).
  *
  * Auth: mesmo contrato dos demais crons (Bearer INTERNAL_CRON_SECRET|
  * INTERNAL_SECRET, fail-closed).
@@ -24,6 +25,7 @@ import { audit } from "@/lib/audit";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { enviarMensagensAgendadas } from "@/lib/inbox/mensagens-agendadas";
 import { vencerLembretes } from "@/lib/inbox/vencer-lembretes";
 
 export const dynamic = "force-dynamic";
@@ -39,8 +41,11 @@ async function handle(req: NextRequest): Promise<Response> {
   }
 
   let resultado;
+  let mensagens;
   try {
-    resultado = await vencerLembretes(createAdminClient());
+    const admin = createAdminClient();
+    resultado = await vencerLembretes(admin);
+    mensagens = await enviarMensagensAgendadas(admin);
   } catch (err) {
     logger.error("[snooze-watcher] query failed", {
       error: err instanceof Error ? err.message : "desconhecido",
@@ -52,17 +57,17 @@ async function handle(req: NextRequest): Promise<Response> {
 
   // Ver comentário em followup-flow-worker: varredura que não reabriu nada não
   // é mutação, e não tem por que ocupar linha na auditoria.
-  if (reopened > 0) {
+  if (reopened > 0 || mensagens.scanned > 0) {
     void audit({
       action: "conversation.snooze_watcher_run",
       organizationId: null,
       bypassedRls: true,
-      metadata: { scanned, reopened },
+      metadata: { scanned, reopened, mensagens },
       requestId,
     });
   }
 
-  return ok({ scanned, reopened }, { requestId });
+  return ok({ scanned, reopened, mensagens }, { requestId });
 }
 
 export async function GET(req: NextRequest): Promise<Response> {

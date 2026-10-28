@@ -1,11 +1,12 @@
 import { requireSupportWrite } from "@/lib/impersonate/support";
 /**
- * POST   /api/v1/conversations/[id]/snooze — define lembrete: `duration_hours` (1, 3, 24 h = "avise se
- *        o lead não responder"; 7, 15, 30 dias = retorno) ou `ate` (data escolhida, retorno).
+ * POST   /api/v1/conversations/[id]/snooze — "Me lembrar" (aviso interno): `minutos` (qualquer prazo
+ *        de 5 minutos a 5 anos; os botões vêm de `/api/v1/settings/lembrar`) ou `ate` (dia escolhido).
  * DELETE /api/v1/conversations/[id]/snooze — cancela o lembrete ativo.
  *
  * Reabertura + aviso interno no vencimento é responsabilidade do cron
- * `snooze-watcher` — nada é enviado ao cliente aqui.
+ * `snooze-watcher` — nada é enviado ao cliente aqui (quem manda ao cliente é a
+ * parte "Janela aberta": `mensagem-agendada`).
  *
  * `.eq("organization_id", org.orgId)` é defesa extra; a RLS
  * `conversations_tenant_isolation_all` já cobre o UPDATE por membro da org.
@@ -20,7 +21,7 @@ import { type NextRequest } from "next/server";
 import { audit } from "@/lib/audit";
 import { fail, ok, noContent } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
-import { MAX_DIAS_DATA, RETORNO_A_PARTIR_HORAS, snoozeSchema } from "@/lib/schemas/snooze";
+import { INTERNO_MAX_MINUTOS, snoozeSchema } from "@/lib/schemas/snooze";
 import { createClient } from "@/lib/supabase/server";
 import { traduzir } from "@/lib/i18n/dicionario";
 
@@ -53,14 +54,14 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<R
   const nowIso = new Date(agora).toISOString();
   let snoozeUntil: string;
   if ("ate" in parsed.data) {
-    // Data escolhida: retorno, de 2 dias a 1 ano. Antes disso, os prazos curtos servem.
+    // Dia escolhido: do futuro até 5 anos (o mesmo teto do prazo).
     const ate = new Date(parsed.data.ate).getTime();
-    if (ate < agora + RETORNO_A_PARTIR_HORAS * 3600_000 - 60_000 || ate > agora + MAX_DIAS_DATA * 86_400_000) {
-      return fail("validation_failed", t("Escolha uma data entre 2 dias e 1 ano a partir de hoje."), 422, { requestId });
+    if (ate <= agora || ate > agora + INTERNO_MAX_MINUTOS * 60_000) {
+      return fail("validation_failed", t("Escolha uma data no futuro, até 5 anos a partir de hoje."), 422, { requestId });
     }
     snoozeUntil = new Date(ate).toISOString();
   } else {
-    snoozeUntil = new Date(agora + parsed.data.duration_hours * 3600_000).toISOString();
+    snoozeUntil = new Date(agora + parsed.data.minutos * 60_000).toISOString();
   }
 
   const supabase = await createClient();
