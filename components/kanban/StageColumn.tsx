@@ -7,6 +7,7 @@ import type { Lead } from "@/lib/types/leads";
 import type { Stage } from "@/lib/kanban/types";
 import { buildCardInput } from "@/lib/kanban/card-state";
 import { intervaloDaColuna } from "@/lib/kanban/selecao";
+import { CabecalhoEditavelDaEtapa } from "./CabecalhoEditavelDaEtapa";
 import { KanbanCard, type GestoDeSelecao } from "./KanbanCard";
 
 interface StageColumnProps {
@@ -87,12 +88,19 @@ export function StageColumn({
     ancora.current = null;
     onSelectMany?.(idsVisiveis, !todosSelecionados);
   };
-  const accentStyle: CSSProperties | undefined = stage.color
-    ? { backgroundColor: stage.color }
+  // A faixa no topo da coluna: a bolinha sozinha (8px) é fraca demais para o dono
+  // reconhecer o funil de relance — a cor que ele escolheu tem de ser vista.
+  const faixaStyle: CSSProperties | undefined = stage.color
+    ? { borderTopColor: stage.color }
     : undefined;
 
   return (
-    <div className="flex w-80 shrink-0 flex-col rounded-lg border border-border bg-surface-muted/40">
+    <div
+      className="flex w-80 shrink-0 flex-col rounded-lg border border-t-[3px] border-border bg-surface-muted/40"
+      style={faixaStyle}
+      data-testid={`coluna-${stage.id}`}
+      data-cor={stage.color ?? ""}
+    >
       <div className="group/etapa flex items-center gap-2 border-b border-border px-3 py-2.5">
         {/* "Selecionar a etapa inteira" é o gesto que faz a ação em lote valer a
             pena: sem ele, mover trinta cards deixa de ser trinta arrastes e vira
@@ -120,17 +128,7 @@ export function StageColumn({
             selecionadosAqui > 0 ? "opacity-100" : "opacity-0 group-hover/etapa:opacity-100",
           )}
         />
-        <span
-          className={cn(
-            "h-2 w-2 rounded-full",
-            !stage.color && "bg-text-muted/40",
-          )}
-          style={accentStyle}
-          aria-hidden
-        />
-        <h2 className="flex-1 truncate text-sm font-semibold text-text">
-          {stage.name}
-        </h2>
+        <CabecalhoEditavelDaEtapa stage={stage} pipelineId={pipelineId} />
         <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] font-medium tabular-nums text-text-muted">
           {selecionadosAqui > 0 ? `${selecionadosAqui}/${leads.length}` : leads.length}
         </span>

@@ -13,6 +13,7 @@ import { z } from "zod";
 import { ok, fail } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/require-role";
+import { ETAPAS_DO_FUNIL_DE_VENDAS, MODELOS_DE_FUNIL, type ModeloDeFunil } from "@/lib/pipelines/modelos";
 import {
   ETAPAS_INICIAIS,
   posicaoEntre,
@@ -52,17 +53,33 @@ const bodySchema = z
   .object({
     name: z.string().min(1).max(80),
     description: z.string().max(280).nullable().optional(),
+    // De onde as etapas vêm. Sem `modelo`, o funil nasce "em branco" (as 4 etapas
+    // neutras) — o comportamento de antes, retrocompatível.
+    modelo: z.enum(MODELOS_DE_FUNIL).optional(),
   })
   .strict();
 
-/** As etapas com que o funil nasce, já com a régua de posição do board. */
-function etapasIniciais(orgId: string, pipelineId: string) {
-  return ETAPAS_INICIAIS.map((etapa, i) => ({
+/**
+ * As etapas com que o funil nasce, já com a régua de posição do board.
+ *
+ * `color` vai SEMPRE na linha (null nas do modelo em branco): um insert em lote exige
+ * as mesmas chaves em todas as linhas.
+ */
+function etapasIniciais(orgId: string, pipelineId: string, modelo: ModeloDeFunil) {
+  const base: ReadonlyArray<{
+    name: string;
+    slug: string;
+    color?: string | null;
+    is_won: boolean;
+    is_lost: boolean;
+  }> = modelo === "vendas" ? ETAPAS_DO_FUNIL_DE_VENDAS : ETAPAS_INICIAIS;
+  return base.map((etapa, i) => ({
     organization_id: orgId,
     pipeline_id: pipelineId,
     name: etapa.name,
     slug: etapa.slug,
     position: (i + 1) * 1000,
+    color: etapa.color ?? null,
     is_won: etapa.is_won,
     is_lost: etapa.is_lost,
   }));
@@ -94,6 +111,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
   const name = parsed.data.name.trim();
   const description = parsed.data.description?.trim() || null;
+  const modelo: ModeloDeFunil = parsed.data.modelo ?? "em_branco";
 
   const supabase = await createClient();
 
@@ -140,7 +158,7 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   const { error: etapasErr } = await supabase
     .from("crm_stages")
-    .insert(etapasIniciais(orgId, pipelineId));
+    .insert(etapasIniciais(orgId, pipelineId, modelo));
 
   // ⚠️ COMPENSAÇÃO, PORQUE SÃO DUAS ESCRITAS SEM TRANSAÇÃO. Um funil sem etapa é
   // quadro morto: o board abre sem coluna nenhuma, não recebe negócio, e quem
@@ -170,7 +188,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     resourceType: "crm_pipeline",
     resourceId: pipelineId,
     requestId,
-    metadata: { name, slug: row.slug, is_default: row.is_default },
+    metadata: { name, slug: row.slug, is_default: row.is_default, modelo },
   });
 
   // Relê em vez de espelhar o que foi pedido: a tela mostra o que o banco tem.

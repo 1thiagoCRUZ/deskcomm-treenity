@@ -1,3 +1,4 @@
+import { FORMATO_DE_COR } from "@/lib/kanban/paleta-de-etapas";
 import { rotuloDoPasso, type EtapaDoMapa } from "@/lib/leads/agent-mapping";
 
 /**
@@ -100,6 +101,26 @@ export function validarNomeDeEtapa(
   }
 
   return { ok: true };
+}
+
+/**
+ * Valida e normaliza a cor de uma etapa (`null` = sem cor, a coluna volta ao cinza).
+ *
+ * Espelha `crm_stages_color_format` (`^#[0-9a-fA-F]{6}$`) para a recusa chegar em
+ * português, e devolve o hex em MINÚSCULA: `#FF0000` e `#ff0000` são a mesma cor, e
+ * gravar as duas formas faria uma comparação por texto achar que a cor mudou.
+ */
+export function validarCorDeEtapa(
+  cor: string | null,
+): { ok: true; cor: string | null } | { ok: false; erro: string } {
+  if (cor === null) return { ok: true, cor: null };
+  if (!FORMATO_DE_COR.test(cor)) {
+    return {
+      ok: false,
+      erro: "Cor inválida. Escolha uma da paleta ou digite no formato #RRGGBB (por exemplo, #3b82f6).",
+    };
+  }
+  return { ok: true, cor: cor.toLowerCase() };
 }
 
 // `crm_stages_slug_format`: ^[a-z0-9_-]{2,40}$. Um caractere já viola.

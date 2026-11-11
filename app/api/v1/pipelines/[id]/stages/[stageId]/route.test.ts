@@ -188,6 +188,96 @@ describe("PATCH /api/v1/pipelines/[id]/stages/[stageId]", () => {
     expect(body.data.etapas.find((e) => e.id === "e2")?.name).toBe("Orçamento");
   });
 
+  describe("cor da etapa", () => {
+    it("trocar a cor → um update só, com a cor em MINÚSCULA e os filtros de tenant", async () => {
+      authOk();
+      const db = makeDb({ stages: funil() });
+      const { PATCH } = await import("./route");
+      const res = await PATCH(reqPatch({ color: "#3B82F6" }), ctx());
+
+      expect(res.status).toBe(200);
+      expect(db.escritas).toHaveLength(1);
+      expect(db.escritas[0]?.patch).toEqual(comAutoria({ color: "#3b82f6" }));
+      expect(db.escritas[0]?.filtros).toContainEqual(["organization_id", ORG_ID]);
+      expect(db.escritas[0]?.filtros).toContainEqual(["pipeline_id", PIPE]);
+
+      const body = (await res.json()) as { data: { etapas: Array<{ id: string; color: string | null }> } };
+      expect(body.data.etapas.find((e) => e.id === "e2")?.color).toBe("#3b82f6");
+    });
+
+    it("color: null tira a cor", async () => {
+      authOk();
+      const db = makeDb({ stages: funil().map((e) => (e.id === "e2" ? { ...e, color: "#ef4444" } : e)) });
+      const { PATCH } = await import("./route");
+      const res = await PATCH(reqPatch({ color: null }), ctx());
+
+      expect(res.status).toBe(200);
+      expect(db.escritas[0]?.patch).toEqual(comAutoria({ color: null }));
+    });
+
+    it.each(["vermelho", "#fff", "#12345g", "ff0000", "#ff00000", ""])(
+      "cor inválida %j → 422 em português, e NENHUMA escrita",
+      async (invalida) => {
+        authOk();
+        const db = makeDb({ stages: funil() });
+        const { PATCH } = await import("./route");
+        const res = await PATCH(reqPatch({ color: invalida }), ctx());
+
+        expect(res.status).toBe(422);
+        const body = (await res.json()) as { error: { message: string } };
+        expect(body.error.message).toMatch(/Cor inválida/);
+        // Texto de banco nunca chega ao usuário.
+        expect(body.error.message).not.toMatch(/crm_stages_color_format|violates/i);
+        expect(db.escritas).toEqual([]);
+      },
+    );
+
+    it("cor e nome juntos → um único update", async () => {
+      authOk();
+      const db = makeDb({ stages: funil() });
+      const { PATCH } = await import("./route");
+      const res = await PATCH(reqPatch({ name: "Orçamento", color: "#22c55e" }), ctx());
+
+      expect(res.status).toBe(200);
+      expect(db.escritas).toHaveLength(1);
+      expect(db.escritas[0]?.patch).toEqual(comAutoria({ name: "Orçamento", color: "#22c55e" }));
+    });
+
+    it("etapa ARQUIVADA não muda de cor → 409 e nenhuma escrita", async () => {
+      authOk();
+      const db = makeDb({ stages: funil().map((e) => (e.id === "e2" ? { ...e, is_archived: true } : e)) });
+      const { PATCH } = await import("./route");
+      const res = await PATCH(reqPatch({ color: "#22c55e" }), ctx());
+
+      expect(res.status).toBe(409);
+      expect(db.escritas).toEqual([]);
+    });
+
+    it("etapa de outra organização → 404 e nenhuma escrita (a cor não fura o tenant)", async () => {
+      authOk();
+      const db = makeDb({ stages: funil().map((e) => ({ ...e, organization_id: OUTRA_ORG })) });
+      const { PATCH } = await import("./route");
+      const res = await PATCH(reqPatch({ color: "#22c55e" }), ctx());
+
+      expect(res.status).toBe(404);
+      expect(db.escritas).toEqual([]);
+    });
+
+    it("a cor entra no audit do pedido", async () => {
+      authOk();
+      makeDb({ stages: funil() });
+      const { PATCH } = await import("./route");
+      await PATCH(reqPatch({ color: "#22c55e" }), ctx());
+
+      expect(audit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "pipeline.stage_updated",
+          metadata: expect.objectContaining({ pedido: { color: "#22c55e" } }),
+        }),
+      );
+    });
+  });
+
   it("nome já usado por outra etapa → 422 com a mensagem da regra, e nenhuma escrita", async () => {
     authOk();
     const db = makeDb({ stages: funil() });

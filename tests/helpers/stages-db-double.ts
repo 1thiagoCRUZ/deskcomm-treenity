@@ -28,6 +28,8 @@ export interface StageRow {
   name: string;
   slug: string;
   position: number;
+  /** `#RRGGBB` ou ausente/`null` (sem cor). */
+  color?: string | null;
   is_won: boolean;
   is_lost: boolean;
   is_archived: boolean;

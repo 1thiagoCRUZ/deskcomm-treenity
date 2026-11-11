@@ -84,6 +84,84 @@ describe("POST /api/v1/pipelines", () => {
     expect(etapas.every((e) => e.organization_id === ORG_ID)).toBe(true);
   });
 
+  describe("modelo do funil", () => {
+    it('modelo "vendas" → nasce com as 11 etapas do cliente, na ordem, com cor', async () => {
+      authOk();
+      const db = makeDb({ pipelines: umFunil() });
+      const { POST } = await import("./route");
+      const res = await POST(reqPost({ name: "Vendas", modelo: "vendas" }));
+
+      expect(res.status).toBe(201);
+      const etapas = db.escritas.find((e) => e.table === "crm_stages")?.patch as Record<string, unknown>[];
+      expect(etapas.map((e) => e.name)).toEqual([
+        "Iniciado",
+        "Orçamento",
+        "Retorno de orçamento",
+        "Envio de dados",
+        "Aguardando pagamento",
+        "Pagamento realizado",
+        "Pagamento não realizado",
+        "Envio",
+        "Feedback (entrega + 15 dias)",
+        "Venda ganha",
+        "Venda perdida",
+      ]);
+      // A régua de posição é crescente e distinta: o quadro ordena por ela.
+      const posicoes = etapas.map((e) => e.position as number);
+      expect(new Set(posicoes).size).toBe(11);
+      expect([...posicoes].sort((a, b) => a - b)).toEqual(posicoes);
+      expect(etapas.every((e) => e.organization_id === ORG_ID)).toBe(true);
+      expect(etapas.every((e) => /^#[0-9a-f]{6}$/.test(e.color as string))).toBe(true);
+    });
+
+    it('modelo "vendas" → SÓ "Venda ganha" é ganho e SÓ "Venda perdida" é perda', async () => {
+      // Pagamento realizado NÃO fecha o negócio: depois dele ainda há envio e feedback.
+      authOk();
+      const db = makeDb({ pipelines: umFunil() });
+      const { POST } = await import("./route");
+      await POST(reqPost({ name: "Vendas", modelo: "vendas" }));
+      const etapas = db.escritas.find((e) => e.table === "crm_stages")?.patch as Record<string, unknown>[];
+
+      expect(etapas.filter((e) => e.is_won).map((e) => e.name)).toEqual(["Venda ganha"]);
+      expect(etapas.filter((e) => e.is_lost).map((e) => e.name)).toEqual(["Venda perdida"]);
+    });
+
+    it('sem modelo → as 4 etapas de antes, sem cor', async () => {
+      authOk();
+      const db = makeDb({ pipelines: umFunil() });
+      const { POST } = await import("./route");
+      await POST(reqPost({ name: "Clínica" }));
+      const etapas = db.escritas.find((e) => e.table === "crm_stages")?.patch as Record<string, unknown>[];
+
+      expect(etapas).toHaveLength(4);
+      expect(etapas.every((e) => e.color === null)).toBe(true);
+    });
+
+    it("modelo desconhecido → 422 e NENHUMA escrita", async () => {
+      authOk();
+      const db = makeDb({ pipelines: umFunil() });
+      const { POST } = await import("./route");
+      const res = await POST(reqPost({ name: "Vendas", modelo: "clinica_cara" }));
+
+      expect(res.status).toBe(422);
+      expect(db.escritas).toEqual([]);
+    });
+
+    it("o audit registra de qual modelo o funil nasceu", async () => {
+      authOk();
+      makeDb({ pipelines: umFunil() });
+      const { POST } = await import("./route");
+      await POST(reqPost({ name: "Vendas", modelo: "vendas" }));
+
+      expect(audit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "pipeline.created",
+          metadata: expect.objectContaining({ modelo: "vendas" }),
+        }),
+      );
+    });
+  });
+
   it("as etapas entram DEPOIS do funil — antes não haveria pipeline_id para elas", async () => {
     authOk();
     const db = makeDb({ pipelines: umFunil() });

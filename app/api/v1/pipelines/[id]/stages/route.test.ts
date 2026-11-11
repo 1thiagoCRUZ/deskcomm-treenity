@@ -114,6 +114,8 @@ describe("POST /api/v1/pipelines/[id]/stages", () => {
         // A última posição do funil é 4000 (a fixture chega embaralhada): a etapa
         // nova entra DEPOIS dela, não no meio.
         position: 5000,
+        // Sem cor pedida, a coluna nasce sem cor (cinza neutro no quadro).
+        color: null,
       }),
     );
 
@@ -125,6 +127,30 @@ describe("POST /api/v1/pipelines/[id]/stages", () => {
       "Cancelado",
       "Pós-venda",
     ]);
+  });
+
+  it("cria já com a cor escolhida (normalizada para minúscula)", async () => {
+    authOk();
+    const db = makeDb({ stages: funil() });
+    const { POST } = await import("./route");
+    const res = await POST(reqPost({ name: "Pós-venda", color: "#A855F7" }), ctx);
+
+    expect(res.status).toBe(201);
+    expect(db.escritas[0]?.patch).toEqual(expect.objectContaining({ color: "#a855f7" }));
+    const body = (await res.json()) as { data: { etapas: Array<{ name: string; color: string | null }> } };
+    expect(body.data.etapas.find((e) => e.name === "Pós-venda")?.color).toBe("#a855f7");
+  });
+
+  it("cor inválida na criação → 422 em português, e NENHUMA escrita", async () => {
+    authOk();
+    const db = makeDb({ stages: funil() });
+    const { POST } = await import("./route");
+    const res = await POST(reqPost({ name: "Pós-venda", color: "roxo" }), ctx);
+
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { error: { message: string } };
+    expect(body.error.message).toMatch(/Cor inválida/);
+    expect(db.escritas).toEqual([]);
   });
 
   it("slug ocupado por etapa ARQUIVADA ganha sufixo", async () => {

@@ -34,6 +34,8 @@ const daEtapa = (pipelineId: string, stageId: string) =>
 /** O que o PATCH aceita. `depois_de` é o vizinho da ESQUERDA (`null` = primeira coluna). */
 export interface PatchDeEtapa {
   name?: string;
+  /** `#RRGGBB`, ou `null` para tirar a cor. */
+  color?: string | null;
   is_won?: boolean;
   is_lost?: boolean;
   depois_de?: string | null;
@@ -43,6 +45,9 @@ function useReler(pipelineId: string) {
   const qc = useQueryClient();
   return () => {
     void qc.invalidateQueries({ queryKey: chaveDoFunil(pipelineId) });
+    // O QUADRO também: cor e nome mudam na coluna, e o cabeçalho editável da
+    // coluna usa este mesmo hook. A chave é a de `useBoard`.
+    void qc.invalidateQueries({ queryKey: ["board", pipelineId] });
   };
 }
 

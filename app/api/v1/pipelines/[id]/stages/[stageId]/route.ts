@@ -41,6 +41,8 @@ interface RouteCtx {
 const bodySchema = z
   .object({
     name: z.string().min(1).max(80).optional(),
+    // `null` tira a cor. O formato é validado na operação, que responde em português.
+    color: z.string().nullable().optional(),
     is_won: z.boolean().optional(),
     is_lost: z.boolean().optional(),
     depois_de: z.string().min(1).nullable().optional(),

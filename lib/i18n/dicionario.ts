@@ -4258,6 +4258,33 @@ export const DICIONARIO: Traducoes = {
   negócio: { es: "negocio" },
   negócios: { es: "negocios" },
   "Etapa atualizada.": { es: "Etapa actualizada." },
+  // Cor e nome da etapa direto na coluna do quadro, e "Começar de" na criação do funil.
+  "Cor da etapa": { es: "Color de la etapa" },
+  "Outra cor (#RRGGBB)": { es: "Otro color (#RRGGBB)" },
+  Usar: { es: "Usar" },
+  "Sem cor": { es: "Sin color" },
+  "Renomear a etapa": { es: "Renombrar la etapa" },
+  "Começar de": { es: "Empezar desde" },
+  "Em branco": { es: "En blanco" },
+  "4 etapas neutras: Novo, Em andamento, Ganho e Perdido. Você muda tudo depois.": {
+    es: "4 etapas neutras: Nuevo, En curso, Ganado y Perdido. Después cambias todo.",
+  },
+  "11 etapas, do Iniciado ao Feedback, já com cores. Venda ganha e Venda perdida fecham o negócio.": {
+    es: "11 etapas, de Iniciado a Feedback, ya con colores. Venta ganada y Venta perdida cierran el negocio.",
+  },
+  // Nomes da paleta de cores das etapas (`t(c.nome)` — chave dinâmica, o teste não a enxerga).
+  Cinza: { es: "Gris" },
+  Vermelho: { es: "Rojo" },
+  Laranja: { es: "Naranja" },
+  Âmbar: { es: "Ámbar" },
+  Amarelo: { es: "Amarillo" },
+  Verde: { es: "Verde" },
+  Turquesa: { es: "Turquesa" },
+  Ciano: { es: "Cian" },
+  Azul: { es: "Azul" },
+  Índigo: { es: "Índigo" },
+  Roxo: { es: "Morado" },
+  Rosa: { es: "Rosa" },
   "Só uma etapa pode ser a de fechamento. Marcar esta desmarca": {
     es: "Solo una etapa puede ser la de cierre. Marcar esta desmarca",
   },

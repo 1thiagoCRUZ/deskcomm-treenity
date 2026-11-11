@@ -255,9 +255,11 @@ describe("GET /api/v1/pipelines/[id]/agent-mapping", () => {
     // A autoria viaja junto (migration 0101) e é `null` na fixture, que é o
     // estado honesto de uma etapa anterior à coluna. Fica no `toEqual` exato de
     // propósito: é o que impede a projeção de crescer sem ninguém decidir.
+    // `color` entrou por decisão (Spec 18): a tela de etapas mostra a bolinha.
     expect(body.data.etapas[0]).toEqual({
       id: "e1",
       name: "Novo",
+      color: null,
       is_won: false,
       is_lost: false,
       last_change_actor_kind: null,

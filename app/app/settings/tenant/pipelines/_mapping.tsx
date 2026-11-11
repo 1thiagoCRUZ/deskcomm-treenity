@@ -18,7 +18,6 @@ import {
   type MapaDoAgente,
 } from "@/hooks/pipelines/useAgentMapping";
 import { LEAD_STAGES, type LeadStage } from "@/lib/agent-engine/agent/lead-state";
-import { ApiError } from "@/lib/api/types";
 import { ROTULO_DO_PASSO } from "@/lib/leads/agent-mapping";
 import { ArrowRight, Warning } from "@/lib/ui/icons";
 import { useT } from "@/hooks/i18n/useT";
@@ -147,29 +146,12 @@ export function conserteNasEtapas(passo: LeadStage, etapas: EtapaDoFunil[]): boo
 }
 
 /**
- * ⚠️ NEM TODA MENSAGEM DO SERVIDOR É TEXTO DE TELA.
- *
- * As recusas de REGRA (409/422) foram escritas em português, citam o nome da
- * etapa e ensinam o que fazer — vão inteiras para o usuário, e é para isso que
- * a camada pura existe. O MESMO canal, porém, carrega frase de infraestrutura:
- * «Permissão insuficiente. Requer role >= manager» (a palavra "role" na tela do
- * dono de clínica) e, nos 500, texto cru do Postgres em inglês — exatamente o
- * que o docblock de `agent-mapping.ts` diz existir para evitar. Imprimir tudo
- * verbatim traz de volta pela porta dos fundos o que a Task 1 fechou.
+ * A frase de tela para uma recusa de configuração do funil. Mora em
+ * `lib/pipelines/mensagem-de-erro.ts` porque o quadro (cor e nome da coluna) usa a
+ * MESMA regra — duas cópias divergiriam no primeiro ajuste.
  */
-export function mensagemDeErro(
-  e: unknown,
-  t: (texto: string) => string = (texto) => texto,
-): string {
-  if (e instanceof ApiError) {
-    if (e.status === 409 || e.status === 422) return t(e.message);
-    if (e.status === 401)
-      return t("Sua sessão expirou. Entre de novo para salvar suas escolhas.");
-    if (e.status === 403)
-      return t("Você não tem permissão para mudar a configuração deste funil.");
-  }
-  return t("Não deu para salvar agora. Tente de novo em instantes.");
-}
+import { mensagemDeErro } from "@/lib/pipelines/mensagem-de-erro";
+export { mensagemDeErro };
 
 function iguais(a: MapaDoAgente, b: MapaDoAgente): boolean {
   return LEAD_STAGES.every((p) => a[p] === b[p]);

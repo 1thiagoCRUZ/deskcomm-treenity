@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ApiError } from "@/lib/api/types";
+import type { ModeloDeFunil } from "@/lib/pipelines/modelos";
 import { Archive, CaretDown, CaretUp, Check, PencilSimple, Plus } from "@/lib/ui/icons";
 import { useArquivarFunil, useCriarFunil, useEditarFunil } from "@/hooks/pipelines/usePipelines";
 
@@ -54,6 +55,19 @@ function textoDoErro(e: unknown, t: (texto: string) => string): string {
   return t("Não consegui completar essa ação. Tente de novo.");
 }
 
+const OPCOES_DE_MODELO: ReadonlyArray<{ valor: ModeloDeFunil; titulo: string; descricao: string }> = [
+  {
+    valor: "em_branco",
+    titulo: "Em branco",
+    descricao: "4 etapas neutras: Novo, Em andamento, Ganho e Perdido. Você muda tudo depois.",
+  },
+  {
+    valor: "vendas",
+    titulo: "Funil de vendas",
+    descricao: "11 etapas, do Iniciado ao Feedback, já com cores. Venda ganha e Venda perdida fecham o negócio.",
+  },
+];
+
 export function FunisClient({
   funis: funisDoServidor,
   podeGerenciar,
@@ -91,6 +105,8 @@ export function FunisClient({
   const arquivar = useArquivarFunil();
 
   const [novo, setNovo] = useState<string | null>(null);
+  // "Começar de": o funil nasce com as etapas do modelo. Em branco = 4 etapas neutras.
+  const [modelo, setModelo] = useState<ModeloDeFunil>("em_branco");
   const [renomeando, setRenomeando] = useState<{ id: string; nome: string } | null>(null);
   const [arquivando, setArquivando] = useState<{ id: string; erro: string | null } | null>(null);
   const [erro, setErro] = useState<{ id: string | null; texto: string } | null>(null);
@@ -101,10 +117,11 @@ export function FunisClient({
     const nome = (novo ?? "").trim();
     if (!nome) return;
     setErro(null);
-    criar.mutate(nome, {
+    criar.mutate({ name: nome, modelo }, {
       onSuccess: (r) => {
         setFunis(r.data.pipelines);
         setNovo(null);
+        setModelo("em_branco");
       },
       onError: (e) => setErro({ id: null, texto: textoDoErro(e, t) }),
     });
@@ -141,7 +158,8 @@ export function FunisClient({
   }
 
   const formularioDeCriacao = novo !== null && (
-    <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center" data-testid="form-novo-funil">
+    <Card className="flex flex-col gap-3 p-4" data-testid="form-novo-funil">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
       <Input
         autoFocus
         value={novo}
@@ -163,6 +181,31 @@ export function FunisClient({
           {t("Cancelar")}
         </Button>
       </div>
+      </div>
+      <fieldset className="flex flex-col gap-2" disabled={ocupado}>
+        <legend className="mb-1 text-xs font-medium text-muted-foreground">{t("Começar de")}</legend>
+        <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label={t("Começar de")}>
+          {OPCOES_DE_MODELO.map((o) => {
+            const marcado = modelo === o.valor;
+            return (
+              <button
+                key={o.valor}
+                type="button"
+                role="radio"
+                aria-checked={marcado}
+                data-testid={`modelo-${o.valor}`}
+                onClick={() => setModelo(o.valor)}
+                className={`rounded-md border p-3 text-left transition-colors ${
+                  marcado ? "border-accent bg-accent-soft" : "border-border hover:bg-surface-muted"
+                }`}
+              >
+                <span className="block text-sm font-medium">{t(o.titulo)}</span>
+                <span className="block text-xs text-muted-foreground">{t(o.descricao)}</span>
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
     </Card>
   );
 

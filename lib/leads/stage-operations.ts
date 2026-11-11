@@ -31,6 +31,7 @@ import {
   slugDeNome,
   updatesDeMarcacao,
   validarArquivamento,
+  validarCorDeEtapa,
   validarMarcacao,
   validarNomeDeEtapa,
   type EtapaEditavel,
@@ -51,7 +52,7 @@ export interface DepsDeEtapa {
 
 /** As colunas que a tela e as regras usam. `position` entra: a reordenação calcula em cima dela. */
 const COLUNAS =
-  "id, name, slug, position, is_won, is_lost, is_archived, agent_stage_hint, last_change_actor_kind, last_change_at";
+  "id, name, slug, position, color, is_won, is_lost, is_archived, agent_stage_hint, last_change_actor_kind, last_change_at";
 
 /** A etapa como sai para quem lê — inclui a autoria da última mudança de configuração. */
 export interface EtapaVisivel {
@@ -59,6 +60,8 @@ export interface EtapaVisivel {
   name: string;
   slug: string;
   position: number;
+  /** `#RRGGBB` ou `null` (a coluna usa o cinza neutro). */
+  color: string | null;
   is_won: boolean;
   is_lost: boolean;
   /** `user` | `ai` | `system` — `null` nas etapas anteriores a esta coluna. */
@@ -67,6 +70,7 @@ export interface EtapaVisivel {
 }
 
 type EtapaLida = EtapaEditavel & {
+  color: string | null;
   last_change_actor_kind: string | null;
   last_change_at: string | null;
 };
@@ -117,6 +121,7 @@ export function corpo(etapas: EtapaLida[]): { etapas: EtapaVisivel[] } {
         name: e.name,
         slug: e.slug,
         position: e.position,
+        color: e.color ?? null,
         is_won: e.is_won,
         is_lost: e.is_lost,
         last_change_actor_kind: e.last_change_actor_kind ?? null,
@@ -222,7 +227,7 @@ export interface EtapaCriada {
  */
 export async function criarEtapa(
   deps: DepsDeEtapa,
-  input: { pipelineId: string; nome: string },
+  input: { pipelineId: string; nome: string; cor?: string | null },
 ): Promise<EtapaCriada> {
   const name = input.nome.trim();
   const etapas = await funilOuNadaFeito(deps, input.pipelineId);
@@ -234,6 +239,11 @@ export async function criarEtapa(
     throw new ApiError(422, "unprocessable_entity", undefined, deps.requestId, veredito.erro);
   }
 
+  const cor = validarCorDeEtapa(input.cor ?? null);
+  if (!cor.ok) {
+    throw new ApiError(422, "unprocessable_entity", undefined, deps.requestId, cor.erro);
+  }
+
   const autoria = autoriaDaMudanca(deps.actor);
   const row = {
     organization_id: deps.organizationId,
@@ -243,6 +253,7 @@ export async function criarEtapa(
     // entram na conta: `uniq_crm_stages_pipeline_slug` não é parcial.
     slug: slugDeNome(name, etapas.map((e) => e.slug)),
     position: posicaoEntre(etapas[etapas.length - 1]?.position ?? null, null),
+    color: cor.cor,
     ...autoria,
   };
 
@@ -262,7 +273,7 @@ export async function criarEtapa(
     resourceType: "crm_stage",
     resourceId: stageId,
     requestId: deps.requestId,
-    metadata: { ...autor.metadata, pipeline_id: input.pipelineId, name, slug: row.slug },
+    metadata: { ...autor.metadata, pipeline_id: input.pipelineId, name, slug: row.slug, color: row.color },
   });
 
   return { stageId, funil: await funilDepois(deps, input.pipelineId) };
@@ -274,6 +285,8 @@ export async function criarEtapa(
 
 export interface PedidoDeEdicao {
   name?: string;
+  /** `#RRGGBB`, ou `null` para tirar a cor. Ausente = não mexe. */
+  color?: string | null;
   is_won?: boolean;
   is_lost?: boolean;
   /**
@@ -325,6 +338,15 @@ export async function atualizarEtapa(
     }
   }
 
+  let corNova: string | null | undefined;
+  if (pedido.color !== undefined) {
+    const veredito = validarCorDeEtapa(pedido.color);
+    if (!veredito.ok) {
+      throw new ApiError(422, "unprocessable_entity", undefined, deps.requestId, veredito.erro);
+    }
+    corNova = veredito.cor;
+  }
+
   const temMarcacao = pedido.is_won !== undefined || pedido.is_lost !== undefined;
   if (temMarcacao) {
     const veredito = validarMarcacao(etapas, stageId, pedido);
@@ -333,8 +355,9 @@ export async function atualizarEtapa(
     }
   }
 
-  const patchDoAlvo: PatchDeMarcacao & { name?: string; position?: number } = {};
+  const patchDoAlvo: PatchDeMarcacao & { name?: string; position?: number; color?: string | null } = {};
   if (pedido.name !== undefined) patchDoAlvo.name = pedido.name.trim();
+  if (corNova !== undefined) patchDoAlvo.color = corNova;
 
   if (pedido.depois_de !== undefined) {
     // Só as ativas compõem a régua: arquivada não ocupa lugar no quadro.

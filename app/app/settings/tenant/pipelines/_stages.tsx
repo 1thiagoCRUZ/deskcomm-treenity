@@ -27,6 +27,7 @@ import { LEAD_STAGES, type LeadStage } from "@/lib/agent-engine/agent/lead-state
 import { ApiError } from "@/lib/api/types";
 import { ROTULO_DO_PASSO } from "@/lib/leads/agent-mapping";
 import { Archive, CaretDown, CaretUp, Plus, Warning } from "@/lib/ui/icons";
+import { SeletorDeCor } from "@/components/kanban/SeletorDeCor";
 import { SeloDeAutoria } from "@/components/operacao/SeloDeAutoria";
 import { useT } from "@/hooks/i18n/useT";
 
@@ -380,11 +381,23 @@ export function StagesSection({
                   <span className="block text-xs font-medium text-text-muted sm:hidden">
                     {t(ROTULO.nome)}
                   </span>
-                  <NomeDaEtapa
-                    etapa={etapa}
-                    desabilitado={ocupado}
-                    aoConfirmar={(nome) => aplicar(etapa.id, { name: nome })}
-                  />
+                  {/* A cor mora ao lado do nome, e não numa coluna própria: é a
+                      MESMA bolinha do cabeçalho da coluna no quadro, e uma coluna a
+                      mais desalinharia o cabeçalho desta lista nos dois layouts. */}
+                  <div className="flex items-center gap-2">
+                    <SeletorDeCor
+                      cor={etapa.color ?? null}
+                      nomeDaEtapa={etapa.name}
+                      desabilitado={ocupado}
+                      idDeTeste={`cor-${etapa.id}`}
+                      aoEscolher={(cor) => aplicar(etapa.id, { color: cor })}
+                    />
+                    <NomeDaEtapa
+                      etapa={etapa}
+                      desabilitado={ocupado}
+                      aoConfirmar={(nome) => aplicar(etapa.id, { name: nome })}
+                    />
+                  </div>
                 </div>
 
                 {/* No empilhado o rótulo vai EM CIMA, como os outros dois: ao

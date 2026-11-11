@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 
 import { apiClient } from "@/lib/api/client";
+import type { ModeloDeFunil } from "@/lib/pipelines/modelos";
 
 /**
  * Criar, editar e arquivar FUNIL — a escrita da tela do Kanban.
@@ -57,7 +58,10 @@ function useReler() {
 export function useCriarFunil() {
   const reler = useReler();
   return useMutation({
-    mutationFn: (name: string) => apiClient.post<Resposta>(ROTA, { name }),
+    // Aceita só o nome (quem não escolhe modelo) ou nome + modelo: sem `modelo` a
+    // API cria o funil em branco, como sempre.
+    mutationFn: (pedido: string | { name: string; modelo?: ModeloDeFunil }) =>
+      apiClient.post<Resposta>(ROTA, typeof pedido === "string" ? { name: pedido } : pedido),
     onSettled: reler,
   });
 }

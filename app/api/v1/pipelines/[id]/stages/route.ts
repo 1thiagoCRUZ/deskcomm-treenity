@@ -36,7 +36,11 @@ interface RouteCtx {
 
 // `.max(80)`: o nome é o topo de uma coluna do quadro, não um parágrafo. O banco
 // não limita, mas a tela quebra muito antes disso.
-const bodySchema = z.object({ name: z.string().min(1).max(80) }).strict();
+// `color` é opcional: a etapa nasce sem cor e o formato `#RRGGBB` é validado na
+// operação (`validarCorDeEtapa`), que responde em português.
+const bodySchema = z
+  .object({ name: z.string().min(1).max(80), color: z.string().nullable().optional() })
+  .strict();
 
 export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
   const supportDenied = await requireSupportWrite();
@@ -73,7 +77,7 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
         actor: { type: "user", id: authz.user.id, role: authz.org.role },
         requestId,
       },
-      { pipelineId, nome: parsed.data.name },
+      { pipelineId, nome: parsed.data.name, cor: parsed.data.color ?? null },
     );
     return ok(funil, { status: 201, requestId });
   } catch (err) {
