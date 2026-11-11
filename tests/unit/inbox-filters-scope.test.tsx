@@ -15,15 +15,19 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { InboxFilters, visibleInboxTabs, type InboxFiltersValue } from "@/components/inbox/InboxFilters";
 import type * as CanaisModule from "@/hooks/channels/useChannelSessions";
 import type { ChannelSession } from "@/hooks/channels/useChannelSessions";
 import type { ActiveOrg } from "@/lib/auth/types";
+import type { FunilDoFiltro } from "@/lib/inbox/etapas-do-filtro";
 
 const activeOrgRef: { current: ActiveOrg | null } = { current: null };
 /** `undefined` = listagem ainda carregando (ou que falhou) — não é "zero canais". */
 const canaisRef: { current: ChannelSession[] | undefined } = { current: [] };
+/** Os funis do filtro "Etapa". `undefined` = ainda carregando. */
+const etapasRef: { current: FunilDoFiltro[] | undefined } = { current: [] };
 
 vi.mock("@/hooks/auth/AuthProvider", () => ({
   useAuth: () => ({ activeOrg: activeOrgRef.current }),
@@ -36,6 +40,9 @@ vi.mock("@/hooks/channels/useChannelSessions", async (original) => {
 });
 vi.mock("@/hooks/inbox/useConversationTags", () => ({
   useConversationTagVocabulary: () => ({ data: [] }),
+}));
+vi.mock("@/hooks/inbox/useEtapasDoInbox", () => ({
+  useEtapasDoInbox: () => ({ data: etapasRef.current }),
 }));
 vi.mock("@/hooks/inbox/useConversationCounts", () => ({
   useConversationCounts: () => ({ data: { unassigned: 3, mine: 2, all: 5 } }),
@@ -68,6 +75,7 @@ const SELETOR = "Filtrar por número de WhatsApp";
 beforeEach(() => {
   setOrg("agent", "own_and_unassigned");
   canaisRef.current = [];
+  etapasRef.current = [];
 });
 afterEach(cleanup);
 
@@ -174,5 +182,112 @@ describe("InboxFilters — seletor de número e o filtro órfão", () => {
       <InboxFilters value={{ ...VALUE, channel_session_id: "canal-1" }} onChange={() => {}} />,
     );
     expect(screen.queryByText("Número removido")).not.toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// O filtro "Etapa" (Spec 18, F3)
+// ---------------------------------------------------------------------------
+
+const ETAPA = "Filtrar por etapa do funil";
+
+function funil(id: string, name: string, etapas: Array<[string, string]>): FunilDoFiltro {
+  return {
+    id,
+    name,
+    is_default: false,
+    etapas: etapas.map(([eid, ename]) => ({ id: eid, name: ename, color: "#3b82f6", is_won: false, is_lost: false })),
+  };
+}
+
+describe("InboxFilters — filtro por etapa", () => {
+  // O Radix Select exige estes métodos, que o jsdom não tem.
+  beforeEach(() => {
+    window.HTMLElement.prototype.scrollIntoView = vi.fn();
+    window.HTMLElement.prototype.hasPointerCapture = vi.fn(() => false);
+    window.HTMLElement.prototype.setPointerCapture = vi.fn();
+    window.HTMLElement.prototype.releasePointerCapture = vi.fn();
+  });
+
+  it("sem nenhuma etapa (org sem funil, ou ainda carregando), o seletor não aparece", () => {
+    setOrg("manager", "all");
+    etapasRef.current = [];
+    const { unmount } = render(<InboxFilters value={VALUE} onChange={() => {}} />);
+    expect(screen.queryByLabelText(ETAPA)).not.toBeInTheDocument();
+    unmount();
+
+    etapasRef.current = undefined;
+    render(<InboxFilters value={VALUE} onChange={() => {}} />);
+    expect(screen.queryByLabelText(ETAPA)).not.toBeInTheDocument();
+  });
+
+  it("com etapas, aparece com 'Todas as etapas' como padrão", () => {
+    setOrg("agent", "own_and_unassigned");
+    etapasRef.current = [funil("f1", "Vendas", [["e1", "Iniciado"]])];
+    render(<InboxFilters value={VALUE} onChange={() => {}} />);
+    expect(screen.getByLabelText(ETAPA)).toHaveTextContent("Todas as etapas");
+  });
+
+  it("⭐ escolher uma etapa emite onChange com o id dela, preservando o resto do filtro", async () => {
+    setOrg("manager", "all");
+    etapasRef.current = [funil("f1", "Vendas", [["e1", "Iniciado"], ["e2", "Aguardando pagamento"]])];
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    render(<InboxFilters value={{ ...VALUE, tab: "all", tag: "vip" }} onChange={onChange} />);
+
+    await user.click(screen.getByLabelText(ETAPA));
+    await user.click(await screen.findByTestId("filtro-etapa-e2"));
+
+    expect(onChange).toHaveBeenCalledWith({ ...VALUE, tab: "all", tag: "vip", etapa: "e2" });
+  });
+
+  it("'Todas as etapas' LIMPA o filtro (etapa volta a undefined)", async () => {
+    setOrg("manager", "all");
+    etapasRef.current = [funil("f1", "Vendas", [["e1", "Iniciado"]])];
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    render(<InboxFilters value={{ ...VALUE, etapa: "e1" }} onChange={onChange} />);
+
+    await user.click(screen.getByLabelText(ETAPA));
+    await user.click(await screen.findByRole("option", { name: "Todas as etapas" }));
+
+    expect(onChange.mock.calls[0]?.[0]).toMatchObject({ etapa: undefined });
+  });
+
+  it("com DOIS funis, o nome de cada um separa as etapas; com um só, é ruído e não aparece", async () => {
+    setOrg("manager", "all");
+    const user = userEvent.setup();
+
+    etapasRef.current = [funil("f1", "Vendas", [["e1", "Orçamento"]]), funil("f2", "Pós-venda", [["e2", "Orçamento"]])];
+    const { unmount } = render(<InboxFilters value={VALUE} onChange={() => {}} />);
+    await user.click(screen.getByLabelText(ETAPA));
+    expect(await screen.findByText("Vendas")).toBeInTheDocument();
+    expect(screen.getByText("Pós-venda")).toBeInTheDocument();
+    unmount();
+    cleanup();
+
+    etapasRef.current = [funil("f1", "Vendas", [["e1", "Orçamento"]])];
+    render(<InboxFilters value={VALUE} onChange={() => {}} />);
+    await user.click(screen.getByLabelText(ETAPA));
+    await screen.findByTestId("filtro-etapa-e1");
+    expect(screen.queryByText("Vendas")).not.toBeInTheDocument();
+  });
+
+  /**
+   * Mesma família do número removido: a etapa foi arquivada e o filtro continua apontando
+   * para ela. Sem nomeá-la, o Inbox ficaria filtrado — vazio — sem nada dizendo por quê.
+   */
+  it("filtro aponta para etapa que saiu do quadro: o seletor nomeia 'Etapa removida'", () => {
+    setOrg("manager", "all");
+    etapasRef.current = [funil("f1", "Vendas", [["e1", "Iniciado"]])];
+    render(<InboxFilters value={{ ...VALUE, etapa: "etapa-arquivada" }} onChange={() => {}} />);
+    expect(screen.getByLabelText(ETAPA)).toHaveTextContent("Etapa removida");
+  });
+
+  it("lista ainda carregando: não afirma que a etapa foi removida", () => {
+    setOrg("manager", "all");
+    etapasRef.current = undefined;
+    render(<InboxFilters value={{ ...VALUE, etapa: "e1" }} onChange={() => {}} />);
+    expect(screen.queryByText("Etapa removida")).not.toBeInTheDocument();
   });
 });

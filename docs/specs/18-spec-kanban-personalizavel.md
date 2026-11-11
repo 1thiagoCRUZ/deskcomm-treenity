@@ -46,6 +46,8 @@ Restrição de produto: **não copiar o Kanban da Kommo** (o cliente não gostou
 
 ### F0 — Modelo "Funil de vendas" com as 11 etapas
 
+**Status (2026-11-11):** código e testes unitários prontos (commit `9d88a10`). **Falta a prova pela tela** (e2e com Supabase local) — sem Docker no computador onde foi escrito.
+
 **Objetivo:** criar um funil já nascido com as etapas do cliente, cores sugeridas e marcas won/lost corretas.
 
 - [ ] Definir o modelo em um único módulo TS (ex.: `lib/pipelines/modelos.ts`): lista `{ name, slug, color, is_won, is_lost }` — slugs ASCII (`iniciado`, `orcamento`, `retorno_de_orcamento`, `envio_de_dados`, `aguardando_pagamento`, `pagamento_realizado`, `pagamento_nao_realizado`, `envio`, `feedback`, `venda_ganha`, `venda_perdida`) e **o nome com acento** como o cliente escreveu. Slug tem de bater `^[a-z0-9_-]{2,40}$`.
@@ -57,6 +59,8 @@ Restrição de produto: **não copiar o Kanban da Kommo** (o cliente não gostou
 **Aceite:** criar funil pelo modelo gera 11 colunas na ordem, com cor, e o lead ganho/perdido encerra normalmente.
 
 ### F1 — Cor da etapa editável (e nome na própria coluna)
+
+**Status (2026-11-11):** código e testes unitários prontos (commit `9d88a10`). **Falta a prova pela tela** (e2e com Supabase local) — sem Docker no computador onde foi escrito.
 
 - [ ] **API:** `PATCH .../stages/[stageId]` aceita `color: string | null` (regex `^#[0-9a-fA-F]{6}$`, `null` = sem cor); `POST .../stages` aceita `color?` opcional. Zod `.strict()` mantido. A recusa usa o texto do usuário, nunca o nome da constraint (padrão de `stage-editing.ts`).
 - [ ] **Regra pura** em `lib/leads/stage-editing.ts`: `validarCorDeEtapa(cor)` (normaliza para minúscula; recusa formato inválido com mensagem em PT).
@@ -73,24 +77,43 @@ Restrição de produto: **não copiar o Kanban da Kommo** (o cliente não gostou
 
 ### F2 — Vários funis: trocar de funil sem sair do quadro
 
-- [ ] Seletor de funil no cabeçalho de `/app/pipelines/[id]` (dropdown com os funis não arquivados da org ativa, mesmo filtro `organization_id` da lista — a RLS libera todas as orgs do usuário, o filtro explícito é obrigatório).
-- [ ] Lembrar o último funil aberto por usuário (preferência local; sem schema) e abrir nele a partir do menu.
-- [ ] A lista `/app/kanban` continua sendo onde se gerencia (criar/renomear/reordenar/arquivar).
-- [ ] Testes: E2E com 2 funis (`scripts/seed-e2e-funis.ts` já existe — estender, não duplicar).
+**Feito (2026-11-11):**
+
+- [x] Seletor de funil no cabeçalho de `/app/pipelines/[id]`: com mais de um funil o **título vira o seletor** (`app/app/pipelines/[id]/_client.tsx`); com um só continua texto. Os funis vêm do servidor em `page.tsx`, com o filtro explícito de `organization_id` (a RLS libera todas as orgs do usuário).
+- [x] Trocar navega para `/app/pipelines/<id>` **sem a querystring de filtros** — etiqueta e responsável de um funil não valem no outro.
+- [x] A lista `/app/kanban` continua sendo onde se gerencia (criar/renomear/reordenar/arquivar).
+- [x] Testes: `app/app/pipelines/[id]/_client.test.tsx` (5).
+
+**Adiado, de propósito:** "lembrar o último funil aberto". Exigiria mexer na lista `/app/kanban` (redirecionar quem tem um funil lembrado), e é nessa tela que se gerencia — esconder a lista atrás de um redirecionamento é um custo maior que o ganho de um clique. Reabrir se o cliente pedir.
+
+**Falta provar:** E2E com 2 funis (`scripts/seed-e2e-funis.ts` já existe — estender, não duplicar). Sem Docker neste computador, fica para o CI ou outra máquina.
 
 **Aceite:** com 2 funis, o usuário alterna entre eles no próprio quadro e cada um mostra só as suas etapas e leads.
 
-### F3 — Filtro do Inbox por etapa (e funil)
+### F3 — Filtro do Inbox por etapa
 
-- [ ] **Query:** `listConversationsQuerySchema` ganha `etapa` (uuid da etapa) e, opcionalmente, `funil` (uuid) para o seletor em dois níveis.
-- [ ] **⚠️ Rota E schema E handler:** a rota `conversations/route.ts` lê cada param **à mão** — o schema aceitar não basta (já quebrou com `tag` e `comando`). `tests/unit/rota-le-todo-filtro-do-schema.test.ts` reprova o esquecimento; rodá-lo.
-- [ ] **Handler:** restringir a conversas cujo `contact_id` tenha `crm_leads` com `status='open'` e `stage_id = :etapa`, **sempre com `organization_id`** resolvido do contexto (nunca do query string). Preferir *embedded filter* do PostgREST (`contacts!inner(crm_leads!inner(...))`) ou subquery/RPC a montar `contact_id.in.(...)` com milhares de ids — o próprio `_handler.ts:42` documenta o teto de tamanho de URL. Se virar função SQL: migration + baseline + MANIFEST + revogar `EXECUTE` de `public, anon`.
-- [ ] **`/conversations/counts`:** mesmo filtro, senão o badge contradiz a lista (aconteceu com "Fila 1" vs 5 conversas).
-- [ ] **UI:** `InboxFilters.tsx` ganha o select "Etapa" (agrupado por funil, com a **bolinha de cor** da etapa); combinável com os demais filtros; estado na URL.
-- [ ] **Etiqueta na lista:** `ConversationListItem` mostra a etapa do lead aberto (chip colorido). Se o contato tiver mais de um lead aberto, mostrar o de funil padrão + "+N".
-- [ ] Testes: unit do handler (etapa de outra org não vaza; sem lead → fora do filtro); invariante RLS (2 tenants); E2E "filtro por etapa mostra só as conversas certas e o contador bate".
+**Feito (2026-11-11):**
 
-**Aceite:** escolher "Aguardando pagamento" no Inbox lista só as conversas cujo contato está nessa etapa, e o badge de contagem concorda.
+- [x] **Query:** `listConversationsQuerySchema` ganhou `etapa` (uuid). **Sem parâmetro de funil:** o id da etapa já é único entre funis; o funil só agrupa o seletor.
+- [x] **Rota E schema E handler:** `conversations/route.ts` lê `?etapa=` (a cadeia do `tag` já rompeu aqui). `tests/unit/inbox-filtro-de-etapa.test.ts` prova a rota, o handler e, por sabotagem, que reprova se a leitura ou o filtro de organização sumirem.
+- [x] **Handler:** `INNER JOIN` no banco — `contacts:contact_id!inner (…, crm_leads!crm_leads_contact_id_fkey!inner (stage_id))` + `.eq("contacts.crm_leads.stage_id", etapa)` + o filtro de `organization_id` no lead. **Sem** `contact_id.in.(<ids>)`, que estouraria o gateway (414) numa etapa com milhares de leads. O `!inner` só entra com o filtro ligado, para a conversa sem contato não sumir da caixa. O embed dos leads é removido da resposta.
+- [x] **Rota do seletor:** `GET /api/v1/conversations/etapas` (`viewer`, as duas tabelas filtradas pela org do JWT, funil sem etapa omitido). `hooks/inbox/useEtapasDoInbox.ts`.
+- [x] **UI:** `InboxFilters.tsx` ganhou o select "Etapa", com a **bolinha de cor**, agrupado por funil (o nome do funil só aparece com 2+). Combina com os demais filtros. Etapa arquivada com filtro ativo aparece como "Etapa removida".
+- [x] Espanhol no dicionário.
+
+**Decisões que mudaram em relação ao rascunho:**
+
+- **O lead conta em qualquer status**, não só `open`: quem filtra "Venda perdida" quer ver as perdidas, e o lead mora ali com `status='lost'`.
+- **`/conversations/counts` NÃO muda.** Os contadores das abas são totais por aba e nenhum filtro (tag, canal, busca) os afeta hoje; um filtro de etapa que os afetasse seria o único e confundiria. O "badge contradiz a lista" do rascunho era sobre abas, não sobre filtros.
+- **Estado do filtro fica em memória**, como o `tag` e o canal — não na URL.
+
+**Adiado:** o chip da etapa em cada conversa da lista (`ConversationListItem`). Exige uma segunda leitura (leads dos contatos da página) e mereceria spec própria — o pedido era *filtrar*.
+
+**⚠️ Falta provar, e é o risco desta fase:** que o PostgREST de verdade aceita o embed aninhado com `!inner` e o filtro `contacts.crm_leads.stage_id` **através do alias** `contacts:contact_id`. Os testes unitários só provam a consulta que montamos. Não há precedente de filtro aninhado neste repo, e nenhum teste de banco alcança o PostgREST. **Provar com e2e (Supabase local) antes do merge.** Se o alias não filtrar, a saída é trocar o alias por `contacts!inner(...)` com o hint da FK, ou uma função SQL.
+
+**Efeito conhecido:** mover o card de etapa no quadro não invalida a lista do Inbox (ela só escuta `conversations`). Com o filtro ligado, a lista se atualiza ao refazer a busca ou voltar o foco à janela.
+
+**Aceite:** escolher "Aguardando pagamento" no Inbox lista só as conversas cujo contato está nessa etapa.
 
 ### F4 — ~~Automação por etapa~~ (FORA DE ESCOPO)
 

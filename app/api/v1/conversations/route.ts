@@ -57,6 +57,9 @@ export async function GET(req: NextRequest): Promise<Response> {
     // Achado por @jmpo, no cabeçalho do teste que ele escreveu no PR #199.
     tag: url.searchParams.get("tag") ?? undefined,
     channel_session_id: url.searchParams.get("channel_session_id") ?? undefined,
+    // ETAPA do lead do contato (Spec 18). Mesma regra do `tag` acima: o schema aceitar
+    // não basta — sem esta linha a lista voltaria INTEIRA, sem erro nenhum.
+    etapa: url.searchParams.get("etapa") ?? undefined,
     search: url.searchParams.get("search") ?? undefined,
     cursor: url.searchParams.get("cursor") ?? undefined,
     limit: url.searchParams.get("limit") ?? undefined,

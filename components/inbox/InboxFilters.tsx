@@ -8,7 +8,9 @@ import { cn } from "@/lib/utils";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -16,6 +18,7 @@ import { channelLabel, useChannelSessions } from "@/hooks/channels/useChannelSes
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import { useConversationTagVocabulary } from "@/hooks/inbox/useConversationTags";
 import { useConversationCounts } from "@/hooks/inbox/useConversationCounts";
+import { useEtapasDoInbox } from "@/hooks/inbox/useEtapasDoInbox";
 import type { Role, VisibilityMode } from "@/lib/auth/types";
 
 export type InboxTab = "unassigned" | "mine" | "all" | "closed" | "ai";
@@ -50,6 +53,8 @@ export interface InboxFiltersValue {
   onlyUnread: boolean;
   channel_session_id?: string;
   tag?: string;
+  /** `crm_stages.id`: só conversas cujo contato tem lead nesta etapa. */
+  etapa?: string;
 }
 
 interface Props {
@@ -64,6 +69,12 @@ export function InboxFilters({ value, onChange }: Props) {
   const { activeOrg } = useAuth();
   const { data: tagVocabulary } = useConversationTagVocabulary(activeOrg?.orgId ?? null);
   const { data: counts } = useConversationCounts(activeOrg?.orgId ?? null);
+  const { data: funisDoFiltro } = useEtapasDoInbox(activeOrg?.orgId ?? null);
+  const todasAsEtapas = (funisDoFiltro ?? []).flatMap((f) => f.etapas);
+  // Mesmo cuidado do canal: filtrar por uma etapa que saiu do quadro (foi arquivada)
+  // deixaria o Inbox mostrando uma lista vazia sem nada dizendo que há filtro.
+  const etapaForaDaLista =
+    value.etapa != null && funisDoFiltro != null && !todasAsEtapas.some((e) => e.id === value.etapa);
 
   const tabs = activeOrg
     ? visibleInboxTabs(activeOrg.role, activeOrg.visibility_mode)
@@ -200,6 +211,51 @@ export function InboxFilters({ value, onChange }: Props) {
           </div>
         )}
       </div>
+
+      {todasAsEtapas.length > 0 && (
+        <div className="px-3 pb-2">
+          <Select
+            value={value.etapa ?? "all"}
+            onValueChange={(v) => onChange({ ...value, etapa: v === "all" ? undefined : v })}
+          >
+            <SelectTrigger
+              className={cn(
+                "h-8 min-w-0 rounded-full border-transparent bg-surface-elevated px-3 text-xs shadow-none",
+                value.etapa != null && "border-accent bg-accent-soft text-accent",
+              )}
+              aria-label={t("Filtrar por etapa do funil")}
+              data-testid="filtro-etapa"
+            >
+              <SelectValue placeholder={t("Todas as etapas")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("Todas as etapas")}</SelectItem>
+              {etapaForaDaLista && value.etapa != null && (
+                <SelectItem value={value.etapa}>{t("Etapa removida")}</SelectItem>
+              )}
+              {(funisDoFiltro ?? []).map((funil) => (
+                <SelectGroup key={funil.id}>
+                  {/* Com um funil só, o nome dele seria ruído; com vários, é o que
+                      separa "Orçamento" de um funil do "Orçamento" de outro. */}
+                  {(funisDoFiltro?.length ?? 0) > 1 && <SelectLabel>{funil.name}</SelectLabel>}
+                  {funil.etapas.map((etapa) => (
+                    <SelectItem key={etapa.id} value={etapa.id} data-testid={`filtro-etapa-${etapa.id}`}>
+                      <span className="inline-flex items-center gap-2">
+                        <span
+                          className={cn("h-2 w-2 shrink-0 rounded-full", !etapa.color && "bg-text-muted/40")}
+                          style={etapa.color ? { backgroundColor: etapa.color } : undefined}
+                          aria-hidden
+                        />
+                        {etapa.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* Faixa sublinhada, não caixa cinza: cinco abas num grid de 280px
           espremiam "Fechadas" contra "Automático" até os rótulos se tocarem. */}

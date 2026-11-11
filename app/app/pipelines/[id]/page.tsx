@@ -26,5 +26,22 @@ export default async function PipelinePage({
     .eq("id", id)
     .maybeSingle();
   if (!pipeline) notFound();
-  return <PipelinePageClient pipelineId={id} initialName={pipeline.name} />;
+
+  // Os OUTROS funis, para trocar de quadro sem voltar à lista. O mesmo filtro de
+  // organização e o mesmo recorte da lista de funis (`/app/kanban`): ativos, na ordem
+  // dela. Leitura aberta a qualquer papel — a lista também é.
+  const { data: todos } = await supabase
+    .from("crm_pipelines")
+    .select("id, name")
+    .eq("organization_id", activeOrg.orgId)
+    .eq("is_archived", false)
+    .order("position");
+
+  return (
+    <PipelinePageClient
+      pipelineId={id}
+      initialName={pipeline.name}
+      funis={(todos ?? []) as Array<{ id: string; name: string }>}
+    />
+  );
 }

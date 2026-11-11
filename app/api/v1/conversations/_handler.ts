@@ -80,6 +80,9 @@ function idsQueCabemNaURL(ids: string[]): string[] {
   return cabem;
 }
 
+const CONTATO_COLS =
+  "id, display_name, name, phone_number, is_anonymized, tags, is_blocked, avatar_storage_path, force_human";
+
 const SELECT_COLS = `
   id, organization_id, contact_id, channel_session_id, channel, status,
   status_changed_at, venda_fechada_em, service_revision, service_closed_at, service_started_at, current_demanda_id, assigned_to_user_id, assigned_to_user_name, assignee_kind, assigned_at, last_inbound_at,
@@ -88,9 +91,30 @@ const SELECT_COLS = `
   snooze_until, created_at, updated_at,
   bot_silenced_until, last_handoff_at, last_handoff_reason,
   comando_da_conversa,
-  contacts:contact_id (id, display_name, name, phone_number, is_anonymized, tags, is_blocked, avatar_storage_path, force_human),
+  contacts:contact_id (${CONTATO_COLS}),
   channel_sessions:channel_session_id (phone_number, display_name, provider)
 `;
+
+/**
+ * O MESMO select, com o contato e os leads dele ligados por INNER JOIN — só para o
+ * filtro por etapa.
+ *
+ * ⚠️ É UM JOIN NO BANCO, E NÃO `contact_id.in.(<ids>)`, pelo motivo que o
+ * `ORCAMENTO_DE_IDS_NA_URL` acima documenta: a lista de ids viaja na URL, e uma
+ * etapa com milhares de leads estouraria o gateway (414 virando 500, a tela do
+ * Inbox quebrada). Aqui a URL não cresce com o número de leads.
+ *
+ * ⚠️ `!inner` SÓ NESTE CAMINHO. Torná-lo inner na lista inteira faria a conversa sem
+ * contato SUMIR da caixa — o mesmo cuidado que a busca documenta. Com o filtro
+ * ligado o efeito é o desejado: conversa sem lead nessa etapa não entra.
+ *
+ * ⚠️ O HINT `crm_leads_contact_id_fkey` é explícito para o embed não virar ambíguo
+ * se outra relação contacts↔crm_leads aparecer um dia.
+ */
+const SELECT_COLS_POR_ETAPA = SELECT_COLS.replace(
+  `contacts:contact_id (${CONTATO_COLS})`,
+  `contacts:contact_id!inner (${CONTATO_COLS}, crm_leads!crm_leads_contact_id_fkey!inner (stage_id))`,
+);
 
 interface CursorPayload {
   sort: string | null;
@@ -163,7 +187,7 @@ export async function listConversationsHandler(
 
   let query = supabase
     .from("conversations")
-    .select(SELECT_COLS)
+    .select(q.etapa ? SELECT_COLS_POR_ETAPA : SELECT_COLS)
     .eq("organization_id", ctx.organization_id)
     .order(sortCol, { ascending: asc, nullsFirst: false })
     .order("id", { ascending: asc })
@@ -194,6 +218,14 @@ export async function listConversationsHandler(
   }
   if (q.channel_session_id) query = query.eq("channel_session_id", q.channel_session_id);
   if (q.tag) query = query.contains("tags", [q.tag]); // tags @> array[tag] (GIN)
+  if (q.etapa) {
+    // O lead está NESTA etapa — qualquer que seja o status dele: quem filtra "Venda
+    // perdida" quer ver as perdidas. O filtro de organização no lead é a rede que
+    // sobra: o contato já é da organização, e o lead dele também.
+    query = query
+      .eq("contacts.crm_leads.stage_id", q.etapa)
+      .eq("contacts.crm_leads.organization_id", ctx.organization_id);
+  }
 
   if (q.assigned_to === "me") {
     if (ctx.actor.type !== "user") {
@@ -347,6 +379,14 @@ export async function listConversationsHandler(
   }
 
   const rows = (data ?? []) as unknown as Conversation[];
+  // O embed dos leads existe só para o JOIN: não faz parte do contrato da lista, e
+  // deixá-lo vazar mudaria o formato do contato conforme o filtro estivesse ligado.
+  if (q.etapa) {
+    for (const r of rows) {
+      const contato = (r as unknown as { contacts?: Record<string, unknown> | null }).contacts;
+      if (contato) delete contato.crm_leads;
+    }
+  }
   const hasMore = rows.length > q.limit;
   const page = hasMore ? rows.slice(0, q.limit) : rows;
   const last = page[page.length - 1];

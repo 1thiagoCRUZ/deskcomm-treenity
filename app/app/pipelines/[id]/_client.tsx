@@ -25,6 +25,7 @@ import { FilterBar } from "@/components/kanban/FilterBar";
 import { BulkActionBar } from "@/components/kanban/BulkActionBar";
 import { NewLeadDialog } from "@/components/kanban/NewLeadDialog";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus } from "@/lib/ui/icons";
 import type { LeadFilters } from "@/lib/kanban/filters";
 import { applyFilters, filtersFromParams, filtersToParams } from "@/lib/kanban/filters";
@@ -32,9 +33,12 @@ import { applyFilters, filtersFromParams, filtersToParams } from "@/lib/kanban/f
 export function PipelinePageClient({
   pipelineId,
   initialName,
+  funis = [],
 }: {
   pipelineId: string;
   initialName: string;
+  /** Os funis ativos da organização — com mais de um, o título vira o seletor. */
+  funis?: Array<{ id: string; name: string }>;
 }) {
   const t = useT();
   const { data, isLoading, error, pulses, realtimeStatus, seguranca } = useBoard(pipelineId);
@@ -82,7 +86,29 @@ export function PipelinePageClient({
           uma linha só, como sempre foi. */}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="min-w-0 truncate text-2xl font-semibold tracking-tight">
-          {data?.pipeline.name ?? initialName}
+          {funis.length > 1 ? (
+            // O título É o seletor: quem tem mais de um funil troca de quadro sem voltar à
+            // lista. Navega para a rota do outro funil — o filtro (?…) NÃO vai junto,
+            // porque etiqueta e responsável de um funil não valem no outro.
+            <Select value={pipelineId} onValueChange={(id) => router.push(`/app/pipelines/${id}`)}>
+              <SelectTrigger
+                className="h-auto w-auto max-w-full gap-2 border-0 bg-transparent p-0 text-2xl font-semibold tracking-tight shadow-none focus:ring-0"
+                aria-label={t("Trocar de funil")}
+                data-testid="trocar-de-funil"
+              >
+                <SelectValue>{data?.pipeline.name ?? initialName}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {funis.map((f) => (
+                  <SelectItem key={f.id} value={f.id} data-testid={`funil-${f.id}`}>
+                    {f.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            (data?.pipeline.name ?? initialName)
+          )}
         </h1>
         <Button onClick={() => setNewOpen(true)} disabled={!data} className="shrink-0">
           <Plus size={16} className="mr-2" /> {t("Novo Lead")}

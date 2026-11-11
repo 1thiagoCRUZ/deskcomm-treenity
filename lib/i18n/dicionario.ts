@@ -385,6 +385,11 @@ export const DICIONARIO: Traducoes = {
   "Buscar mensagens…": { es: "Buscar mensajes…" },
   "Todos os números": { es: "Todos los números" },
   "Todas as tags": { es: "Todas las etiquetas" },
+  // Filtro "Etapa" do Inbox (Spec 18, F3).
+  "Filtrar por etapa do funil": { es: "Filtrar por etapa del embudo" },
+  "Trocar de funil": { es: "Cambiar de embudo" },
+  "Todas as etapas": { es: "Todas las etapas" },
+  "Etapa removida": { es: "Etapa eliminada" },
   "Apenas não lidos": { es: "Solo no leídos" },
   "Não lidos": { es: "No leídos" },
   Fila: { es: "Cola" },

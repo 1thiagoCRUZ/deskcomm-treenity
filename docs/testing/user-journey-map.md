@@ -154,6 +154,15 @@ fonte só (`lib/onboarding/passos.ts`) — eram três listas que discordavam. Ga
 | J4.27 | Anonimizar um contato (LGPD) | mesma causa da J4.26 na rota `/api/v1/lgpd/anonymize` — **a anonimização não acontecia**. Corrigido; guardado pelo invariante de colunas geradas, ainda **sem prova de tela** |
 | J4.25 | ⚠️ O funil de entrada de uma org nova é de **e-commerce** | `fn_seed_default_pipeline_for_org` semeia "Pedidos" com *Carrinho abandonado · Pago · Em separação…*. Numa clínica ou imobiliária, o lead nasce em **"Carrinho abandonado"**. Achado em 2026-08-06 ao provar J4.22; conserto é decisão de produto (spec 17 passo 4) |
 | J4.36 | **Editar campos do funil pela barra da conversa** | só os customizados (`settings.fields`) aparecem como inputs; título/valor ficam no dossiê. Salvar grava `custom_fields` no mesmo PATCH do quadro e a seção relê · `tests/unit/inbox-campos-lead.test.tsx` |
+| J4.37 | **Mudar a cor de uma etapa direto na coluna** (Spec 18) | manager+ clica na bolinha, escolhe na paleta (ou digita `#RRGGBB`), e a faixa da coluna muda na hora; cor inválida volta em português. **Só unit/componente** (`CabecalhoEditavelDaEtapa.test.tsx`, rotas de etapa) — **sem prova de tela** |
+| J4.38 | Renomear a etapa pelo lápis da coluna | Enter grava, Esc cancela, nome repetido recusa citando a etapa. **Só unit/componente** — sem prova de tela |
+| J4.39 | `agent`/`viewer` no quadro | veem a coluna como antes, **sem** bolinha editável nem lápis. **Só componente** — sem prova de tela |
+| J4.40 | **Criar funil "Começar de: Funil de vendas"** | nasce com as 11 etapas na ordem, cada uma com cor; só «Venda ganha» e «Venda perdida» encerram o negócio. **Só unit de rota** (`pipelines/route.test.ts`) — sem prova de tela |
+| J4.41 | Criar funil sem escolher modelo | continua nascendo com Novo · Em andamento · Ganho · Perdido (J4.16 não regride) |
+| J4.42 | **Trocar de funil dentro do quadro** | com 2+ funis o título é o seletor; escolher leva ao outro quadro **sem** os filtros do anterior; com 1 funil é só texto. **Só componente** (`pipelines/[id]/_client.test.tsx`) — sem prova de tela |
+| J4.43 | **Filtrar o Inbox por etapa** | o seletor "Etapa" lista os funis/etapas com a cor; escolher «Aguardando pagamento» mostra só as conversas cujo contato tem lead ali. **⚠️ NÃO PROVADO contra o PostgREST** — o filtro usa embed aninhado com `!inner` através de alias, sem precedente no repo; unit prova só a consulta montada. **Provar por e2e antes do merge** |
+| J4.44 | Filtro por etapa de uma etapa que foi arquivada | o seletor mostra «Etapa removida» e dá para voltar a «Todas as etapas» — não fica um Inbox filtrado e vazio sem explicação (`inbox-filters-scope.test.tsx`) |
+| J4.45 | Filtro por etapa NÃO vaza entre organizações | rota de etapas e o JOIN filtram `organization_id`; **falta o teste de isolamento com 2 tenants contra o banco** |
 
 ## J5 — Time: convites e atuação de atendentes `[P0]` (convite) / `[P1]` (rotina)
 

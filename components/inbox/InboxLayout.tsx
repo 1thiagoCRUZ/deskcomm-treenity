@@ -207,6 +207,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
       search: filterValue.search || undefined,
       channel_session_id: filterValue.channel_session_id,
       tag: filterValue.tag,
+      etapa: filterValue.etapa,
     }),
     [
       filterValue.tab,
@@ -214,6 +215,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
       filterValue.search,
       filterValue.channel_session_id,
       filterValue.tag,
+      filterValue.etapa,
     ],
   );
 

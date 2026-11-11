@@ -316,6 +316,12 @@ export const listConversationsQuerySchema = z.object({
   assigned_to: z.union([z.string().uuid(), z.literal("me"), z.literal("unassigned")]).optional(),
   channel_session_id: z.string().uuid().optional(),
   tag: conversationTagSchema.optional(),
+  /**
+   * A ETAPA em que está o lead do contato (`crm_stages.id`). Conversa não tem etapa —
+   * quem tem é o lead —, então o filtro é "o contato tem lead NESTA etapa". O id da
+   * etapa já é único entre funis, por isso não há parâmetro de funil.
+   */
+  etapa: z.string().uuid().optional(),
   search: z.string().optional(),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
